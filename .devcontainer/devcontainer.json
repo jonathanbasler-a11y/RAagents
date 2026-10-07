@@ -1,0 +1,4 @@
+{
+  "name": "RAagents",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu"
+}
