@@ -100,8 +100,7 @@ Output: NOT a buy/don't buy decision. A structured briefing: what was checked, w
 Title; why now; today's problem (Boxes 4-6); vision; architecture; the hybrid team roster; DD playbook; LIVE DEMO (with a pre-recorded fallback); what the demo showed; expansion playbooks with reuse shown; the mindset shift and change management; how we get there; a concrete ask to stakeholders. Backup slides: agent specifications, inspection modules, risks, sources. Speakers should come from different functions.
 
 ## Source material
-- inputs/transcript.md: the team's canvas discussion (names removed)
-- inputs/brainstorm.pdf: earlier brainstorm and idea synthesis
+- inputs/transcript.md: the team's canvas discussion (participant first names and company names kept by owner decision, 2026-10-07)
 - inputs/canvas-photos/: photos of the canvas
 - inputs/other-team/: the other team's material, added after the merge
 

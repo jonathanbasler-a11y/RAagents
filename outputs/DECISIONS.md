@@ -11,3 +11,6 @@ Log every decision here with its date and source. Add new decisions at the botto
 | 2026-10-07 | The framework must scale to other functions beyond RA and to other use cases. | Project brief: decisions already made |
 | 2026-10-07 | The team uses the Digital Mindset Canvas (Reichart, 9 boxes). | Project brief: decisions already made |
 | 2026-10-07 | The two teams are not scored; the merged concept goes straight to senior stakeholders. | Project brief: decisions already made |
+| 2026-10-07 | The earlier brainstorm is not used as source material; the inputs are the canvas transcript and the canvas photos. | Owner, kickoff session |
+| 2026-10-07 | The transcript is kept verbatim, including participant first names and company names. | Owner, kickoff session |
+| 2026-10-07 | The GPS location is blanked from both canvas photos; picture, orientation and other metadata unchanged. | Owner, kickoff session |
