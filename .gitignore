@@ -1,0 +1,40 @@
+# Confidential material: local only, never committed
+inputs/confidential/
+
+# Audio recordings
+*.m4a
+*.mp3
+*.wav
+*.M4A
+*.MP3
+*.WAV
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Claude Code personal settings
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+
+# Office lock files (from later PowerPoint/Word conversions)
+~$*
