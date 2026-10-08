@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Due diligence workspace · UX mockup</title>
+<link rel="icon" href="data:,">
+<style>
+/* ===== Tokens ===== */
+:root{
+  --paper:#EEF1F4;          /* dossier paper: page background */
+  --sheet:#FBFCFD;          /* sheet: cards, surfaces */
+  --ink:#172233;            /* blue-black ink: primary text, signed content */
+  --graphite:#646C78;       /* pencil graphite: agent-authored + secondary text */
+  --sig:#2443C4;            /* signature blue: human actions, focus, initials */
+  --sig-hover:#1D37A3;
+  --hl:#F3D34A;             /* highlighter: background only */
+  --hl-bg:rgba(243,211,74,.36);
+  --red:#C2362B;            /* redline */
+  --red-bg:rgba(194,54,43,.06);
+  --line:rgba(23,34,51,.12);
+  --ink-wash:rgba(23,34,51,.05);
+  --r:4px;
+  --f-display:'Iowan Old Style','Charter','Sitka Text',Georgia,serif;
+  --f-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --f-data:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --f-sig:'Snell Roundhand','Segoe Script','Bradley Hand',cursive;
+}
+
+/* ===== Base ===== */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,p,ul,ol,dl,dd,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--sig);outline-offset:2px}
+.visually-hidden{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:var(--f-data);font-size:12px}
+.nowrap{white-space:nowrap}
+.pencil{color:var(--graphite)}
+.ink{color:var(--ink)}
+.caps{font-variant-caps:all-small-caps;letter-spacing:.1em;font-weight:600;color:var(--graphite);font-size:14px;line-height:1.2}
+.ic{width:14px;height:14px;flex:none;vertical-align:-2px}
+
+.skip{position:absolute;left:8px;top:-48px;z-index:50;background:var(--sig);color:#fff;border:0;border-radius:var(--r);padding:8px 12px}
+.skip:focus{top:8px}
+
+/* ===== Banner + document-control header ===== */
+.banner{background:var(--ink);color:var(--sheet);font-size:12px;text-align:center;padding:4px 12px;letter-spacing:.02em}
+.docbar{background:var(--sheet);border-bottom:1px solid var(--line);padding:10px 24px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 28px}
+.product{display:flex;flex-direction:column;line-height:1.2}
+.product b{font-family:var(--f-display);font-weight:400;font-size:16px}
+.product span{font-size:12px;color:var(--graphite)}
+.doc-control{flex:1 1 460px;font:12px/1.6 var(--f-data);color:var(--ink)}
+.doc-control .sep{color:var(--graphite);padding:0 .45em}
+.doc-control .due{background:var(--hl-bg);padding:0 3px;border-radius:2px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .lg-pencil{color:var(--graphite)}
+.legend .lg-ink{color:var(--ink)}
+.legend .lg-ink i{font-family:var(--f-sig);font-style:normal;color:var(--sig);font-size:16px;line-height:1}
+
+/* ===== Shell: binder rail + main ===== */
+.shell{display:grid;grid-template-columns:200px minmax(0,1fr);min-height:calc(100vh - 92px)}
+.rail{padding:28px 0 24px 16px}
+.tablist{display:flex;flex-direction:column;gap:4px;position:sticky;top:20px}
+.tab{display:flex;align-items:baseline;gap:10px;text-align:left;background:transparent;border:1px solid transparent;border-right:0;border-radius:var(--r) 0 0 var(--r);margin-right:-1px;padding:9px 12px;color:var(--graphite);font-size:14px;position:relative}
+.tab:hover{color:var(--ink);background:rgba(251,252,253,.55)}
+.tab[aria-selected="true"]{background:var(--sheet);border-color:var(--line);color:var(--ink);font-weight:600;z-index:1}
+.tab .n{font:12px var(--f-data);min-width:1.1em}
+.tab.arch{margin-top:18px}
+.tab.arch::before{content:"";position:absolute;left:12px;right:12px;top:-11px;border-top:1px solid var(--line)}
+.main{border-left:1px solid var(--line);padding:28px 32px 72px;min-width:0}
+.main:focus{outline:none}
+
+/* ===== Screen scaffolding ===== */
+.screen-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px 24px;margin-bottom:20px}
+.screen-head h1{font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1.2}
+.screen-head h1:focus{outline:none}
+.lede{color:var(--graphite);margin-top:4px;max-width:70ch;font-size:14px}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.sheet > h2,.panel-h{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.panel-h:focus{outline:none}
+.sheet > h2 small,.panel-h small{font-weight:400;font-size:12px;color:var(--graphite)}
+.note{font-size:12px;color:var(--graphite);margin-top:10px}
+.stack{display:grid;gap:20px;align-content:start}
+.grid-2{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px;align-items:start}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--line);border-radius:var(--r);padding:2px 8px;color:var(--graphite);background:var(--sheet);white-space:nowrap}
+.tag.proposal{border-style:dashed;border-color:var(--graphite)}
+
+/* ===== Controls ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r);padding:8px 14px;font-size:14px;font-weight:600;border:1px solid var(--sig);background:var(--sheet);color:var(--sig);white-space:nowrap}
+.btn:hover{background:rgba(36,67,196,.06)}
+.btn-primary{background:var(--sig);color:#fff}
+.btn-primary:hover{background:var(--sig-hover)}
+.btn-quiet{border-color:var(--line);color:var(--ink);font-weight:500}
+.btn-quiet:hover{background:var(--ink-wash)}
+.btn-sm{padding:3px 10px;font-size:12px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:var(--r);padding:4px 10px;font-size:12px;background:var(--sheet);color:var(--ink)}
+.chip:hover{border-color:rgba(23,34,51,.35)}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink-wash);font-weight:600}
+.chip .ic{display:none;width:12px;height:12px}
+.chip[aria-pressed="true"] .ic{display:inline}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.field{display:grid;gap:4px;align-content:start}
+.field.full{grid-column:1/-1}
+.field > label,.field > .flabel{font-size:12px;color:var(--graphite);font-weight:600}
+.input{width:100%;border:1px solid rgba(23,34,51,.22);border-radius:var(--r);background:#fff;padding:7px 10px;font-size:14px;min-height:36px}
+textarea.input{min-height:96px;resize:vertical;line-height:1.5}
+
+.seg{display:inline-flex;border:1px solid rgba(23,34,51,.22);border-radius:var(--r);padding:2px;background:#fff}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{padding:6px 16px;border-radius:3px;font-size:14px;color:var(--graphite);cursor:pointer}
+.seg input:checked + label{background:var(--ink);color:var(--sheet);font-weight:600}
+.seg input:focus-visible + label{outline:2px solid var(--sig);outline-offset:2px}
+
+/* ===== Request ===== */
+.questions li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.questions li:first-child{border-top:0}
+.questions .qn{font:12px/1.9 var(--f-data);color:var(--graphite)}
+.qsub{display:block;font-size:12px;color:var(--graphite)}
+.roles li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.roles li:first-child{border-top:0}
+.cleared{display:inline-flex;align-items:center;gap:4px;font:12px var(--f-data);color:var(--ink);white-space:nowrap}
+.outscope{font-size:14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.outscope b{font-weight:600}
+.request-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:20px}
+
+/* ===== Team ===== */
+.people{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.person{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;background:var(--sheet)}
+.person .caps{display:block;margin-bottom:4px}
+.person b{display:block;font-size:14px}
+.person p{font-size:12px;color:var(--graphite);margin-top:4px}
+.ladder{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px}
+.ladder .rung{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:var(--r);padding:3px 8px;background:var(--sheet)}
+.ladder .rung.above{border-style:dashed;color:var(--graphite)}
+.ladder .ceiling{font:12px var(--f-data);color:var(--ink);border-left:2px solid var(--ink);padding-left:8px}
+.agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.agent{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--sheet);padding:14px 16px}
+.agent-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.agent h3{font-size:16px;font-weight:600}
+.agent .desc{font-size:14px}
+.kv{display:grid;grid-template-columns:minmax(0,1fr);gap:2px 0;font-size:14px}
+.kv dt{font-size:12px;color:var(--graphite);font-weight:600;margin-top:6px}
+.srcs{display:flex;flex-wrap:wrap;gap:4px}
+.srcs li{font:12px var(--f-data);border:1px solid var(--line);border-radius:3px;padding:1px 6px;color:var(--ink)}
+.guard{font-size:14px;border-left:2px solid var(--ink);padding-left:10px}
+.agent-status{margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font-size:12px;display:flex;gap:6px;align-items:center}
+.agent-status.wait{background:var(--hl-bg);color:var(--ink);margin:auto -16px -14px;padding:8px 16px;border-radius:0 0 var(--r) var(--r)}
+.badge{display:inline-flex;align-items:center;gap:6px;font:12px var(--f-data);border:1px solid var(--line);border-radius:3px;padding:1px 6px;white-space:nowrap}
+.meter{display:inline-flex;gap:2px}
+.meter i{width:5px;height:10px;border:1px solid var(--ink);border-radius:1px}
+.meter i.on{background:var(--ink)}
+.meter i.off{border-color:rgba(23,34,51,.25)}
+
+/* ===== Run ===== */
+.stepper{display:grid;grid-template-columns:repeat(8,minmax(88px,1fr));gap:0;overflow-x:auto;counter-reset:s}
+.step{position:relative;padding:8px 8px 4px;font-size:14px;color:var(--graphite);border-top:3px solid var(--line)}
+.step .mono{display:block;color:var(--graphite)}
+.step.done{border-top-color:var(--ink);color:var(--ink)}
+.step.current{border-top-color:var(--ink);color:var(--ink);font-weight:600;background:var(--hl-bg)}
+.step .state{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:400}
+.run-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start;margin-top:20px}
+.lanes{display:grid}
+.lane{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(120px,.9fr) minmax(0,2fr) auto;gap:6px 16px;align-items:center;padding:12px 0;border-top:1px solid var(--line);font-size:14px}
+.lane:first-of-type{border-top:0}
+.lane.head{font-size:12px;color:var(--graphite);font-weight:600;padding:0 0 8px}
+.lane .name b{display:block;font-weight:600}
+.lane .name span{font-size:12px;color:var(--graphite)}
+.bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--graphite)}
+.lane .act{display:flex;gap:6px;align-items:flex-start}
+.lane .act .ic{margin-top:3px}
+.lane .count{font:12px var(--f-data);text-align:right;white-space:nowrap}
+.queue{display:grid;gap:8px}
+.queue li{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--hl-bg);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-size:14px}
+.queue .owner{display:block;font-size:12px;color:var(--ink)}
+.feed li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.feed li:first-child{border-top:0}
+.feed time{font:12px/1.9 var(--f-data);color:var(--graphite)}
+.feed .actor{font-weight:600}
+.feed .person-entry{color:var(--ink)}
+.feed .agent-entry{color:var(--graphite)}
+.ref{font:12px var(--f-data);color:var(--sig);background:none;border:0;padding:0 1px;text-decoration:underline;text-underline-offset:2px}
+.ref:hover{text-decoration-thickness:2px}
+
+/* ===== Sign-off strip (signature element) ===== */
+.strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r);background:var(--sheet);min-width:0}
+.cell{display:flex;flex-direction:column;gap:3px;padding:8px 10px;min-width:0;min-height:62px}
+.cell + .cell{border-left:1px solid var(--line)}
+.cell .caps{font-size:14px;line-height:1}
+.cell .who{display:flex;gap:5px;align-items:flex-start;font-size:14px;line-height:1.3;overflow-wrap:break-word;min-width:0}
+.cell .who .ic{margin-top:2px}
+.cell .sub{font-size:12px;line-height:1.35;color:var(--graphite);overflow-wrap:break-word}
+.cell-prep .who{color:var(--graphite)}
+.cell-chal .who{color:var(--graphite)}
+.cell-chal.is-open{background:var(--hl-bg)}
+.cell-chal.is-open .who,.cell-chal.is-open .sub{color:var(--ink)}
+.cell-chal.is-returned .who{color:var(--red)}
+.cell-appr .await{border:1px dotted var(--graphite);border-radius:3px;padding:4px 6px;font-size:12px;color:var(--graphite);line-height:1.3}
+.cell-appr .await-row{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.cell-appr.is-signed .role{font-size:12px;color:var(--ink);line-height:1.2}
+.cell-appr.is-signed:focus{outline:2px solid var(--sig);outline-offset:-2px}
+.cell-appr.is-rejected .who{color:var(--red)}
+.sig{font-family:var(--f-sig);color:var(--sig);font-size:28px;line-height:1.05;display:inline-block;white-space:nowrap;padding-right:4px}
+.sig.anim{animation:ink-draw 600ms cubic-bezier(.55,0,.35,1) both}
+@keyframes ink-draw{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.when{font:12px var(--f-data);color:var(--graphite)}
+.strip.compact .cell{padding:5px 7px;min-height:0;gap:2px}
+.strip.compact .cell .who{font-size:12px}
+.strip.compact .cell .caps{font-size:12px;letter-spacing:.06em}
+
+.strip.compact .sig{font-size:20px}
+.strip.compact .await{padding:2px 5px}
+
+/* ===== Findings ===== */
+.findings-grid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:20px;align-items:start}
+.filters{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-start;margin-bottom:14px}
+.filter-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.filter-group > .caps{margin-right:4px}
+.result-line{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px;color:var(--graphite);margin-bottom:8px}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--sheet)}
+table.ft{width:100%;min-width:1120px;border-collapse:collapse;font-size:14px;table-layout:fixed}
+.ft .src{overflow-wrap:break-word}
+.ft td.small{font-size:12px;line-height:1.45}
+.ft th{text-align:left;font-size:12px;font-weight:600;color:var(--graphite);padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--sheet)}
+.ft td{padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.ft tr:last-child td{border-bottom:0}
+.ft tbody tr{cursor:pointer}
+.ft tbody tr:hover td{background:rgba(23,34,51,.025)}
+.ft .src{font:12px var(--f-data)}
+.ft .nosrc{color:var(--red);font-weight:600}
+.id-btn{font:600 12px var(--f-data);color:var(--sig);background:none;border:0;padding:0;text-decoration:underline;text-underline-offset:2px}
+tr.is-rejected td{background:var(--red-bg)}
+tr.is-rejected .claim-text{color:var(--red);text-decoration:line-through;text-decoration-thickness:1px}
+.reject-note{display:block;color:var(--red);font-size:12px;font-weight:600;margin-top:4px;text-decoration:none}
+.status{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:1px 7px;border-radius:3px;border:1px solid var(--line);white-space:nowrap;line-height:1.6}
+.st-verified{border-color:var(--ink);color:var(--ink)}
+.st-draft{border:1px dashed var(--graphite);color:var(--graphite)}
+.st-challenged{background:var(--hl-bg);color:var(--ink);border-color:rgba(23,34,51,.2)}
+.st-rejected{color:var(--red);border-color:var(--red)}
+.st-heor{color:var(--graphite);border-color:var(--graphite)}
+.conf{font:12px var(--f-data);white-space:nowrap}
+.empty{padding:24px;text-align:center;color:var(--graphite);font-size:14px}
+.checklist h3{font-size:12px;color:var(--graphite);font-weight:600;margin:14px 0 4px}
+.checklist .ck-group:first-child h3{margin-top:0}
+.checklist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.ck{display:inline-flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;padding:1px 6px;border-radius:3px}
+.ck-checked{color:var(--ink)}
+.ck-na{color:var(--ink)}
+.ck-open{background:var(--hl-bg);color:var(--ink)}
+.ck-heor{color:var(--graphite);border:1px solid var(--graphite)}
+
+/* ===== Drawer ===== */
+.scrim{position:fixed;inset:0;background:rgba(23,34,51,.32);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(580px,100%);background:var(--sheet);border-left:1px solid var(--line);z-index:30;overflow-y:auto;padding:20px 24px 40px;animation:slidein 180ms ease-out}
+@keyframes slidein{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+.drawer-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
+.drawer-head h2{font-family:var(--f-display);font-weight:400;font-size:20px;line-height:1.3}
+.drawer-head h2 .mono{display:block;font-size:12px;color:var(--graphite)}
+.record{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px 14px;font-size:14px;margin:16px 0 20px}
+.record dt{font-size:12px;color:var(--graphite);font-weight:600;padding-top:2px}
+.drawer h3{font-size:14px;font-weight:600;margin:20px 0 8px}
+.thread li{border-left:2px solid var(--line);padding:4px 0 10px 12px;font-size:14px}
+.thread li.t-red{border-left-color:var(--graphite)}
+.thread li.t-open{border-left-color:var(--hl)}
+.thread .meta{display:flex;gap:8px;align-items:baseline;font-size:12px}
+.thread .meta b{font-weight:600}
+.thread .t-agent{color:var(--graphite)}
+.thread .t-person{color:var(--ink)}
+
+/* ===== Briefing ===== */
+.brief-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:start}
+.doc{background:var(--sheet);border:1px solid var(--line);border-radius:2px;padding:44px 56px 52px;max-width:820px;width:100%;justify-self:center}
+.doc-ctl{display:grid;grid-template-columns:repeat(4,minmax(0,auto));border:1px solid var(--line);font:12px/1.4 var(--f-data);margin-bottom:28px}
+.doc-ctl div{padding:6px 10px;min-width:0}
+.doc-ctl div + div{border-left:1px solid var(--line)}
+.doc-ctl span{display:block;color:var(--graphite)}
+.doc h1{font-family:var(--f-display);font-weight:400;font-size:40px;line-height:1.1;margin-bottom:6px}
+.doc .doc-sub{color:var(--graphite);font-size:14px;margin-bottom:20px}
+.doc-notice{border-left:3px solid var(--ink);background:var(--ink-wash);padding:10px 14px;font-size:14px;color:var(--ink)}
+.doc-draftnote{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--graphite);margin-top:10px}
+.doc h2{font-family:var(--f-display);font-weight:600;font-size:20px;margin:30px 0 10px;padding-top:16px;border-top:1px solid var(--line)}
+.stmts li{position:relative;padding:4px 0 4px 18px;font-size:15px;color:var(--graphite)}
+.stmts li::before{content:"";position:absolute;left:2px;top:14px;width:6px;height:1px;background:var(--graphite)}
+.ptrs{width:100%;border-collapse:collapse;font-size:14px}
+.ptrs th,.ptrs td{text-align:left;padding:8px 8px 8px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.ptrs th{font-size:12px;color:var(--graphite);font-weight:600}
+.ptrs td{color:var(--graphite)}
+.ptrs td:first-child{color:var(--ink)}
+.excluded{margin-top:24px;font-size:12px;color:var(--red);border-top:1px solid var(--line);padding-top:12px}
+.decision{border-top:1px solid var(--line);padding:16px 0}
+.decision:first-of-type{border-top:0;padding-top:0}
+.decision h3{font-size:16px;font-weight:600}
+.decision .owner{font-size:12px;color:var(--graphite);margin:2px 0 8px}
+.decision .owner b{color:var(--ink);font-weight:600}
+.decision-body{font-size:14px;margin-bottom:10px;transition:color 300ms}
+.decision-body.pencil{display:flex;gap:6px}
+.dec-count{font:12px var(--f-data);color:var(--ink)}
+
+/* ===== Architecture ===== */
+.arch-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:24px;align-items:start}
+.frame{position:relative;border:2px solid var(--ink);border-radius:var(--r);padding:20px 18px 18px;background:var(--sheet)}
+.frame-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.frame-head b{font-family:var(--f-display);font-weight:600;font-size:16px;margin-right:4px}
+.role-chip{font-size:12px;border:1px solid var(--ink);border-radius:3px;padding:1px 8px;color:var(--ink)}
+.layers{display:grid;gap:8px}
+.layer{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:4px 12px;align-items:start;text-align:left;width:100%;border:1px solid var(--line);border-radius:var(--r);background:var(--sheet);padding:12px 14px}
+.layer:hover{border-color:rgba(23,34,51,.35)}
+.layer[aria-pressed="true"]{border-color:var(--ink);background:var(--ink-wash)}
+.layer .ln{font:12px/1.7 var(--f-data);color:var(--graphite)}
+.layer .lt{font-size:16px;font-weight:600}
+.layer .ls{grid-column:2/3;font-size:12px;color:var(--graphite)}
+.layer .lchips{grid-column:2/4;display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.layer .lchips span{font-size:12px;border:1px solid var(--line);border-radius:3px;padding:0 6px;background:var(--sheet)}
+.layer .lchips span.mvp{border-color:var(--ink);font-weight:600}
+.layer .lchips span.concept{border-style:dashed;color:var(--graphite)}
+.layer.foundation{border-bottom-width:3px}
+.layer .chev{font-size:12px;color:var(--graphite);white-space:nowrap}
+.up-note{font-size:12px;color:var(--graphite);margin-top:10px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.detail dl{display:grid;gap:4px;font-size:14px}
+.detail dt{font-size:12px;color:var(--graphite);font-weight:600;margin-top:10px}
+.detail dt:first-child{margin-top:0}
+.detail ul.dots li{position:relative;padding-left:14px}
+.detail ul.dots li::before{content:"";position:absolute;left:2px;top:11px;width:5px;height:1px;background:var(--ink)}
+.callout{border-left:2px solid var(--ink);padding:2px 0 2px 12px;font-size:14px}
+.callout b{display:block;font-weight:600;margin-bottom:2px}
+
+/* ===== Toast ===== */
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,8px);background:var(--ink);color:var(--sheet);padding:10px 16px;border-radius:var(--r);font-size:14px;opacity:0;pointer-events:none;transition:opacity 160ms,transform 160ms;z-index:40;max-width:calc(100% - 32px)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ===== Responsive ===== */
+@media (max-width:1640px){
+  .findings-grid{grid-template-columns:minmax(0,1fr)}
+  .checklist .ck-groups{columns:3 260px;column-gap:28px}
+  .checklist .ck-group{break-inside:avoid}
+}
+@media (max-width:1240px){
+  .brief-grid{grid-template-columns:minmax(0,1fr)}
+  .doc{justify-self:stretch;max-width:none}
+}
+@media (max-width:1100px){
+  .run-grid{grid-template-columns:minmax(0,1fr)}
+  .people{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .rail{padding:0;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  .tablist{flex-direction:row;position:static;overflow-x:auto;padding:8px 12px 0;gap:2px;scrollbar-width:none}
+  .tab{border:1px solid transparent;border-bottom:0;border-radius:var(--r) var(--r) 0 0;margin:0 0 -1px;white-space:nowrap;padding:8px 12px}
+  .tab.arch{margin-top:0;margin-left:14px}
+  .tab.arch::before{left:-8px;right:auto;top:8px;bottom:8px;border-top:0;border-left:1px solid var(--line)}
+  .main{border-left:0;padding:20px 16px 72px}
+  .grid-2,.arch-grid{grid-template-columns:minmax(0,1fr)}
+  .docbar{padding:8px 16px}
+  .lane{grid-template-columns:minmax(0,1fr) auto}
+  .lane .prog{grid-column:1/-1}
+  .lane .act{grid-column:1/-1}
+  .lane.head{display:none}
+  .lane .count{grid-row:1;grid-column:2}
+}
+@media (max-width:700px){
+  table.ft{min-width:0}
+  .table-wrap{border:0;background:none}
+  .ft thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .ft,.ft tbody,.ft tr,.ft td{display:block}
+  .ft tbody tr{border:1px solid var(--line);border-radius:var(--r);background:var(--sheet);margin-bottom:12px;padding:10px 12px}
+  .ft td{border:0;padding:4px 0;display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;width:auto!important}
+  .ft td::before{content:attr(data-label);font-size:12px;color:var(--graphite);font-weight:600}
+  .ft td.c-strip{display:block;padding-top:8px}
+  .ft td.c-strip::before{display:none}
+  tr.is-rejected{background:var(--red-bg)!important}
+  .fields{grid-template-columns:minmax(0,1fr)}
+  .stepper{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:10px}
+  .people{grid-template-columns:minmax(0,1fr)}
+  .doc{padding:24px 18px 32px}
+  .doc h1{font-size:28px}
+  .doc-ctl{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .doc-ctl div:nth-child(3){border-left:0}
+  .doc-ctl div:nth-child(n+3){border-top:1px solid var(--line)}
+  .record{grid-template-columns:minmax(0,1fr);gap:2px}
+  .record dd{margin-bottom:8px}
+  .drawer{padding:16px 16px 32px}
+  .screen-head h1{font-size:28px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<button class="skip" type="button" data-action="skip">Skip to content</button>
+<div class="banner" role="note">UX mockup with illustrative data. Not a working system.</div>
+
+<header class="docbar">
+  <div class="product"><b>Digital Human Hybrid Team</b><span>Due diligence workspace</span></div>
+  <p class="doc-control" id="docControl" aria-label="Document control"></p>
+  <p class="legend" aria-label="Legend">
+    <span class="lg-pencil" id="lgPencil"></span>
+    <span class="lg-ink"><i aria-hidden="true">Ink</i> = signed by a person.</span>
+  </p>
+</header>
+
+<div class="shell">
+  <nav class="rail" aria-label="Workspace sections">
+    <div class="tablist" role="tablist" id="tabs" aria-orientation="vertical"></div>
+  </nav>
+  <main id="main" class="main" role="tabpanel" tabindex="-1"></main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden></aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+
+/* =========================================================
+   CONTENT: everything on screen comes from this one object.
+   All data is illustrative. No real company, person, product,
+   regulation, statistic or citation.
+   ========================================================= */
+const DATA = {
+  dd: { id: 'DD-0427', asset: 'ABC-123 (illustrative)', ceiling: 'L2 Collaborate',
+        due: { reactive: '46 h', planned: '24 d' },
+        deadline: { reactive: '2026-10-09T09:00', planned: '2026-10-31T17:00' },
+        modeNote: {
+          reactive: 'Reactive DD: urgent, short turnaround. All agents start in parallel as soon as you activate the team.',
+          planned: 'Planned DD: time to prepare. The team can book expert time ahead and run the full checklist in sequence.'
+        } },
+
+  routes: [
+    { id: 'request', n: 1, label: 'Request' },
+    { id: 'team', n: 2, label: 'Team' },
+    { id: 'run', n: 3, label: 'Run' },
+    { id: 'findings', n: 4, label: 'Findings' },
+    { id: 'briefing', n: 5, label: 'Briefing' },
+    { id: 'architecture', label: 'Architecture' }
+  ],
+
+  request: {
+    asset: [
+      { id: 'f-name', label: 'Asset name', value: 'ABC-123 (illustrative)' },
+      { id: 'f-mod', label: 'Modality', value: 'Oral small molecule' },
+      { id: 'f-ta', label: 'Therapeutic area', value: 'Rare metabolic disorder (illustrative)' },
+      { id: 'f-stage', label: 'Development stage', value: 'Phase 2', options: ['Phase 1', 'Phase 2', 'Phase 3', 'Filed'] }
+    ],
+    regions: ['FDA', 'EMA', 'PMDA', 'NMPA', 'Global access'],
+    questions: [
+      { q: 'Which regulatory guidance applies to this therapeutic area and product type?', sub: 'Rare metabolic disorder, oral small molecule' },
+      { q: 'Which special designations apply or are held?', sub: 'Orphan, breakthrough, paediatric requirements. Record "checked: not applicable" where they do not apply.' },
+      { q: 'What differs between regions?', sub: 'FDA, EMA, PMDA, NMPA and global access, tailored to this product' },
+      { q: 'What could make approval hard in any region?', sub: 'Bottleneck hunt' },
+      { q: 'Which regulatory inputs feed the PTRS calculation, and are they right?', sub: 'Inputs only. The calculation stays with its owner.' },
+      { q: 'Which reimbursement and HTA risks should go to HEOR?', sub: 'Flag and hand off. Do not assess.' }
+    ],
+    readIn: [
+      { role: 'RA DD lead (you)' },
+      { role: 'BD deal lead' },
+      { role: 'CMC lead' },
+      { role: 'Quality lead' },
+      { role: 'Safety and PV lead' }
+    ],
+    suggested: [
+      { role: 'Clinical lead', why: 'Trial design and endpoints' },
+      { role: 'Medical affairs lead', why: 'Disease context and evidence gaps' },
+      { role: 'HEOR (hand-off only)', why: 'Receives reimbursement and HTA flags' }
+    ],
+    outOfScope: 'Valuation, commercial, market access.'
+  },
+
+  people: [
+    { kind: 'Activator', role: 'RA DD lead (you)', text: 'Starts the team for this DD, sets the questions and reads people in.' },
+    { kind: 'Decision owner', role: 'DD decision owner', text: 'Signs deal-breakers, the overall assessment and the recommendation.' },
+    { kind: 'Playbook owner', role: 'DD playbook owner', text: 'Keeps the questions, sources and autonomy ceiling current.' },
+    { kind: 'Agent owners', role: 'One owner per agent', text: 'Maintain their agent between DDs. Not read in unless they are on the data wall.' }
+  ],
+
+  agents: [
+    { id: 'orc', name: 'Orchestrator', kind: 'Team role', level: 2,
+      desc: 'Plans the DD from the playbook, assigns tasks, and escalates to a person when a question needs judgement.',
+      owner: 'DD playbook owner', sources: ['DD playbook', 'Team roster and data wall'],
+      guard: 'Routes and escalates work; does not close findings or make decisions.',
+      status: 'Holding the combine step until open challenges close', wait: false,
+      done: 6, total: 8, findings: 0 },
+    { id: 'ra', name: 'RA strategy', kind: 'Domain', level: 2,
+      desc: 'Covers applicable guidance, special designations, regional differences and regulatory inputs to PTRS.',
+      owner: 'RA agent owner', sources: ['Public review document [illustrative]', 'EPAR [illustrative]', 'Health authority guidance [illustrative]', 'Trial registry entry [illustrative]'],
+      guard: 'Flags reimbursement and HTA risks to HEOR; does not assess them.',
+      status: 'Checking regional differences for PMDA and NMPA', wait: false,
+      done: 7, total: 9, findings: 5 },
+    { id: 'cmc', name: 'CMC and technical development', short: 'CMC and TD', kind: 'Domain', level: 2,
+      desc: 'Assesses technical maturity: drug substance, drug product, manufacturing sites and supply.',
+      owner: 'CMC agent owner', sources: ['Company disclosure [illustrative]', 'Public review document [illustrative]', 'Publication [illustrative]'],
+      guard: 'Raises comparability questions to the CMC lead; does not judge them.',
+      status: 'Searching for a public source for F-09', wait: false,
+      done: 4, total: 6, findings: 2 },
+    { id: 'qa', name: 'Quality and inspection history', short: 'Quality', kind: 'Domain', level: 2,
+      desc: 'Reviews public inspection history and GMP status of the sites named for the asset.',
+      owner: 'Quality agent owner', sources: ['Inspection database [illustrative]', 'Warning letter archive [illustrative]', 'GMP certificate register [illustrative]'],
+      guard: 'Reports public records only; marks closure "not confirmed" when no public record exists.',
+      status: 'Waiting on the Quality lead for F-04', wait: true,
+      done: 3, total: 4, findings: 1 },
+    { id: 'pv', name: 'Safety and PV', kind: 'Domain', level: 2,
+      desc: 'Collects published safety signals and checks for later data that confirms or resolves them.',
+      owner: 'PV agent owner', sources: ['Publication [illustrative]', 'Trial registry entry [illustrative]', 'Public review document [illustrative]'],
+      guard: 'Reports signals as published; does not re-analyse safety data.',
+      status: 'Searching the trial registry for later safety updates', wait: false,
+      done: 3, total: 5, findings: 1 },
+    { id: 'ev', name: 'Evidence checker', kind: 'Team role', level: 2,
+      desc: 'Enforces "No source, no finding". Checks every finding has a readable source before it moves on.',
+      owner: 'Knowledge base owner', sources: ['Verified knowledge base', 'Finding format rules'],
+      guard: 'Returns any claim without a source to the agent that wrote it.',
+      status: 'Checking sources on F-02 and F-05', wait: false,
+      done: 9, total: 12, findings: 0 },
+    { id: 'red', name: 'Red team', kind: 'Team role', level: 2,
+      desc: 'Challenges findings the way a health authority reviewer would.',
+      owner: 'Red team owner', sources: ['Health authority guidance [illustrative]', 'Public review document [illustrative]', 'All findings in this DD'],
+      guard: 'Challenges findings; cannot reject or approve them.',
+      status: 'Challenging F-04 and F-05', wait: false,
+      done: 3, total: 7, findings: 0 },
+    { id: 'syn', name: 'Synthesiser', kind: 'Team role', level: 1,
+      desc: 'Writes the briefing from verified findings, with every statement linked to its finding.',
+      owner: 'DD playbook owner', sources: ['Verified findings in this DD only'],
+      guard: 'Uses verified findings only; never recommends buying or not buying.',
+      status: 'Waiting for the combine step', wait: false,
+      done: 0, total: 3, findings: 0 }
+  ],
+
+  levels: [
+    { n: 1, label: 'L1 Assist' },
+    { n: 2, label: 'L2 Collaborate' },
+    { n: 3, label: 'L3 Delegate under oversight' }
+  ],
+
+  steps: ['Plan', 'Assign', 'Assess', 'Challenge', 'Combine', 'Escalate', 'Decide', 'Learn'],
+  currentStep: 3,
+
+  feed: [
+    { t: '10:41', actor: 'Red team', kind: 'agent', text: 'challenged F-04: source predates the latest public update.' },
+    { t: '10:37', actor: 'Evidence checker', kind: 'agent', text: 'returned F-09 to CMC and TD agent: no source attached.' },
+    { t: '10:33', actor: 'Orchestrator', kind: 'agent', text: 'escalated to CMC lead: comparability question needs a person (F-03).' },
+    { t: '10:20', actor: 'Red team', kind: 'agent', text: 'challenged F-05: one early source; check the trial registry for later results.' },
+    { t: '10:18', actor: 'RA DD lead', kind: 'person', text: 'signed F-07 and F-08.' },
+    { t: '10:12', actor: 'RA strategy', kind: 'agent', text: 'marked breakthrough designation: checked, not applicable (F-08).' },
+    { t: '10:05', actor: 'Evidence checker', kind: 'agent', text: 'verified sources on F-01 and F-07.' },
+    { t: '09:48', actor: 'RA DD lead', kind: 'person', text: 'signed F-01.' },
+    { t: '09:30', actor: 'Orchestrator', kind: 'agent', text: 'assigned 46 tasks to 7 agents.' },
+    { t: '09:12', actor: 'Orchestrator', kind: 'agent', text: 'built the plan from the DD playbook: 6 key questions, 5 workstreams.' },
+    { t: '09:05', actor: 'RA DD lead', kind: 'person', text: 'activated the team.' }
+  ],
+
+  queue: [
+    { text: 'Comparability question on the drug-substance site', owner: 'CMC lead', finding: 'F-03' },
+    { text: 'Inspection observation: closure not confirmed publicly', owner: 'Quality lead', finding: 'F-04' },
+    { text: 'Early-publication safety signal needs a view', owner: 'Safety and PV lead', finding: 'F-05' },
+    { text: 'Confirm the likely EU paediatric requirement', owner: 'RA DD lead (you)', finding: 'F-02' }
+  ],
+
+  workstreams: ['Regulatory', 'CMC', 'Quality', 'Safety', 'Inherited commitments'],
+  statuses: ['Verified', 'Draft', 'Challenged', 'Rejected', 'Flagged to HEOR'],
+
+  findings: [
+    { id: 'F-01', ws: 'Regulatory',
+      claim: 'ABC-123 holds an orphan designation in the US for the target indication.',
+      evidence: 'Public designation record lists the asset and indication with an active status.',
+      source: 'Designation database entry [illustrative]', confidence: 'High',
+      assumptions: 'Designation is still active; no public withdrawal notice exists.',
+      owner: 'RA DD lead', status: 'Verified', prepared: 'RA strategy',
+      challenge: { state: 'cleared', note: 'Checked for withdrawal' },
+      approval: { state: 'signed', role: 'RA DD lead', initials: 'A.K.', when: '09:48' },
+      thread: [
+        { who: 'Red team', kind: 'agent', t: '09:40', text: 'Is the designation still active? Designations can be withdrawn.' },
+        { who: 'RA strategy', kind: 'agent', t: '09:44', text: 'Designation record shows active status. No withdrawal notice found.' },
+        { who: 'Red team', kind: 'agent', t: '09:45', text: 'Cleared.' },
+        { who: 'RA DD lead', kind: 'person', t: '09:48', text: 'Signed.' }
+      ] },
+    { id: 'F-02', ws: 'Regulatory',
+      claim: 'An EU paediatric investigation plan is likely required before a marketing application. To verify.',
+      evidence: 'A comparable product in the same disease area had an agreed paediatric plan.',
+      source: 'EPAR [illustrative]', confidence: 'Medium',
+      assumptions: 'No class waiver applies to this indication.',
+      owner: 'RA DD lead', status: 'Draft', prepared: 'RA strategy',
+      challenge: { state: 'none' },
+      approval: { state: 'awaiting', role: 'RA DD lead' },
+      thread: [] },
+    { id: 'F-03', ws: 'CMC',
+      claim: 'Drug substance comes from a single external manufacturing site.',
+      evidence: 'Company disclosure names one contract manufacturer for drug substance.',
+      source: 'Company disclosure [illustrative]', confidence: 'Medium',
+      assumptions: 'No second site has been qualified since the disclosure.',
+      owner: 'CMC lead', status: 'Draft', prepared: 'CMC and TD',
+      challenge: { state: 'cleared', note: 'Comparability escalated' },
+      approval: { state: 'awaiting', role: 'CMC lead' },
+      thread: [
+        { who: 'Red team', kind: 'agent', t: '10:24', text: 'A reviewer would ask whether a site change is planned before filing. That would trigger a comparability question.' },
+        { who: 'CMC and TD', kind: 'agent', t: '10:30', text: 'No public information on a planned change. This needs a person.' },
+        { who: 'Orchestrator', kind: 'agent', t: '10:33', text: 'Escalated to CMC lead: comparability question needs a person.' },
+        { who: 'Red team', kind: 'agent', t: '10:34', text: 'Cleared for the finding. The comparability question now sits with the CMC lead.' }
+      ] },
+    { id: 'F-04', ws: 'Quality',
+      claim: 'A past inspection of the drug-substance site recorded an observation; closure is not confirmed in public records.',
+      evidence: 'Inspection database lists one observation. No public closure record found.',
+      source: 'Inspection database [illustrative]', confidence: 'Medium',
+      assumptions: 'No public closure record does not mean the observation is still open.',
+      owner: 'Quality lead', status: 'Challenged', prepared: 'Quality',
+      challenge: { state: 'open', note: 'Source predates latest update' },
+      approval: { state: 'awaiting', role: 'Quality lead' },
+      thread: [
+        { who: 'Red team', kind: 'agent', t: '10:41', text: 'Source predates the latest public update. Check for a newer inspection record before this goes to the Quality lead.', open: true },
+        { who: 'Quality', kind: 'agent', t: '10:44', text: 'Searching the inspection database for records after the listed date.' }
+      ] },
+    { id: 'F-05', ws: 'Safety',
+      claim: 'An early publication mentions a possible dose-related safety signal at the highest dose tested.',
+      evidence: 'Phase 1 publication reports more adverse events in the highest dose group.',
+      source: 'Publication [illustrative]', confidence: 'Low',
+      assumptions: 'Later trial data may confirm or resolve the signal.',
+      owner: 'Safety and PV lead', status: 'Challenged', prepared: 'Safety and PV',
+      challenge: { state: 'open', note: 'Single early source' },
+      approval: { state: 'awaiting', role: 'Safety and PV lead' },
+      thread: [
+        { who: 'Red team', kind: 'agent', t: '10:20', text: 'One early source. A health authority reviewer would ask for later data. Check the trial registry.', open: true },
+        { who: 'Safety and PV', kind: 'agent', t: '10:26', text: 'Trial registry entry lists the Phase 2 as ongoing. No results posted yet.' }
+      ] },
+    { id: 'F-06', ws: 'Regulatory',
+      claim: 'Reimbursement in some EU markets may need a comparative effectiveness argument. Flagged to HEOR, not assessed.',
+      evidence: 'Public review document notes no direct comparator data.',
+      source: 'Public review document [illustrative]', confidence: 'Not assessed',
+      assumptions: 'HEOR assesses this outside the DD.',
+      owner: 'RA DD lead', status: 'Flagged to HEOR', prepared: 'RA strategy',
+      challenge: { state: 'na' },
+      approval: { state: 'signed', role: 'RA DD lead', initials: 'A.K.', when: '10:16' },
+      thread: [
+        { who: 'RA strategy', kind: 'agent', t: '10:09', text: 'Flagged to HEOR. Not assessed, as the playbook requires.' },
+        { who: 'RA DD lead', kind: 'person', t: '10:16', text: 'Signed the hand-off to HEOR.' }
+      ] },
+    { id: 'F-07', ws: 'Inherited commitments',
+      claim: 'Inherited commitments: checked, not applicable. The asset is not approved, so no post-marketing commitments exist.',
+      evidence: 'No commitments found in company disclosures or public review documents.',
+      source: 'Company disclosure [illustrative]; Public review document [illustrative]', confidence: 'High',
+      assumptions: 'No private agreements with health authorities outside public records.',
+      owner: 'RA DD lead', status: 'Verified', prepared: 'RA strategy',
+      challenge: { state: 'cleared', note: 'Search scope confirmed' },
+      approval: { state: 'signed', role: 'RA DD lead', initials: 'A.K.', when: '10:18' },
+      thread: [
+        { who: 'Red team', kind: 'agent', t: '10:02', text: 'Confirm the search covered company disclosures as well as public review documents.' },
+        { who: 'RA strategy', kind: 'agent', t: '10:04', text: 'Both searched. No commitments found.' },
+        { who: 'Red team', kind: 'agent', t: '10:05', text: 'Cleared.' },
+        { who: 'RA DD lead', kind: 'person', t: '10:18', text: 'Signed.' }
+      ] },
+    { id: 'F-08', ws: 'Regulatory',
+      claim: 'Breakthrough designation: checked, not applicable. No public record of a request or grant.',
+      evidence: 'No designation found in public records or company disclosures.',
+      source: 'Company disclosure [illustrative]', confidence: 'Medium',
+      assumptions: 'A request may exist that is not yet public.',
+      owner: 'RA DD lead', status: 'Verified', prepared: 'RA strategy',
+      challenge: { state: 'cleared', note: 'Assumption recorded' },
+      approval: { state: 'signed', role: 'RA DD lead', initials: 'A.K.', when: '10:18' },
+      thread: [
+        { who: 'Red team', kind: 'agent', t: '10:14', text: 'Absence of a public record is not proof. Record the assumption.' },
+        { who: 'RA strategy', kind: 'agent', t: '10:15', text: 'Assumption added.' },
+        { who: 'Red team', kind: 'agent', t: '10:15', text: 'Cleared.' }
+      ] },
+    { id: 'F-09', ws: 'CMC',
+      claim: 'The drug-product formulation has a known stability issue.',
+      evidence: 'None provided.', source: '', confidence: 'Low',
+      assumptions: 'None recorded.',
+      owner: 'CMC lead', status: 'Rejected', prepared: 'CMC and TD',
+      challenge: { state: 'returned', note: 'No source attached' },
+      approval: { state: 'rejected' },
+      thread: [
+        { who: 'Evidence checker', kind: 'agent', t: '10:37', text: 'No source attached. Returned under "No source, no finding".' },
+        { who: 'CMC and TD', kind: 'agent', t: '10:39', text: 'Searching for a public source. If none is found, the claim is withdrawn.' }
+      ] }
+  ],
+
+  checklist: [
+    { group: 'Guidance', items: [
+      { label: 'Applicable guidance for therapeutic area and product type', state: 'checked' } ] },
+    { group: 'Special designations', items: [
+      { label: 'Orphan', state: 'checked', ref: 'F-01' },
+      { label: 'Breakthrough', state: 'na', ref: 'F-08' },
+      { label: 'Paediatric requirements', state: 'open', ref: 'F-02' } ] },
+    { group: 'Regions', items: [
+      { label: 'FDA', state: 'checked' },
+      { label: 'EMA', state: 'checked' },
+      { label: 'PMDA', state: 'open' },
+      { label: 'NMPA', state: 'open' },
+      { label: 'Global access', state: 'open' } ] },
+    { group: 'Bottleneck hunt', items: [
+      { label: 'What could make approval hard in any region', state: 'open' } ] },
+    { group: 'PTRS inputs', items: [
+      { label: 'Regulatory inputs to the PTRS calculation', state: 'open' } ] },
+    { group: 'Reimbursement and HTA', items: [
+      { label: 'Reimbursement and HTA risks', state: 'heor', ref: 'F-06' } ] },
+    { group: 'Inherited commitments', items: [
+      { label: 'Post-marketing and other commitments', state: 'na', ref: 'F-07' } ] }
+  ],
+  checklistStates: {
+    checked: 'Checked', na: 'Checked: not applicable', open: 'Open', heor: 'Flagged to HEOR'
+  },
+
+  briefing: {
+    title: 'Regulatory and technical briefing',
+    notice: 'This briefing prepares the cross-functional discussion. It does not recommend buying or not buying.',
+    sections: [
+      { h: 'What was checked', items: [
+        { s: 'Applicable guidance and special designations for a rare metabolic disorder, oral small molecule.', refs: ['F-01', 'F-02', 'F-08'] },
+        { s: 'Single-site supply for drug substance.', refs: ['F-03'] },
+        { s: 'Public inspection history of the drug-substance site.', refs: ['F-04'] },
+        { s: 'Inherited commitments: checked, not applicable.', refs: ['F-07'] } ] },
+      { h: 'What was considered', items: [
+        { s: 'Whether one early safety signal affects the development path.', refs: ['F-05'] },
+        { s: 'Reimbursement and HTA: flagged to HEOR, not assessed.', refs: ['F-06'] } ] },
+      { h: 'Positives', items: [
+        { s: 'US orphan designation is held and active.', refs: ['F-01'] },
+        { s: 'No inherited post-marketing commitments.', refs: ['F-07'] } ] },
+      { h: 'Risks', items: [
+        { s: 'Drug substance depends on one external site.', refs: ['F-03'] },
+        { s: 'An inspection observation at that site has no public closure record.', refs: ['F-04'] },
+        { s: 'A possible dose-related safety signal rests on one early source.', refs: ['F-05'] } ] },
+      { h: 'Possible mitigations', items: [
+        { s: 'Ask the seller for second-site plans or qualification status.', refs: ['F-03'] },
+        { s: 'Request inspection closure correspondence in the data room.', refs: ['F-04'] },
+        { s: 'Request available Phase 2 safety data.', refs: ['F-05'] } ] },
+      { h: 'Open questions', items: [
+        { s: 'Is an EU paediatric investigation plan agreed or planned?', refs: ['F-02'] },
+        { s: 'Is a site change planned before filing, and what comparability work would it need?', refs: ['F-03'] },
+        { s: 'Was the inspection observation closed?', refs: ['F-04'] } ] }
+    ],
+    ptrs: [
+      { input: 'Designation status', value: 'US orphan held; breakthrough not applicable', refs: ['F-01', 'F-08'] },
+      { input: 'Paediatric requirement', value: 'Likely in the EU. To verify.', refs: ['F-02'] },
+      { input: 'CMC readiness', value: 'Single drug-substance site; comparability question open', refs: ['F-03'] },
+      { input: 'Inspection history', value: 'One observation; closure not confirmed publicly', refs: ['F-04'] },
+      { input: 'Safety signal', value: 'Low confidence; one early source', refs: ['F-05'] }
+    ]
+  },
+
+  decisions: [
+    { id: 'D-1', title: 'Deal-breakers', owner: 'DD decision owner', initials: 'R.L.',
+      draft: 'No deal-breaker found with a verified source. F-03 and F-04 could become one if the open questions go the wrong way.',
+      prepared: 'Synthesiser', challenge: { state: 'cleared', note: 'Reviewed against findings' } },
+    { id: 'D-2', title: 'Overall assessment', owner: 'RA DD lead (you)', initials: 'A.K.',
+      draft: 'Regulatory and technical risk looks manageable, with three open questions to settle in the data room.',
+      prepared: 'Synthesiser', challenge: { state: 'cleared', note: 'Open questions listed' } },
+    { id: 'D-3', title: 'Recommendation', owner: 'DD decision owner', initials: 'R.L.',
+      draft: 'Not drafted by agents. Made by people in the cross-functional discussion.',
+      prepared: null, challenge: { state: 'na' } }
+  ],
+
+  layers: [ /* bottom to top */
+    { id: 'trust', name: 'Trust and governance',
+      summary: 'Decision rights, audit trail, data rules, policies, privacy, data walls',
+      holds: ['Decision rights: what only people decide', 'Audit trail of every action and sign-off', 'Data rules, policies and privacy', 'Data walls: each agent sees only what read-in people are cleared to see'],
+      owner: 'Governance partners (for example BD, Legal, data protection) with the playbook owners. To verify.',
+      why: 'Built once, so every playbook inherits the same rules and data walls.' },
+    { id: 'evidence', name: 'Evidence and knowledge',
+      summary: 'Verified knowledge base; standard finding format; "No source, no finding"',
+      holds: ['Verified knowledge base', 'Finding format: claim, evidence, source, confidence, assumptions, owner, status', 'Rule: "No source, no finding"'],
+      owner: 'Knowledge base owner',
+      why: 'One standard for evidence means any finding can be traced to its source and reused.' },
+    { id: 'agents', name: 'Agent library',
+      summary: 'Domain, team-role and stakeholder-perspective agents',
+      holds: ['Domain agents (RA strategy, CMC and TD, quality, safety and PV)', 'Team-role agents (orchestrator, evidence checker, red team, synthesiser)', 'Stakeholder-perspective agents (health authority, payer and HTA, patient, inspector)', 'Each defined by role, knowledge sources, tools, guardrails, human owner, autonomy level'],
+      owner: 'Agent owners, one per agent',
+      why: 'Agents are built apart from playbooks, so one agent can serve many playbooks.' },
+    { id: 'orch', name: 'Orchestration',
+      summary: 'Plan, assign, assess, challenge, combine, escalate, decide, learn',
+      holds: ['The standard workflow: plan, assign, assess, challenge, combine, escalate, decide, learn', 'Routing the right agent to the right task', 'Escalation to a named person'],
+      owner: 'Playbook owner configures it; the activator starts it',
+      why: 'The same workflow runs every playbook, so people always know where to look.' },
+    { id: 'playbooks', name: 'Playbooks',
+      summary: 'One per use case: questions, agents, sources, outputs, decisions for people',
+      chips: [{ t: 'Due diligence: MVP', c: 'mvp' }, { t: 'Inspections: concept', c: 'concept' }, { t: 'Disaster response: concept', c: 'concept' }, { t: 'Rapid response: concept', c: 'concept' }],
+      holds: ['Key questions and checklist (records "checked: not applicable")', 'Which agents and sources to use', 'Outputs, decisions reserved for people, autonomy ceiling', 'Due diligence is the MVP; inspections, disaster response and rapid response are concepts'],
+      owner: 'Playbook owner',
+      why: 'A new use case starts here, so the layers below stay unchanged.' }
+  ],
+  humanRoles: ['Agent owner', 'Playbook owner', 'Decision owner', 'Activator']
+};
+
+/* ================= State ================= */
+const state = {
+  mode: 'reactive',
+  regions: new Set(DATA.request.regions),
+  readIn: DATA.request.readIn.map(p => p.role),
+  suggested: DATA.request.suggested.slice(),
+  signed: {},                 // decision id -> time
+  wsFilter: new Set(),
+  stFilter: new Set(),
+  layer: 'evidence',
+  route: 'request'
+};
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const narrow = window.matchMedia('(max-width: 900px)');
+
+/* ================= Helpers ================= */
+const $ = (sel, el) => (el || document).querySelector(sel);
+const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
+const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = s => String(s).replace(/[&<>"']/g, c => ESC[c]);
+const findingById = id => DATA.findings.find(f => f.id === id);
+const nowHHMM = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+
+const ICON = {
+  pencil: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.2 2.4l2.4 2.4-8.1 8.1-3.2.8.8-3.2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.7 3.9l2.4 2.4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
+  check: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  dash: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  arrow: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  dot: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+  cross: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+};
+
+const refBtn = id => `<button type="button" class="ref" data-action="open-finding" data-id="${esc(id)}" aria-label="Open finding ${esc(id)}">${esc(id)}</button>`;
+const refs = list => list.map(refBtn).join(', ');
+const linkify = text => esc(text).replace(/F-\d{2}/g, m => refBtn(m));
+
+/* ============ Sign-off strip: the signature element ============ */
+function prepCell(agent) {
+  const body = agent
+    ? `<span class="who">${ICON.pencil}<span>${esc(agent)}</span></span>`
+    : `<span class="who">Not drafted by agents</span>`;
+  return `<div class="cell cell-prep"><span class="caps">Prepared</span>${body}</div>`;
+}
+function chalCell(ch, compact) {
+  const map = {
+    none: { cls: '', who: 'Not challenged yet' },
+    open: { cls: 'is-open', who: 'Red team: open' },
+    cleared: { cls: '', who: 'Red team: cleared' },
+    returned: { cls: 'is-returned', who: 'Evidence checker: returned' },
+    na: { cls: '', who: 'Not challenged: out of scope' }
+  };
+  const m = map[ch.state] || map.none;
+  const sub = !compact && ch.note ? `<span class="sub">${esc(ch.note)}</span>` : '';
+  return `<div class="cell cell-chal ${m.cls}"><span class="caps">Challenged</span><span class="who">${esc(m.who)}</span>${sub}</div>`;
+}
+function signedInner(role, initials, when, animate) {
+  return `<span class="caps">Approved</span><span class="role">${esc(role)}</span>` +
+    `<span class="sig${animate ? ' anim' : ''}" aria-hidden="true">${esc(initials)}</span>` +
+    `<span class="when">Signed ${esc(when)}</span>`;
+}
+function apprCell(ap, compact, decisionId) {
+  if (ap.state === 'signed') {
+    return `<div class="cell cell-appr is-signed" aria-label="Approved by ${esc(ap.role)}, initials ${esc(ap.initials)}, signed ${esc(ap.when)}">${signedInner(ap.role, ap.initials, ap.when, false)}</div>`;
+  }
+  if (ap.state === 'rejected') {
+    return `<div class="cell cell-appr is-rejected"><span class="caps">Approved</span><span class="who">${ICON.cross}<span>Not for approval</span></span></div>`;
+  }
+  const btn = decisionId
+    ? `<button type="button" class="btn btn-primary btn-sm" data-action="sign" data-id="${esc(decisionId)}">Sign</button>` : '';
+  return `<div class="cell cell-appr is-awaiting"><span class="caps">Approved</span><span class="await-row"><span class="await">Awaiting ${esc(ap.role)}</span>${btn}</span></div>`;
+}
+function strip(o) {
+  return `<div class="strip${o.compact ? ' compact' : ''}" role="group" aria-label="Sign-off">` +
+    prepCell(o.prepared) + chalCell(o.challenge, o.compact) + apprCell(o.approval, o.compact, o.decisionId) + `</div>`;
+}
+
+const statusChip = s => {
+  const cls = { 'Verified': 'st-verified', 'Draft': 'st-draft', 'Challenged': 'st-challenged', 'Rejected': 'st-rejected', 'Flagged to HEOR': 'st-heor' }[s];
+  const ic = { 'Verified': ICON.check, 'Rejected': ICON.cross, 'Flagged to HEOR': ICON.arrow, 'Challenged': ICON.dot, 'Draft': ICON.pencil }[s];
+  return `<span class="status ${cls}">${ic}${esc(s)}</span>`;
+};
+const meter = n => `<span class="meter" aria-hidden="true">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : (i > 2 ? 'off' : '')}"></i>`).join('')}</span>`;
+const levelBadge = n => { const l = DATA.levels[n - 1]; return `<span class="badge" title="Autonomy level">${meter(n)}${esc(l.label)}</span>`; };
+
+/* ================= Header ================= */
+function renderHeader() {
+  const d = DATA.dd;
+  const parts = [
+    esc(d.id), esc(d.asset),
+    state.mode === 'reactive' ? 'Reactive DD' : 'Planned DD',
+    `<span class="due">Due in ${esc(d.due[state.mode])}</span>`,
+    `Data wall: ${state.readIn.length} people read in`,
+    `Autonomy ceiling: ${esc(d.ceiling)}`
+  ];
+  $('#docControl').innerHTML = parts.join('<span class="sep" aria-hidden="true">·</span>');
+  $('#lgPencil').innerHTML = `${ICON.pencil}<span>Pencil = drafted by an agent.</span>`;
+}
+
+/* ================= Tabs ================= */
+function renderTabs() {
+  $('#tabs').innerHTML = DATA.routes.map(r => {
+    const sel = r.id === state.route;
+    return `<button type="button" role="tab" id="tab-${r.id}" class="tab${r.n ? '' : ' arch'}" aria-selected="${sel}" aria-controls="main" tabindex="${sel ? 0 : -1}" data-route="${r.id}">` +
+      (r.n ? `<span class="n" aria-hidden="true">${r.n}</span>` : `<span class="n" aria-hidden="true"></span>`) +
+      `<span>${esc(r.label)}</span></button>`;
+  }).join('');
+  $('#main').setAttribute('aria-labelledby', 'tab-' + state.route);
+}
+
+/* ================= Screens ================= */
+function head(title, lede, right) {
+  return `<div class="screen-head"><div><h1 tabindex="-1" id="screenTitle">${title}</h1>${lede ? `<p class="lede">${lede}</p>` : ''}</div>${right || ''}</div>`;
+}
+
+function screenRequest() {
+  const R = DATA.request, d = DATA.dd;
+  const assetFields = R.asset.map(f => f.options
+    ? `<div class="field"><label for="${f.id}">${esc(f.label)}</label><select class="input" id="${f.id}">${f.options.map(o => `<option${o === f.value ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`
+    : `<div class="field"><label for="${f.id}">${esc(f.label)}</label><input class="input" id="${f.id}" type="text" value="${esc(f.value)}"></div>`).join('');
+  const regionChips = R.regions.map(r =>
+    `<button type="button" class="chip" data-action="region" data-region="${esc(r)}" aria-pressed="${state.regions.has(r)}">${ICON.check}${esc(r)}</button>`).join('');
+  const questions = R.questions.map((q, i) =>
+    `<li><span class="qn">Q${i + 1}</span><span>${esc(q.q)}<span class="qsub">${esc(q.sub)}</span></span></li>`).join('');
+  const readIn = state.readIn.map(role =>
+    `<li><span>${esc(role)}</span><span class="cleared">${ICON.check}${role.indexOf('hand-off') > -1 ? 'Cleared: hand-off only' : 'Cleared'}</span></li>`).join('');
+  const suggested = state.suggested.length
+    ? state.suggested.map(s =>
+      `<li><span>${esc(s.role)}<span class="qsub">${esc(s.why)}</span></span><button type="button" class="btn btn-sm" data-action="read-in" data-role="${esc(s.role)}">Read in</button></li>`).join('')
+    : `<li><span class="pencil">Everyone the playbook suggests is read in.</span></li>`;
+
+  return head('New due diligence request', 'Start from the DD playbook. It fills in the key questions and suggests who to bring in.') +
+  `<div class="grid-2">
+    <div class="stack">
+      <section class="sheet" aria-labelledby="h-mode">
+        <h2 id="h-mode">Mode</h2>
+        <div class="seg" role="radiogroup" aria-labelledby="h-mode">
+          <input type="radio" name="mode" id="mode-planned" value="planned"${state.mode === 'planned' ? ' checked' : ''} data-action="mode"><label for="mode-planned">Planned</label>
+          <input type="radio" name="mode" id="mode-reactive" value="reactive"${state.mode === 'reactive' ? ' checked' : ''} data-action="mode"><label for="mode-reactive">Reactive</label>
+        </div>
+        <p class="note" id="modeNote">${esc(d.modeNote[state.mode])}</p>
+      </section>
+
+      <section class="sheet" aria-labelledby="h-asset">
+        <h2 id="h-asset">Asset</h2>
+        <div class="fields">
+          ${assetFields}
+          <div class="field full"><span class="flabel" id="l-regions">Regions</span><div class="chips" role="group" aria-labelledby="l-regions">${regionChips}</div></div>
+          <div class="field"><label for="f-deadline">Deadline</label><input class="input" id="f-deadline" type="datetime-local" value="${d.deadline[state.mode]}"></div>
+        </div>
+      </section>
+
+      <section class="sheet" aria-labelledby="h-q">
+        <h2 id="h-q">Key questions <small>Prefilled from the DD playbook</small></h2>
+        <ol class="questions">${questions}</ol>
+        <p class="outscope"><b>Out of scope:</b> ${esc(R.outOfScope)}</p>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="sheet" aria-labelledby="h-wall">
+        <h2 class="panel-h" id="h-wall" tabindex="-1">Who is read in <small>Data wall · ${state.readIn.length} people</small></h2>
+        <ul class="roles">${readIn}</ul>
+        <p class="note">Agents see only what these people are cleared to see.</p>
+      </section>
+      <section class="sheet" aria-labelledby="h-sugg">
+        <h2 id="h-sugg">Suggested by the playbook <small>Stakeholder identification</small></h2>
+        <ul class="roles">${suggested}</ul>
+      </section>
+    </div>
+  </div>
+  <div class="request-foot">
+    <p class="note" style="margin:0">Activating starts the plan step. You can change the questions later.</p>
+    <button type="button" class="btn btn-primary" data-action="activate">Activate team</button>
+  </div>`;
+}
+
+function screenTeam() {
+  const people = DATA.people.map(p =>
+    `<div class="person"><span class="caps">${esc(p.kind)}</span><b>${esc(p.role)}</b><p>${esc(p.text)}</p></div>`).join('');
+  const ladder = DATA.levels.map(l =>
+    `<span class="rung${l.n > 2 ? ' above' : ''}">${meter(l.n)}${esc(l.label)}${l.n > 2 ? ' · above ceiling' : ''}</span>` +
+    (l.n === 2 ? `<span class="ceiling">Ceiling for this playbook</span>` : '')).join('');
+  const agents = DATA.agents.map(a =>
+    `<article class="agent" aria-labelledby="ag-${a.id}">
+      <div class="agent-top"><span class="tag">${esc(a.kind)}</span>${levelBadge(a.level)}</div>
+      <h3 id="ag-${a.id}">${esc(a.name)}</h3>
+      <p class="desc">${esc(a.desc)}</p>
+      <dl class="kv">
+        <dt>Human owner</dt><dd>${esc(a.owner)}</dd>
+        <dt>Knowledge sources</dt><dd><ul class="srcs">${a.sources.map(s => `<li>${esc(s)}</li>`).join('')}</ul></dd>
+        <dt>Guardrail</dt><dd class="guard">${esc(a.guard)}</dd>
+      </dl>
+      <p class="agent-status ${a.wait ? 'wait' : 'pencil'}">${a.wait ? ICON.dot : ICON.pencil}<span>${a.wait ? 'Needs a person: ' : ''}${linkify(a.status)}</span></p>
+    </article>`).join('');
+
+  return head('Your hybrid team', 'People own every decision and every agent. Agents do the gathering, checking and drafting.') +
+  `<section class="sheet" aria-labelledby="h-people" style="margin-bottom:20px">
+     <h2 id="h-people">People</h2>
+     <div class="people">${people}</div>
+   </section>
+   <section class="sheet" aria-labelledby="h-auto" style="margin-bottom:20px">
+     <h2 id="h-auto">Autonomy</h2>
+     <div class="ladder">${ladder}</div>
+     <p class="note">Agents can earn more autonomy over time. This playbook caps them at L2.</p>
+   </section>
+   <h2 class="panel-h" id="h-agents">Agents <small>Candidate MVP roster · ${DATA.agents.length} agents</small></h2>
+   <div class="agents" role="list" aria-labelledby="h-agents">${agents.replace(/<article /g, '<article role="listitem" ')}</div>`;
+}
+
+function screenRun() {
+  const steps = DATA.steps.map((s, i) => {
+    const st = i < DATA.currentStep ? 'done' : (i === DATA.currentStep ? 'current' : 'next');
+    const label = st === 'done' ? `${ICON.check}Done` : st === 'current' ? `${ICON.dot}Current` : 'Next';
+    return `<li class="step ${st}"${st === 'current' ? ' aria-current="step"' : ''}><span class="mono">${String(i + 1).padStart(2, '0')}</span>${esc(s)}<br><span class="state">${label}</span></li>`;
+  }).join('');
+  const lanes = DATA.agents.map(a => {
+    const pct = a.total ? Math.round(a.done / a.total * 100) : 0;
+    return `<div class="lane" role="row">
+      <div class="name" role="cell"><b>${esc(a.short || a.name)}</b><span>Owner: ${esc(a.owner)}</span></div>
+      <div class="prog" role="cell"><span class="mono">${a.done} of ${a.total} tasks</span><div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div></div>
+      <div class="act pencil" role="cell">${ICON.pencil}<span>${linkify(a.status)}</span></div>
+      <div class="count" role="cell">${a.findings} finding${a.findings === 1 ? '' : 's'}</div>
+    </div>`;
+  }).join('');
+  const feed = DATA.feed.map(e =>
+    `<li><time>${esc(e.t)}</time><span class="${e.kind === 'person' ? 'person-entry' : 'agent-entry'}"><span class="actor">${esc(e.actor)}</span> ${linkify(e.text)}</span></li>`).join('');
+  const queue = DATA.queue.map(q =>
+    `<li><span>${esc(q.text)} <span class="mono">${esc(q.finding)}</span><span class="owner">Owner: ${esc(q.owner)}</span></span><button type="button" class="btn btn-sm" data-action="open-finding" data-id="${esc(q.finding)}" aria-label="Open ${esc(q.finding)}: ${esc(q.text)}">Open</button></li>`).join('');
+
+  return head('Run board', 'Every agent works in parallel. Anything that needs judgement goes to a named person.',
+      `<span class="tag">Step ${DATA.currentStep + 1} of ${DATA.steps.length}: ${esc(DATA.steps[DATA.currentStep])}</span>`) +
+  `<section class="sheet" aria-labelledby="h-steps">
+     <h2 id="h-steps">Standard workflow</h2>
+     <ol class="stepper">${steps}</ol>
+   </section>
+   <div class="run-grid">
+     <section class="sheet" aria-labelledby="h-lanes">
+       <h2 id="h-lanes">Agent lanes</h2>
+       <div class="lanes" role="table" aria-labelledby="h-lanes">
+         <div class="lane head" role="row"><span role="columnheader">Agent</span><span role="columnheader">Progress</span><span role="columnheader">Now doing</span><span role="columnheader">Findings</span></div>
+         ${lanes}
+       </div>
+     </section>
+     <div class="stack">
+       <section class="sheet" aria-labelledby="h-queue">
+         <h2 id="h-queue">Needs a person <small>${DATA.queue.length} items</small></h2>
+         <ul class="queue">${queue}</ul>
+       </section>
+       <section class="sheet" aria-labelledby="h-feed">
+         <h2 id="h-feed">Activity <small>Today</small></h2>
+         <ol class="feed">${feed}</ol>
+       </section>
+     </div>
+   </div>`;
+}
+
+function filteredFindings() {
+  return DATA.findings.filter(f =>
+    (!state.wsFilter.size || state.wsFilter.has(f.ws)) &&
+    (!state.stFilter.size || state.stFilter.has(f.status)));
+}
+
+function findingsRows() {
+  const list = filteredFindings();
+  $('#resultCount') && ($('#resultCount').textContent = `Showing ${list.length} of ${DATA.findings.length} findings`);
+  if (!list.length) return `<tr><td colspan="9" class="empty">No findings match these filters.</td></tr>`;
+  return list.map(f => {
+    const signed = f.approval.state === 'signed';
+    const claimCls = f.status === 'Rejected' ? '' : (signed ? 'ink' : 'pencil');
+    const src = f.source ? `<span class="src">${esc(f.source)}</span>` : `<span class="src nosrc">No source</span>`;
+    return `<tr class="${f.status === 'Rejected' ? 'is-rejected' : ''}" data-row="${f.id}">
+      <td class="c-id" data-label="ID"><button type="button" class="id-btn" data-action="open-finding" data-id="${f.id}" aria-label="Open finding ${f.id}">${f.id}</button></td>
+      <td class="c-claim" data-label="Claim"><span class="${claimCls}"><span class="claim-text">${esc(f.claim)}</span></span>${f.status === 'Rejected' ? '<span class="reject-note">Rejected: no source, no finding</span>' : ''}</td>
+      <td data-label="Evidence" class="pencil small">${esc(f.evidence)}</td>
+      <td data-label="Source">${src}</td>
+      <td data-label="Confidence"><span class="conf">${esc(f.confidence)}</span></td>
+      <td data-label="Assumptions" class="pencil small">${esc(f.assumptions)}</td>
+      <td data-label="Owner">${esc(f.owner)}</td>
+      <td data-label="Status">${statusChip(f.status)}</td>
+      <td class="c-strip" data-label="Sign-off">${strip({ prepared: f.prepared, challenge: f.challenge, approval: f.approval, compact: true })}</td>
+    </tr>`;
+  }).join('');
+}
+
+function screenFindings() {
+  const chip = (group, v, set) =>
+    `<button type="button" class="chip" data-action="filter" data-group="${group}" data-value="${esc(v)}" aria-pressed="${set.has(v)}">${ICON.check}${esc(v)}</button>`;
+  const ck = DATA.checklist.map(g =>
+    `<div class="ck-group"><h3>${esc(g.group)}</h3><ul>${g.items.map(it => {
+      const ic = { checked: ICON.check, na: ICON.dash, open: ICON.dot, heor: ICON.arrow }[it.state];
+      return `<li><span>${esc(it.label)}${it.ref ? ' ' + refBtn(it.ref) : ''}</span><span class="ck ck-${it.state}">${ic}${esc(DATA.checklistStates[it.state])}</span></li>`;
+    }).join('')}</ul></div>`).join('');
+
+  return head('Findings', 'Every finding uses the same format and has a source. Select a row to see the full record and the red-team thread.') +
+  `<div class="findings-grid">
+    <section aria-labelledby="h-ft">
+      <h2 class="visually-hidden" id="h-ft">Findings table</h2>
+      <div class="filters">
+        <div class="filter-group" role="group" aria-labelledby="fl-ws"><span class="caps" id="fl-ws">Workstream</span>${DATA.workstreams.map(w => chip('ws', w, state.wsFilter)).join('')}</div>
+        <div class="filter-group" role="group" aria-labelledby="fl-st"><span class="caps" id="fl-st">Status</span>${DATA.statuses.map(s => chip('st', s, state.stFilter)).join('')}</div>
+      </div>
+      <div class="result-line"><span id="resultCount" aria-live="polite"></span><button type="button" class="btn btn-quiet btn-sm" data-action="clear-filters">Clear filters</button></div>
+      <div class="table-wrap">
+        <table class="ft">
+          <colgroup><col style="width:52px"><col style="width:20%"><col><col><col style="width:84px"><col><col style="width:80px"><col style="width:116px"><col style="width:276px"></colgroup>
+          <thead><tr><th scope="col">ID</th><th scope="col">Claim</th><th scope="col">Evidence</th><th scope="col">Source</th><th scope="col">Confidence</th><th scope="col">Assumptions</th><th scope="col">Owner</th><th scope="col">Status</th><th scope="col">Sign-off</th></tr></thead>
+          <tbody id="ftBody"></tbody>
+        </table>
+      </div>
+    </section>
+    <aside class="sheet checklist" aria-labelledby="h-ck">
+      <h2 id="h-ck">Regulatory checklist</h2>
+      <div class="ck-groups">${ck}</div>
+      <p class="note">"Checked: not applicable" is recorded so it is clear nothing was skipped.</p>
+    </aside>
+  </div>`;
+}
+
+function decisionCard(dc) {
+  const when = state.signed[dc.id];
+  const approval = when
+    ? { state: 'signed', role: dc.owner, initials: dc.initials, when }
+    : { state: 'signable', role: dc.owner };
+  return `<div class="decision" data-decision="${dc.id}">
+    <h3>${esc(dc.title)}</h3>
+    <p class="owner">Owner: <b>${esc(dc.owner)}</b></p>
+    <p class="decision-body ${when ? 'ink' : 'pencil'}">${dc.prepared && !when ? ICON.pencil : ''}<span>${linkify(dc.draft)}</span></p>
+    ${strip({ prepared: dc.prepared, challenge: dc.challenge, approval, decisionId: dc.id })}
+  </div>`;
+}
+function signedCount() { return DATA.decisions.filter(d => state.signed[d.id]).length; }
+function docStatus() { const n = signedCount(); return n === DATA.decisions.length ? 'Signed by people' : 'Draft in pencil'; }
+
+function screenBriefing() {
+  const B = DATA.briefing;
+  const sections = B.sections.map(s =>
+    `<h2>${esc(s.h)}</h2><ul class="stmts">${s.items.map(it => `<li>${esc(it.s)} <span class="mono nowrap">[${refs(it.refs)}]</span></li>`).join('')}</ul>`).join('');
+  const ptrs = B.ptrs.map(p => `<tr><td>${esc(p.input)}</td><td>${esc(p.value)}</td><td class="mono">${refs(p.refs)}</td></tr>`).join('');
+  const rejected = DATA.findings.filter(f => f.status === 'Rejected').map(f => f.id);
+
+  return head('Briefing', 'Drafted by the Synthesiser from verified findings. People sign the decisions.') +
+  `<div class="brief-grid">
+    <article class="doc" aria-labelledby="docTitle">
+      <div class="doc-ctl">
+        <div><span>Document</span>${esc(DATA.dd.id)}-BR</div>
+        <div><span>Asset</span>${esc(DATA.dd.asset)}</div>
+        <div><span>Prepared by</span>Synthesiser</div>
+        <div><span>Status</span><b id="docStatus">${docStatus()}</b></div>
+      </div>
+      <h1 id="docTitle">${esc(B.title)}</h1>
+      <p class="doc-sub">For the cross-functional DD discussion · ${state.mode === 'reactive' ? 'Reactive DD' : 'Planned DD'}</p>
+      <p class="doc-notice">${esc(B.notice)}</p>
+      <p class="doc-draftnote">${ICON.pencil}Statements stay in pencil: an agent wrote them. Each links to its finding.</p>
+      ${sections}
+      <h2>PTRS inputs</h2>
+      <p class="pencil" style="font-size:14px;margin-bottom:8px">Regulatory part only. These are inputs for the calculation, not a score.</p>
+      <table class="ptrs"><thead><tr><th scope="col">Input</th><th scope="col">What the findings say</th><th scope="col">Findings</th></tr></thead><tbody>${ptrs}</tbody></table>
+      <p class="excluded">Left out of this briefing: ${refs(rejected)}, rejected because no source was attached.</p>
+    </article>
+
+    <div class="stack">
+      <section class="sheet" aria-labelledby="h-dec">
+        <h2 id="h-dec">Decisions reserved for people <span class="dec-count" id="decCount">${signedCount()} of ${DATA.decisions.length} signed</span></h2>
+        ${DATA.decisions.map(decisionCard).join('')}
+      </section>
+      <section class="sheet" aria-labelledby="h-exp">
+        <h2 id="h-exp">Export</h2>
+        <div class="actions">
+          <button type="button" class="btn btn-quiet" data-action="export">Export to Word</button>
+          <button type="button" class="btn btn-quiet" data-action="export">Export to PowerPoint</button>
+        </div>
+      </section>
+      <section class="sheet" aria-labelledby="h-fb">
+        <h2 id="h-fb">Learn</h2>
+        <div class="field">
+          <label for="feedback">Send feedback to agent owners</label>
+          <textarea class="input" id="feedback" placeholder="What should the agents do better next time?" aria-describedby="fbHint"></textarea>
+          <span class="note" id="fbHint" style="margin-top:2px">Agent owners use this to improve their agent before the next DD.</span>
+        </div>
+        <div class="actions" style="margin-top:12px"><button type="button" class="btn" data-action="feedback">Send feedback</button></div>
+      </section>
+    </div>
+  </div>`;
+}
+
+function screenArchitecture() {
+  const layers = DATA.layers.slice().reverse().map(l => {
+    const idx = DATA.layers.indexOf(l) + 1;
+    return `<button type="button" class="layer${idx === 1 ? ' foundation' : ''}" data-action="layer" data-id="${l.id}" aria-pressed="${state.layer === l.id}" aria-controls="layerDetail">
+      <span class="ln" aria-hidden="true">${idx}</span><span class="lt">${esc(l.name)}</span><span class="chev">${state.layer === l.id ? 'Shown' : 'Show'}</span>
+      <span class="ls">${esc(l.summary)}</span>
+      ${l.chips ? `<span class="lchips">${l.chips.map(c => `<span class="${c.c}">${esc(c.t)}</span>`).join('')}</span>` : ''}
+    </button>`;
+  }).join('');
+
+  return head('How the team is built', 'Five layers inside one frame of human accountability. Select a layer to see what it holds.',
+      `<span class="tag proposal">Proposal, pending team decision</span>`) +
+  `<div class="arch-grid">
+    <div>
+      <figure class="frame" aria-labelledby="frameCap">
+        <div class="frame-head"><b id="frameCap">Human accountability</b>${DATA.humanRoles.map(r => `<span class="role-chip">${esc(r)}</span>`).join('')}</div>
+        <div class="layers">${layers}</div>
+      </figure>
+      <p class="up-note"><span>Read from the bottom up: 1 is the foundation.</span><span>People sit around every layer, not on top of one.</span></p>
+    </div>
+    <div class="stack">
+      <section class="sheet detail" id="layerDetail" aria-live="polite">${layerDetail()}</section>
+      <section class="sheet stack" aria-label="Design rules" style="gap:16px">
+        <p class="callout"><b>Autonomy is a ceiling, not a layer</b>Each playbook sets it: due diligence L2 Collaborate, inspections L1 Assist. Agents can earn more over time.</p>
+        <p class="callout"><b>Scalability test</b>A new use case adds a playbook and a few agents, never a new trust or evidence layer.</p>
+      </section>
+    </div>
+  </div>`;
+}
+function layerDetail() {
+  const l = DATA.layers.find(x => x.id === state.layer);
+  return `<h2>${esc(l.name)}</h2>
+    <dl>
+      <dt>What it holds</dt><dd><ul class="dots">${l.holds.map(h => `<li>${esc(h)}</li>`).join('')}</ul></dd>
+      <dt>Who owns it</dt><dd>${esc(l.owner)}</dd>
+      <dt>Why</dt><dd>${esc(l.why)}</dd>
+    </dl>`;
+}
+
+const SCREENS = { request: screenRequest, team: screenTeam, run: screenRun, findings: screenFindings, briefing: screenBriefing, architecture: screenArchitecture };
+
+/* ================= Router ================= */
+function routeFromHash() {
+  const h = (location.hash || '').replace('#', '');
+  return SCREENS[h] ? h : 'request';
+}
+function render(opts) {
+  state.route = routeFromHash();
+  renderTabs();
+  const main = $('#main');
+  main.innerHTML = SCREENS[state.route]();
+  if (state.route === 'findings') $('#ftBody').innerHTML = findingsRows();
+  window.scrollTo(0, 0);
+  document.title = DATA.routes.find(r => r.id === state.route).label + ' · DD workspace · UX mockup';
+  if (opts && opts.focus === 'title') { const t = $('#screenTitle'); t && t.focus(); }
+  if (opts && opts.focus === 'tab') { const t = $('#tab-' + state.route); t && t.focus(); }
+  if (narrow.matches) keepTabInView();
+}
+/* Scroll the horizontal tab bar by hand: scrollIntoView() would move Chrome's
+   sequential-focus starting point past the skip link and the tabs. */
+function keepTabInView() {
+  const list = $('#tabs'), t = $('#tab-' + state.route);
+  if (!list || !t) return;
+  const left = t.offsetLeft - list.offsetLeft, right = left + t.offsetWidth;
+  if (left < list.scrollLeft) list.scrollLeft = left - 12;
+  else if (right > list.scrollLeft + list.clientWidth) list.scrollLeft = right - list.clientWidth + 12;
+}
+let pendingFocus = null;
+function go(route, focus) {
+  pendingFocus = focus || null;
+  if (location.hash === '#' + route) { render({ focus: pendingFocus }); pendingFocus = null; }
+  else location.hash = route;
+}
+window.addEventListener('hashchange', () => { render({ focus: pendingFocus }); pendingFocus = null; });
+
+/* ================= Toast ================= */
+let toastTimer = null;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/* ================= Drawer ================= */
+let lastFocus = null;
+function openDrawer(id) {
+  const f = findingById(id);
+  if (!f) return;
+  lastFocus = document.activeElement;
+  const signed = f.approval.state === 'signed';
+  const thread = f.thread.length
+    ? `<ol class="thread">${f.thread.map(m =>
+        `<li class="${m.who === 'Red team' ? 't-red' : ''}${m.open ? ' t-open' : ''}"><span class="meta"><b class="${m.kind === 'person' ? 't-person' : 't-agent'}">${esc(m.who)}</b><span class="when">${esc(m.t)}</span>${m.kind === 'agent' ? '<span class="pencil">' + ICON.pencil + '</span>' : ''}</span><p class="${m.kind === 'person' ? 't-person' : 't-agent'}">${esc(m.text)}</p></li>`).join('')}</ol>`
+    : `<p class="pencil" style="font-size:14px">No challenge raised yet. The red team picks this up after the evidence check.</p>`;
+  const claimCls = f.status === 'Rejected' ? 'style="color:var(--red)"' : `class="${signed ? 'ink' : 'pencil'}"`;
+  const d = $('#drawer');
+  d.innerHTML = `
+    <div class="drawer-head">
+      <h2 id="drawerTitle"><span class="mono">${esc(f.id)} · ${esc(f.ws)}</span>Finding record</h2>
+      <button type="button" class="btn btn-quiet btn-sm" data-action="close-drawer">Close</button>
+    </div>
+    ${strip({ prepared: f.prepared, challenge: f.challenge, approval: f.approval })}
+    <dl class="record">
+      <dt>Claim</dt><dd ${claimCls}>${esc(f.claim)}${f.status === 'Rejected' ? '<span class="reject-note">Rejected: no source, no finding</span>' : ''}</dd>
+      <dt>Evidence</dt><dd class="pencil">${esc(f.evidence)}</dd>
+      <dt>Source</dt><dd class="mono">${f.source ? esc(f.source) : '<span class="nosrc" style="color:var(--red)">No source attached</span>'}</dd>
+      <dt>Confidence</dt><dd>${esc(f.confidence)}</dd>
+      <dt>Assumptions</dt><dd class="pencil">${esc(f.assumptions)}</dd>
+      <dt>Owner</dt><dd>${esc(f.owner)}</dd>
+      <dt>Status</dt><dd>${statusChip(f.status)}</dd>
+      <dt>Prepared by</dt><dd class="pencil">${esc(f.prepared)} agent</dd>
+    </dl>
+    <h3>Red-team challenge thread</h3>
+    ${thread}`;
+  $('#scrim').hidden = false;
+  d.hidden = false;
+  document.body.style.overflow = 'hidden';
+  $('[data-action="close-drawer"]', d).focus();
+}
+function closeDrawer() {
+  const d = $('#drawer');
+  if (d.hidden) return;
+  d.hidden = true;
+  $('#scrim').hidden = true;
+  document.body.style.overflow = '';
+  if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+
+/* ================= Signing: the signature moment ================= */
+function sign(id, btn) {
+  const dc = DATA.decisions.find(x => x.id === id);
+  if (!dc || state.signed[id]) return;
+  const when = nowHHMM();
+  state.signed[id] = when;
+  const card = btn.closest('.decision');
+  const cell = btn.closest('.cell-appr');
+  const animate = !reducedMotion.matches;
+  cell.classList.remove('is-awaiting');
+  cell.classList.add('is-signed');
+  cell.innerHTML = signedInner(dc.owner, dc.initials, when, animate);
+  cell.setAttribute('aria-label', `Approved by ${dc.owner}, initials ${dc.initials}, signed ${when}`);
+  cell.setAttribute('tabindex', '-1');
+  if (animate) {
+    // Stroke reveal runs as a CSS animation; drop the class afterwards so the
+    // final inked state never depends on the animation completing.
+    const sig = $('.sig', cell);
+    setTimeout(() => sig.classList.remove('anim'), 700);
+  }
+  const body = $('.decision-body', card);
+  body.classList.remove('pencil'); body.classList.add('ink');
+  const pic = $('.ic', body); pic && pic.remove();
+  cell.focus();
+  $('#decCount').textContent = `${signedCount()} of ${DATA.decisions.length} signed`;
+  $('#docStatus').textContent = docStatus();
+  toast('Signed');
+}
+
+/* ================= Events ================= */
+document.addEventListener('click', e => {
+  const tab = e.target.closest('[role="tab"]');
+  if (tab) { go(tab.dataset.route, 'tab'); return; }
+
+  const el = e.target.closest('[data-action]');
+  if (!el) {
+    const row = e.target.closest('tr[data-row]');
+    if (row) openDrawer(row.dataset.row);
+    return;
+  }
+  const a = el.dataset.action;
+  switch (a) {
+    case 'skip': $('#main').focus(); break;
+    case 'region': {
+      const r = el.dataset.region;
+      state.regions.has(r) ? state.regions.delete(r) : state.regions.add(r);
+      el.setAttribute('aria-pressed', state.regions.has(r));
+      break;
+    }
+    case 'read-in': {
+      const role = el.dataset.role;
+      state.suggested = state.suggested.filter(s => s.role !== role);
+      state.readIn.push(role);
+      renderHeader();
+      render();
+      $('#h-wall').focus();
+      toast('Read in: ' + role);
+      break;
+    }
+    case 'activate': toast('Team activated'); go('team', 'title'); break;
+    case 'filter': {
+      const set = el.dataset.group === 'ws' ? state.wsFilter : state.stFilter;
+      const v = el.dataset.value;
+      set.has(v) ? set.delete(v) : set.add(v);
+      el.setAttribute('aria-pressed', set.has(v));
+      $('#ftBody').innerHTML = findingsRows();
+      break;
+    }
+    case 'clear-filters':
+      state.wsFilter.clear(); state.stFilter.clear();
+      $$('[data-action="filter"]').forEach(c => c.setAttribute('aria-pressed', 'false'));
+      $('#ftBody').innerHTML = findingsRows();
+      break;
+    case 'open-finding': openDrawer(el.dataset.id); break;
+    case 'close-drawer': closeDrawer(); break;
+    case 'sign': sign(el.dataset.id, el); break;
+    case 'export': toast('Export is not part of the mockup'); break;
+    case 'feedback': {
+      const ta = $('#feedback');
+      if (!ta.value.trim()) { ta.focus(); ta.setAttribute('placeholder', 'Write your feedback first, then send it.'); return; }
+      ta.value = '';
+      toast('Feedback sent');
+      break;
+    }
+    case 'layer': {
+      state.layer = el.dataset.id;
+      $$('.layer').forEach(b => {
+        const on = b.dataset.id === state.layer;
+        b.setAttribute('aria-pressed', on);
+        $('.chev', b).textContent = on ? 'Shown' : 'Show';
+      });
+      $('#layerDetail').innerHTML = layerDetail();
+      break;
+    }
+  }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.matches('[data-action="mode"]')) {
+    state.mode = e.target.value;
+    renderHeader();
+    $('#modeNote').textContent = DATA.dd.modeNote[state.mode];
+    $('#f-deadline').value = DATA.dd.deadline[state.mode];
+    toast(state.mode === 'reactive' ? 'Switched to reactive DD' : 'Switched to planned DD');
+  }
+});
+
+$('#scrim').addEventListener('click', closeDrawer);
+
+document.addEventListener('keydown', e => {
+  const d = $('#drawer');
+  if (!d.hidden) {
+    if (e.key === 'Escape') { e.preventDefault(); closeDrawer(); return; }
+    if (e.key === 'Tab') {                         // keep focus inside the dialog
+      const f = $$('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])', d).filter(x => !x.disabled);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    return;
+  }
+  const tab = e.target.closest && e.target.closest('[role="tab"]');
+  if (tab) {
+    const ids = DATA.routes.map(r => r.id);
+    let i = ids.indexOf(tab.dataset.route);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') i = (i + 1) % ids.length;
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') i = (i - 1 + ids.length) % ids.length;
+    else if (e.key === 'Home') i = 0;
+    else if (e.key === 'End') i = ids.length - 1;
+    else return;
+    e.preventDefault();
+    go(ids[i], 'tab');
+    return;
+  }
+  const row = e.target.closest && e.target.closest('tr[data-row]');
+  if (row && e.key === 'Enter' && e.target === row) openDrawer(row.dataset.row);
+});
+
+/* Tab orientation follows the layout: vertical rail or horizontal bar */
+const syncOrientation = () => $('#tabs').setAttribute('aria-orientation', narrow.matches ? 'horizontal' : 'vertical');
+narrow.addEventListener ? narrow.addEventListener('change', syncOrientation) : narrow.addListener(syncOrientation);
+
+/* ================= Boot ================= */
+syncOrientation();
+renderHeader();
+render();
+})();
+</script>
+</body>
+</html>
