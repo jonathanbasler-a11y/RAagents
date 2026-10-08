@@ -98,6 +98,13 @@ function family(model) {
   return 'unknown';
 }
 
+// GPT-5.x models behind Azure-style endpoints reject max_tokens and spend a small budget on
+// reasoning, so they get max_completion_tokens with reasoning turned off. Others get max_tokens.
+function tokenFields(model, n) {
+  if (/^gpt-/i.test(model)) return { max_completion_tokens: n, reasoning_effort: 'none' };
+  return { max_tokens: n };
+}
+
 function textOf(content) {
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) return content.map((p) => (typeof p?.text === 'string' ? p.text : '')).join('');
@@ -110,7 +117,7 @@ async function plainCall(cfg, red) {
     const res = await fetch(endpoint(cfg), {
       method: 'POST',
       headers: headersFor(cfg),
-      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: PROMPT }], max_tokens: 16 }),
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: PROMPT }], ...tokenFields(cfg.model, 64) }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const body = await res.text();
@@ -141,7 +148,7 @@ async function streamCall(cfg, red) {
     const res = await fetch(endpoint(cfg), {
       method: 'POST',
       headers: headersFor(cfg),
-      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: PROMPT }], max_tokens: 16, stream: true }),
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: PROMPT }], ...tokenFields(cfg.model, 64), stream: true }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) {
