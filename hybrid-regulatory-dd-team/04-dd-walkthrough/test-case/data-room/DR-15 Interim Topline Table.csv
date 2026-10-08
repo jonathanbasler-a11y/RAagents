@@ -1,0 +1,8 @@
+study,population,data_cutoff,n_evaluable,assessment,endpoint,result,ci_or_note
+101 cohort B,TRX-7-high previously treated,2025-09-30,61,Investigator (incl. unconfirmed),ORR,46% (28/61),Used in investor deck
+101 cohort B,TRX-7-high previously treated,2025-09-30,61,Investigator (incl. unconfirmed),Median DoR,9.8 months,Used in investor deck
+101 cohort B,TRX-7-high previously treated,2026-03-31,68,BICR (confirmed),ORR,40% (27/68),95% CI 28% to 52%
+101 cohort B,TRX-7-high previously treated,2026-03-31,68,BICR (confirmed),Median DoR,8.4 months,95% CI 5.6 to 11.2
+101 cohort B,TRX-7-high previously treated,2026-03-31,68,BICR,Median PFS,5.9 months,95% CI 4.7 to 7.3
+101 cohort B,TRX-7-high previously treated,2026-03-31,68,Investigator,OS,Not mature,41% events
+301,TRX-7-high previously treated,none,388 enrolled,n/a,PFS (primary per v4.0),No efficacy data,Interim analysis projected Q2 2027

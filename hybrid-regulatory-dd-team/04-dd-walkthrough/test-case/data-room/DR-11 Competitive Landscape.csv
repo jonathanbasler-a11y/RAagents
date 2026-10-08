@@ -1,0 +1,7 @@
+competitor,sponsor,mechanism,stage,biomarker_selected,regulatory_status,key_regulatory_note
+NVB-210,Norvane Bio (fictional),Oral inhibitor of a different pathway,Phase III,Yes (different marker),Fast Track; ORR-based accelerated filing planned 2027,Could become available therapy before OST-4417 reviews
+CLD-88,Caldera Oncology (fictional),Antibody targeting a surface antigen,Phase II,No,Orphan,Randomized Phase III not started
+MRT-302,Meridian Therapeutics (fictional),Oral inhibitor of TRX-7 upstream pathway,Phase II,Yes (TRX-7 related),Orphan,Same biomarker; may share CDx considerations
+Standard chemotherapy regimens,Generic,Cytotoxic combination,Marketed,No,Approved,Comparator in study 301
+Approved targeted agents,Various (fictional class),Targeted therapy for other molecular subsets,Marketed,Yes (other biomarkers),Approved,Different biomarker populations; limited overlap with TRX-7-high
+OST-4417,Ostravane,TRX-7 cofactor inhibitor,Phase III,Yes (TRX-7 IHC),Orphan (US, EU); Fast Track; BTD denied,Accelerated approval request depends on available therapy at filing
