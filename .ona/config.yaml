@@ -1,2 +1,28 @@
-tasks: {}
-services: {}
+# Ona tasks and services. See docs/ONA.md for setup (your own LLM_* user secrets, the probe, the port).
+tasks:
+  install:
+    name: Install app dependencies
+    description: Installs the chat app's dependencies when the app is on this branch.
+    command: |
+      if [ -f outputs/05_demo/app/package.json ]; then
+        cd outputs/05_demo/app && npm ci
+      else
+        echo "The chat app is not on this branch yet; nothing to install."
+      fi
+    triggeredBy:
+      - postDevcontainerStart
+  probe:
+    name: Probe the LLM gateway
+    description: Checks that this environment can reach your LLM endpoint with your own secrets. Prints no key and no host.
+    command: node tools/llm-probe.mjs
+    triggeredBy:
+      - manual
+
+services:
+  hybrid-team:
+    name: Hybrid team chat app
+    description: Builds and serves the chat app on port 3000. Start it manually after your secrets are set. Keep the port creator-only.
+    commands:
+      start: cd outputs/05_demo/app && npm run build && npm start -- -H 0.0.0.0 -p 3000
+    triggeredBy:
+      - manual
