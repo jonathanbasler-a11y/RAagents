@@ -391,7 +391,9 @@ details.group > summary .more{font-size:12px;color:var(--sig);font-weight:600}
 .switch:disabled .track{opacity:.55}
 
 /* ===== v2: Run board ===== */
-.board{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:12px;overflow-x:auto;align-items:start;padding-bottom:4px}
+/* Columns wrap to a second row rather than scroll: a sideways-scrolling board hid the Signed off
+   column below about 1360px with nothing to show it was there. Five columns fit from about 1240px. */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:12px;align-items:start;padding-bottom:4px}
 .col{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px;min-width:0}
 .col-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px;font-weight:600}
 .col-h .mono{color:var(--graphite)}
@@ -404,7 +406,9 @@ details.group > summary .more{font-size:12px;color:var(--sig);font-weight:600}
 .card .by{display:flex;gap:5px;align-items:center;font-size:12px;color:var(--graphite)}
 .card .flag{font-size:12px;line-height:1.35;background:var(--hl-bg);border-radius:3px;padding:2px 6px;color:var(--ink)}
 .card .flag.wait{background:transparent;border:1px dashed var(--graphite)}
-.card .flag.ok{background:transparent;border:1px solid var(--sig);color:var(--sig)}
+/* A status, not a control: ink with a check, no outline (a blue outline read as a button). */
+.card .flag.ok{display:flex;gap:4px;align-items:flex-start;background:none;border:0;padding:2px 0;color:var(--ink)}
+.card .flag.ok .ic{margin-top:1px;flex:none}
 .card.signed{border-color:rgba(23,34,51,.3)}
 .card .signed-by{display:flex;align-items:baseline;gap:8px}
 .card .signed-by .sig{font-size:20px}
@@ -423,13 +427,14 @@ table.ft{min-width:1150px}
 .cell-exp .who{color:var(--graphite)}
 .cell-exp.is-open{background:var(--hl-bg)}
 .cell-exp.is-open .who{color:var(--ink)}
-.cell-exp.is-back .who{color:var(--sig)}
+.cell-exp.is-back .who{color:var(--ink)}
 .type-note{display:block;font-size:12px;color:var(--graphite);margin-top:2px}
 .ck-cannot{background:var(--hl-bg);color:var(--ink);border:1px dashed var(--ink)}
 .ck-notchecked{color:var(--graphite);border:1px dotted var(--graphite)}
 .ck-note{display:block;font-size:12px;color:var(--graphite)}
 
 /* ===== v2: Expert review and redaction ===== */
+.drawer:focus{outline:none}
 .san-box{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;font-size:14px}
 .san-box h3,.san-box h4{margin:0 0 6px;font-size:12px;font-weight:600;color:var(--graphite)}
 .san-out{background:var(--paper)}
@@ -492,6 +497,9 @@ table.ft{min-width:1150px}
 .cm-row{flex-wrap:nowrap}
 .cm-row > .cm-box{flex:0 1 auto;min-width:0}
 .cm-arrow{flex:none;font-size:20px;line-height:1}
+/* ===== frag-briefing.js: decisions ===== */
+/* No agent drafts the recommendation: a neutral placeholder box, neither pencil nor ink. */
+.decision-body.by-people{border:1px dashed rgba(23,34,51,.3);border-radius:3px;padding:6px 10px;color:var(--ink);font-style:italic}
 /* ===== v2: frag-findings (record and redaction drawers) ===== */
 .drawer .strip + .recheck{margin-top:12px}
 .drawer .nosrc{color:var(--red);font-weight:600}
@@ -519,16 +527,30 @@ table.ft{min-width:1150px}
   .checklist .ck-groups{columns:3 260px;column-gap:28px}
   .checklist .ck-group{break-inside:avoid}
 }
+/* Returned expert view: signed by the expert (a role mark in signature ink, no personal name). */
+.expert-signed{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin:2px 0 4px}
+.expert-signed .sig{font-size:20px}
+.expert-signed .by{font-size:12px;color:var(--ink)}
+/* A source the agents can no longer read, after a person changed its release. */
+.src-note{display:block;width:fit-content;font-size:11px;line-height:1.45;background:var(--hl-bg);color:var(--ink);border-radius:2px;padding:0 4px;margin-top:2px}
+/* The table is wider than its area: a line above it says so, and the cut edge is shaded. */
+.scroll-cue{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink);margin:0 0 8px}
+.scroll-cue[hidden]{display:none}
+.ft-frame{position:relative}
+.ft-frame.more-right::after{content:"";position:absolute;top:1px;right:1px;bottom:1px;width:36px;pointer-events:none;background:linear-gradient(90deg,rgba(251,252,253,0),rgba(23,34,51,.16));border-radius:0 var(--r) var(--r) 0}
+/* A region taken out of this DD on the Request screen: skipped, so it looks unlike every "checked"
+   state (and unlike "not checked yet", which is still to do). */
+.ck-out{color:var(--graphite);background:var(--paper)}
 /* ===== v2: frag-request.js ===== */
-/* Access rows ("Clinical regulatory expert" + "Cleared · not read in"): between 901 and 1100px the
-   right-hand column is under 300px, too narrow for the role and its nowrap mark side by side, so
-   the sheets stuck out of their column. There the mark drops under the role instead. */
-@media (min-width:901px) and (max-width:1100px){
+/* Access rows ("Clinical regulatory expert" + "Cleared · not read in"): where the row is under about
+   370px (two columns from 901 to 1240px, one narrow column up to 700px) the role and its nowrap mark do
+   not fit side by side: the role was squeezed to three lines, and at 320px the sheets stuck out of
+   their column. There a row that does not fit drops its mark under the role instead. */
+@media (min-width:901px) and (max-width:1240px), (max-width:700px){
   .roles li{flex-wrap:wrap;row-gap:2px}
 }
 /* ===== v2: frag-run.js (Run board) ===== */
-/* Contain the cards' visually hidden text: positioned against the page, the spans in columns
-   scrolled out of view made the whole page scroll sideways below about 1440px. */
+/* Contain the cards' visually hidden text, so it is positioned against the board, not the page. */
 .board{position:relative}
 /* Space between the workflow and the board. The sheets sit directly in main, not in a .stack:
    a .stack track would grow to the board's minimum width instead of letting the board scroll. */
@@ -539,6 +561,10 @@ table.ft{min-width:1150px}
    instead of breaking after the dot. */
 .card .signed-by{flex-wrap:wrap;row-gap:0}
 .card .signed-by .when{white-space:nowrap}
+/* A narrow column: a long button label ("Ask a cleared expert") wraps instead of sticking out of its card. */
+.card-actions .btn{white-space:normal;text-align:center}
+/* Assess still running alongside Challenge: the step's rule is dashed, half done. */
+.step.ongoing{border-top-style:dashed;border-top-color:var(--ink);color:var(--ink)}
 
 /* ===== v2: frag-team.js ===== */
 /* The "Show" / "Hide" hint on the collapsed "Other functions" group follows the native open state. */
@@ -551,6 +577,9 @@ details.group[open] > summary .team-show{display:none}
 .agent .agent-top .tag{grid-column:1;grid-row:1;justify-self:start}
 .agent .agent-top .badge{grid-column:1 / -1;grid-row:2;justify-self:start}
 .agent .agent-top .switch{grid-column:2;grid-row:1}
+/* A knowledge source the agents may not read now (frag-team.js teamSourceHTML): the note keeps the
+   body font inside the mono source pill. */
+.srcs .src-note{font-family:var(--f-body)}
 /* ===== Responsive ===== */
 @media (max-width:1640px){
   .findings-grid{grid-template-columns:minmax(0,1fr)}
@@ -569,7 +598,14 @@ details.group[open] > summary .team-show{display:none}
   .shell{grid-template-columns:minmax(0,1fr)}
   .rail{padding:0;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
   .tablist{flex-direction:row;position:static;overflow-x:auto;padding:8px 12px 0;gap:2px;scrollbar-width:none}
+  /* The bar has no scrollbar: where tabs sit out of view, the edge is shaded and shows a chevron
+     (classes set by syncTabCue in the core; the width matches TAB_CUE_PX). */
+  .rail::before,.rail::after{content:"";position:absolute;top:0;bottom:0;width:48px;pointer-events:none;z-index:2;display:none;background-repeat:no-repeat}
+  .rail.more-left::before{display:block;left:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M6.5 1.5L1.5 7l5 5.5' fill='none' stroke='%235D6571' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),linear-gradient(270deg,rgba(238,241,244,0),var(--paper) 62%);background-position:left 9px center,0 0;background-size:8px 14px,100% 100%}
+  .rail.more-right::after{display:block;right:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M1.5 1.5L6.5 7l-5 5.5' fill='none' stroke='%235D6571' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),linear-gradient(90deg,rgba(238,241,244,0),var(--paper) 62%);background-position:right 9px center,0 0;background-size:8px 14px,100% 100%}
   .tab{border:1px solid transparent;border-bottom:0;border-radius:var(--r) var(--r) 0 0;margin:0 0 -1px;white-space:nowrap;padding:8px 12px}
+  /* The bar scrolls sideways, so it clips anything outside it: the focus ring goes inside the tab. */
+  .tab:focus-visible{outline-offset:-2px}
   .tab.arch{margin-top:0;margin-left:14px}
   .tab.arch::before{left:-8px;right:auto;top:8px;bottom:8px;border-top:0;border-left:1px solid var(--line)}
   .main{border-left:0;padding:20px 16px 72px}
@@ -634,11 +670,11 @@ details.group[open] > summary .team-show{display:none}
 <header class="docbar">
   <div class="product"><b>Digital Human Hybrid Team</b><span>Due diligence workspace</span></div>
   <p class="doc-control" id="docControl" aria-label="Document control"></p>
-  <p class="legend" aria-label="Legend">
+  <div class="legend" role="group" aria-label="Legend">
     <span class="lg-pencil" id="lgPencil"></span>
-    <span class="lg-ink"><i aria-hidden="true">Ink</i> = signed by a person.</span>
-    <span class="lg-redact"><span class="redact-swatch" aria-hidden="true"></span> = hidden from sanitised reviewers.</span>
-  </p>
+    <span class="lg-ink"><i>Ink</i> = signed by a person.</span>
+    <span class="lg-redact"><span class="redact-swatch" aria-hidden="true"></span><span class="visually-hidden">Black bar</span> = hidden from cleared experts.</span>
+  </div>
 </header>
 
 <div class="shell">
@@ -649,7 +685,7 @@ details.group[open] > summary .team-show{display:none}
 </div>
 
 <div class="scrim" id="scrim" hidden></div>
-<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden></aside>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" tabindex="-1" hidden></aside>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -666,8 +702,9 @@ const LEAD_YOU = 'RA DD lead (you)';
 const LEAD_INITIALS = 'A.K.';
 
 const DATA = {
+  /* deadline: the default for each mode. The header's "Due in" is measured from the deadline on the
+     Request screen to the demo clock (46 h and 24 d for these defaults, at 10:53 on 07 Oct). */
   dd: { id: 'DD-0427', asset: 'ABC-123 (illustrative)', ceiling: 'L2 Collaborate',
-        due: { reactive: '46 h', planned: '24 d' },
         deadline: { reactive: '2026-10-09T09:00', planned: '2026-10-31T17:00' },
         modeNote: {
           reactive: 'Reactive DD: urgent, short turnaround. All agents start in parallel as soon as you activate the team.',
@@ -698,16 +735,22 @@ const DATA = {
       { id: 'combo', label: 'Combination product', agent: 'sp-combo', on: false },
       { id: 'cdx', label: 'Companion diagnostic', agent: 'sp-cdx', on: false }
     ],
-    classNote: 'Classification and stage decide which specialist agents join the team. You can still switch any agent on or off.',
+    classNote: 'Classification and stage decide which agents join the team. You can still switch any agent on or off.',
+    /* Stage rules live on the agents: trigger 'late' joins at a late stage, trigger 'filed' once filed. */
     lateStages: ['Phase 3', 'Filed'],
-    lateAgents: ['ops', 'mw'],
-    lateNote: 'A filing is near, so the playbook adds a filing-readiness gap check. It uses the NDA/MAA playbook as a reference document (concept) and brings in regulatory operations and medical writing.',
+    filedStages: ['Filed'],
+    /* lateNote shows at Phase 3 and once filed, so it must hold at both; filedNote follows it once filed. */
+    lateNote: 'At this late stage the playbook adds a gap check against the NDA/MAA playbook (concept), a reference document for a complete filing. It brings in regulatory operations, medical writing and risk management: a filing needs a risk management plan.',
+    filedNote: 'The asset is filed, so promotional review joins too: launch claims depend on the label under review.',
     regions: ['FDA', 'EMA', 'PMDA', 'NMPA', 'Global access'],
+    /* dyn: the sub-line restates the asset as set on the Request screen, so it is built from it.
+       'product': the Therapeutic area and Modality fields (none: both are empty);
+       'regions': the selected regions, then tail (none: no region selected). */
     questions: [
       { q: 'Which asset documents are available for regulatory review, and which can be uploaded to the agents?', sub: 'Public sources, data room documents released to the agents, and documents only the DD team may read' },
-      { q: 'Which regulatory guidance applies to this therapeutic area and product type?', sub: 'Rare metabolic disorder, oral small molecule' },
+      { q: 'Which regulatory guidance applies to this therapeutic area and product type?', dyn: 'product', none: 'Therapeutic area and modality not given' },
       { q: 'Which special designations apply or are held?', sub: 'Orphan, breakthrough, paediatric requirements. Record "checked: not applicable" where they do not apply.' },
-      { q: 'What differs between regions?', sub: 'FDA, EMA, PMDA, NMPA and global access, tailored to this product' },
+      { q: 'What differs between regions?', dyn: 'regions', tail: ', tailored to this product', none: 'No region selected' },
       { q: 'What could make approval hard in any region?', sub: 'Bottleneck hunt' },
       { q: 'Which regulatory inputs feed the PTRS calculation, and are they right?', sub: 'Inputs only. The calculation stays with its owner.' },
       { q: 'Which reimbursement and HTA risks should go to HEOR?', sub: 'Flag and hand off. Do not assess.' }
@@ -720,12 +763,14 @@ const DATA = {
     ddTeam: ['BD deal lead', 'CMC lead', 'Quality lead', 'Safety and PV lead'],
     ddTeamNote: 'They have data room access and work in the cross-functional discussion, outside this workspace.',
     reviewers: ['Clinical regulatory expert', 'CMC regulatory expert', 'Paediatric regulatory expert', 'Disclosure compliance expert'],
-    reviewersNote: 'Trained and cleared, but not read in. They see only sanitised questions you approve, never the asset or the licensor.',
+    reviewersNote: 'Internal experts, trained and cleared, but not read in. They see only sanitised questions you approve, never the asset or the licensor, and sign the view they send back.',
+    /* Signature marks for returned expert views: a role mark, never a personal name. */
+    reviewerMarks: { 'Clinical regulatory expert': 'Clin. reg.', 'CMC regulatory expert': 'CMC reg.', 'Paediatric regulatory expert': 'Paed. reg.', 'Disclosure compliance expert': 'Discl. comp.' },
     rule: 'Only trained and cleared staff can open this workspace or use its agents. Clearance and training are checked on every action, not once at login.'
   },
 
   knowledge: {
-    public: ['Health authority guidance', 'Public review documents and EPARs', 'Trial registries', 'Designation and inspection databases', 'Publications'],
+    public: ['Health authority guidance', 'Public review documents and EPARs', 'Trial registries', 'Designation and inspection databases', 'Publications', 'Company disclosures'],
     docs: [
       { id: 'VDR-01', kind: 'vdr', name: 'Module 2 quality overall summary', release: 'yes' },
       { id: 'VDR-02', kind: 'vdr', name: 'Clinical development plan', release: 'yes' },
@@ -742,7 +787,7 @@ const DATA = {
 
   people: [
     { kind: 'Read in', role: LEAD_YOU, text: 'Sees the whole DD. Activates the team, approves every redaction and every request to the licensor, and signs the work.' },
-    { kind: 'Sanitised reviewers', role: 'Cleared regulatory experts', text: 'Trained and cleared, not read in. Answer sanitised questions. Their view is advice, never evidence.' },
+    { kind: 'Not read in', role: 'Cleared internal experts', text: 'Internal experts, trained and cleared, not read in. Answer sanitised questions and sign their view. It is advice, never evidence.' },
     { kind: 'Decision owner', role: 'DD decision owner', text: 'Signs deal-breakers and the recommendation in the cross-functional discussion.' },
     { kind: 'Owners', role: 'Agent and playbook owners', text: 'Maintain the agents and the DD playbook between DDs. Never read in to a live DD.' }
   ],
@@ -755,36 +800,39 @@ const DATA = {
 
   agentGroups: [
     { id: 'core', label: 'Regulatory function', tag: 'Regulatory', note: 'The regulatory affairs team, one agent per role.' },
-    { id: 'spec', label: 'Specialists by asset', tag: 'Specialist', note: 'Switched on by the asset’s classification and stage. You can override.' },
+    { id: 'spec', label: 'Specialists by asset', tag: 'Specialist', note: 'Switched on by the asset’s classification, or by its stage for risk management and promotional review. You can override.' },
     { id: 'role', label: 'Team roles', tag: 'Team role', note: 'Run every DD. Always on.' },
     { id: 'other', label: 'Other functions', tag: 'Other function', note: 'Built for other playbooks. Not selected for a regulatory DD; shown to prove the library reaches beyond regulatory affairs.', collapsed: true }
   ],
 
-  /* trigger: a classification id, or 'late' (joins at Phase 3 or Filed). locked: always on. */
+  /* trigger: a classification id, 'late' (joins at Phase 3 or Filed) or 'filed' (joins once filed);
+     trigWhy: the reason shown with a stage trigger. locked: always on.
+     sources: a string, or { t, doc } for one data room document, so the specification can say when
+     the RA DD lead has not released that document to the agents. */
   agents: [
     { id: 'reglead', group: 'core', name: 'Regulatory lead', level: 2, on: true,
       desc: 'Overall regulatory strategy: applicable guidance, designations, the bottleneck hunt, PTRS inputs and inherited commitments.',
-      owner: 'Regulatory lead agent owner', sources: ['Health authority guidance', 'Public review documents', 'Designation databases', 'Data room: correspondence log'],
+      owner: 'Regulatory lead agent owner', sources: ['Health authority guidance', 'Public review documents', 'Designation databases', 'Company disclosures', { t: 'Data room: correspondence log', doc: 'VDR-03' }],
       guard: 'Flags reimbursement and HTA risks to HEOR; does not assess them.',
       status: 'Collecting regulatory inputs for PTRS' },
     { id: 'clin', group: 'core', name: 'Clinical regulatory strategy', short: 'Clinical regulatory', level: 2, on: true,
       desc: 'The clinical development path against guidance: trial design, endpoints, and safety signals as they affect approval.',
-      owner: 'Clinical regulatory agent owner', sources: ['Trial registries', 'Publications', 'Data room: clinical development plan'],
+      owner: 'Clinical regulatory agent owner', sources: ['Trial registries', 'Publications', { t: 'Data room: clinical development plan', doc: 'VDR-02' }],
       guard: 'Reports signals as published; does not re-analyse safety data.',
       status: 'Waiting for the red team to close its challenge on F-05', wait: true },
     { id: 'cmcreg', group: 'core', name: 'CMC regulatory', level: 2, on: true,
       desc: 'Quality module readiness, manufacturing sites and their compliance status, and comparability.',
-      owner: 'CMC regulatory agent owner', sources: ['Inspection databases', 'Public review documents', 'Data room: quality overall summary', 'Data room: stability report'],
+      owner: 'CMC regulatory agent owner', sources: ['Inspection databases', 'Public review documents', 'Company disclosures', { t: 'Data room: quality overall summary', doc: 'VDR-01' }, { t: 'Data room: stability report', doc: 'VDR-04' }, 'Licensor answers you release'],
       guard: 'Raises comparability questions for expert review; does not judge them.',
       status: 'Searching for inspection records newer than the source of F-04' },
     { id: 'regional', group: 'core', name: 'Regional regulatory experts', short: 'Regional experts', level: 2, on: true,
       desc: 'One expert per selected region: regional differences, local requirements and bottlenecks.',
       owner: 'Regional agent owners', sources: ['Regional guidance', 'Regional review documents'],
-      guard: 'Marks a region "could not check" when no readable source exists.',
+      guard: 'Marks a region "could not confirm" when no readable source exists.',
       status: 'Comparing PMDA and NMPA requirements' },
     { id: 'label', group: 'core', name: 'Labelling', level: 2, on: true,
       desc: 'Target label claims against the evidence and against labels of comparable products.',
-      owner: 'Labelling agent owner', sources: ['Product labels and EPARs', 'Data room: clinical development plan'],
+      owner: 'Labelling agent owner', sources: ['Product labels and EPARs', { t: 'Data room: clinical development plan', doc: 'VDR-02' }],
       guard: 'Compares claims with evidence; does not draft label text.',
       status: 'Comparing target claims with comparable labels' },
     { id: 'intel', group: 'core', name: 'Regulatory intelligence', level: 2, on: true,
@@ -799,7 +847,7 @@ const DATA = {
       status: 'Drafted F-11 on results postings' },
     { id: 'ops', group: 'core', name: 'Regulatory operations and submissions', short: 'Regulatory operations', level: 2, on: false, trigger: 'late',
       desc: 'Dossier structure, submission history and readiness to file.',
-      owner: 'Regulatory operations agent owner', sources: ['Data room: correspondence log', 'Submission records'],
+      owner: 'Regulatory operations agent owner', sources: [{ t: 'Data room: correspondence log', doc: 'VDR-03' }, 'Submission records'],
       guard: 'Reports dossier gaps; does not compile submissions.',
       status: 'Waiting to start the filing-readiness check' },
     { id: 'mw', group: 'core', name: 'Medical writing', level: 1, on: false, trigger: 'late',
@@ -815,7 +863,7 @@ const DATA = {
       status: 'Done: F-01 signed' },
     { id: 'sp-paed', group: 'spec', name: 'Paediatric', level: 2, on: true, trigger: 'paed',
       desc: 'Paediatric plans and waivers: what is required, drafted, submitted or agreed.',
-      owner: 'Paediatric specialist agent owner', sources: ['Health authority guidance', 'EPARs', 'Data room: correspondence log'],
+      owner: 'Paediatric specialist agent owner', sources: ['Health authority guidance', 'EPARs', { t: 'Data room: correspondence log', doc: 'VDR-03' }],
       guard: 'Marks an unknown as "cannot be confirmed", never as "not required".',
       status: 'Waiting for the expert view on F-02', wait: true },
     { id: 'sp-exp', group: 'spec', name: 'Expedited programmes', level: 2, on: false, trigger: 'exp',
@@ -833,16 +881,16 @@ const DATA = {
       owner: 'Companion diagnostics agent owner', sources: ['Health authority guidance', 'Public device databases'],
       guard: 'Flags diagnostic questions for expert review.',
       status: 'Not started' },
-    { id: 'sp-rm', group: 'spec', name: 'Risk management', level: 2, on: false,
+    { id: 'sp-rm', group: 'spec', name: 'Risk management', level: 2, on: false, trigger: 'late', trigWhy: 'a filing needs a risk management plan',
       desc: 'Risk management plans and risk minimisation measures.',
       owner: 'Risk management agent owner', sources: ['Public review documents', 'EPARs'],
       guard: 'Reports published measures; does not design new ones.',
-      status: 'Not started' },
-    { id: 'sp-promo', group: 'spec', name: 'Promotional review', level: 2, on: false,
-      desc: 'Promotional claims and materials. Usually needed only after approval.',
+      status: 'Waiting to start the risk management plan check' },
+    { id: 'sp-promo', group: 'spec', name: 'Promotional review', level: 2, on: false, trigger: 'filed', trigWhy: 'launch claims depend on the label under review',
+      desc: 'Promotional claims and materials. Not needed before a filing.',
       owner: 'Promotional review agent owner', sources: ['Product labels', 'Public enforcement letters'],
       guard: 'Reviews claims against the label; never approves materials.',
-      status: 'Not started' },
+      status: 'Waiting to start the launch claims check' },
 
     { id: 'orc', group: 'role', name: 'Orchestrator', level: 2, on: true, locked: true,
       desc: 'Plans the DD from the playbook, assigns activities and escalates to the RA DD lead.',
@@ -858,7 +906,7 @@ const DATA = {
       desc: 'Enforces "No source, no finding". Agent text and expert views never count as sources.',
       owner: 'Knowledge base owner', sources: ['Verified knowledge base', 'Finding format rules'],
       guard: 'Returns any claim without a source to the agent that wrote it.',
-      status: 'Checking sources on F-10 and F-11' },
+      status: 'Waiting for the newer inspection record on F-04' },
     { id: 'red', group: 'role', name: 'Red team', level: 2, on: true, locked: true,
       desc: 'Challenges findings the way a health authority reviewer would.',
       owner: 'Red team owner', sources: ['Health authority guidance', 'Public review documents', 'All findings in this DD'],
@@ -868,7 +916,7 @@ const DATA = {
       desc: 'Writes the briefing from verified findings, with every statement linked to its finding or request.',
       owner: 'DD playbook owner', sources: ['Verified findings in this DD only'],
       guard: 'Uses verified findings only; never recommends buying or not buying.',
-      status: 'Waiting for the combine step' },
+      status: 'Drafting the briefing. It becomes final after the combine step, from verified findings only.' },
 
     { id: 'o-cmc', group: 'other', name: 'CMC and technical development', level: 2, on: false,
       desc: 'Technical maturity: drug substance, drug product, manufacturing and supply.',
@@ -890,6 +938,9 @@ const DATA = {
 
   steps: ['Plan', 'Assign', 'Assess', 'Challenge', 'Combine', 'Escalate', 'Decide', 'Learn'],
   currentStep: 3,
+  /* Assess keeps running alongside Challenge: while any visible activity is in Backlog or
+     Agent working, the stepper shows it as "Still running", not "Done". */
+  ongoingStep: 2,
 
   columns: [
     { id: 'backlog', label: 'Backlog', note: 'Planned, not started' },
@@ -899,32 +950,35 @@ const DATA = {
     { id: 'signed', label: 'Signed off', note: 'Signed by the RA DD lead' }
   ],
 
-  /* Regulatory activities only. Each belongs to one agent; signed ones carry the time. */
+  /* Regulatory activities only. Each belongs to one agent; signed ones carry the time.
+     regions: the Request regions the activity covers (a card flags any region not in this DD). */
   activities: [
     { id: 'A-01', title: 'Map applicable guidance for the indication and product type', agent: 'reglead', col: 'signed', signed: '09:52' },
     { id: 'A-02', title: 'Confirm orphan designation status', agent: 'sp-orphan', col: 'signed', finding: 'F-01', signed: '09:48' },
     { id: 'A-03', title: 'Check breakthrough and other expedited designations', agent: 'reglead', col: 'signed', finding: 'F-08', signed: '10:18' },
     { id: 'A-04', title: 'Check inherited commitments', agent: 'reglead', col: 'signed', finding: 'F-07', signed: '10:18' },
     { id: 'A-05', title: 'Flag reimbursement and HTA risks to HEOR', agent: 'reglead', col: 'signed', finding: 'F-06', signed: '10:16' },
-    { id: 'A-06', title: 'Compare FDA and EMA requirements', agent: 'regional', col: 'signed', signed: '10:24' },
+    { id: 'A-06', title: 'Compare FDA and EMA requirements', agent: 'regional', col: 'signed', signed: '10:24', regions: ['FDA', 'EMA'] },
     { id: 'A-07', title: 'Assess the EU paediatric requirement', agent: 'sp-paed', col: 'expert', finding: 'F-02', request: 'R-01' },
     { id: 'A-08', title: 'Review drug-substance supply and comparability', agent: 'cmcreg', col: 'expert', finding: 'F-03', request: 'R-04' },
     { id: 'A-09', title: 'Check stability data in the quality module', agent: 'cmcreg', col: 'review', finding: 'F-10', request: 'R-05' },
     { id: 'A-10', title: 'Assess the early safety signal against the development path', agent: 'clin', col: 'review', finding: 'F-05', request: 'R-03' },
     { id: 'A-11', title: 'Check trial registration and results postings', agent: 'comp', col: 'review', finding: 'F-11' },
-    { id: 'A-12', title: 'Review the inspection history of the manufacturing sites', agent: 'cmcreg', col: 'review', finding: 'F-04', request: 'R-02' },
-    { id: 'A-13', title: 'Compare PMDA and NMPA requirements', agent: 'regional', col: 'working' },
+    { id: 'A-12', title: 'Review the inspection history of the manufacturing sites', agent: 'cmcreg', col: 'working', finding: 'F-04', request: 'R-02' },
+    { id: 'A-13', title: 'Compare PMDA and NMPA requirements', agent: 'regional', col: 'working', regions: ['PMDA', 'NMPA'] },
     { id: 'A-14', title: 'Compare target label claims with comparable labels', agent: 'label', col: 'working' },
     { id: 'A-15', title: 'Scan for guidance and precedents newer than the last review', agent: 'intel', col: 'working' },
-    { id: 'A-16', title: 'Global access considerations', agent: 'regional', col: 'backlog' },
+    { id: 'A-16', title: 'Global access considerations', agent: 'regional', col: 'backlog', regions: ['Global access'] },
     { id: 'A-17', title: 'Hunt for approval bottlenecks in every region', agent: 'reglead', col: 'backlog' },
-    { id: 'A-18', title: 'Collect regulatory inputs to PTRS', agent: 'reglead', col: 'backlog' },
-    { id: 'A-19', title: 'Draft the regulatory briefing', agent: 'syn', col: 'backlog' },
+    { id: 'A-18', title: 'Collect regulatory inputs to PTRS', agent: 'reglead', col: 'working' },
+    { id: 'A-19', title: 'Draft the regulatory briefing', agent: 'syn', col: 'working' },
     { id: 'A-20', title: 'Filing-readiness gap check against the NDA/MAA playbook (concept)', agent: 'ops', col: 'backlog' },
-    { id: 'A-21', title: 'Content gaps for a near-term filing', agent: 'mw', col: 'backlog' },
+    { id: 'A-21', title: 'Content gaps in the filing package', agent: 'mw', col: 'backlog' },
     { id: 'A-22', title: 'Check combination product requirements', agent: 'sp-combo', col: 'backlog' },
     { id: 'A-23', title: 'Check companion diagnostic requirements', agent: 'sp-cdx', col: 'backlog' },
-    { id: 'A-24', title: 'Check expedited pathway options in each region', agent: 'sp-exp', col: 'backlog' }
+    { id: 'A-24', title: 'Check expedited pathway options in each region', agent: 'sp-exp', col: 'backlog' },
+    { id: 'A-25', title: 'Check risk management plan readiness for the filing', agent: 'sp-rm', col: 'backlog' },
+    { id: 'A-26', title: 'Check planned launch claims against the label under review', agent: 'sp-promo', col: 'backlog' }
   ],
 
   /* kind: person (ink), agent (pencil), reviewer (cleared expert, not read in), external (licensor) */
@@ -939,9 +993,13 @@ const DATA = {
     { t: '10:37', actor: 'Evidence checker', kind: 'agent', text: 'returned F-09 to CMC regulatory: no source attached.' },
     { t: '10:35', actor: 'Licensor', kind: 'external', text: 'answered R-02. Filed in the ring-fenced repository; not released to the agents.' },
     { t: '10:30', actor: 'Licensor', kind: 'external', text: 'declined R-03 for now.' },
-    { t: '10:22', actor: 'Licensor', kind: 'external', text: 'answered R-04: no second site exists.' },
+    { t: '10:24', actor: 'RA DD lead', kind: 'person', text: 'signed off A-06.' },
+    { t: '10:23', actor: 'RA DD lead', kind: 'person', text: 'released Statement: no second drug-substance site (RSP-04) to the agents.' },
+    { t: '10:22', actor: 'Licensor', kind: 'external', text: 'replied to R-04: not provided, it does not exist. No second site is qualified or planned; the statement is filed in the ring-fenced repository.' },
     { t: '10:18', actor: 'RA DD lead', kind: 'person', text: 'signed F-07 and F-08.' },
+    { t: '10:16', actor: 'RA DD lead', kind: 'person', text: 'signed F-06: the hand-off to HEOR.' },
     { t: '09:58', actor: 'RA DD lead', kind: 'person', text: 'approved and sent R-02, R-03 and R-04 to the licensor.' },
+    { t: '09:52', actor: 'RA DD lead', kind: 'person', text: 'signed off A-01.' },
     { t: '09:48', actor: 'RA DD lead', kind: 'person', text: 'signed F-01.' },
     { t: '09:30', actor: 'Orchestrator', kind: 'agent', text: 'assigned 19 activities to the regulatory agents.' },
     { t: '09:12', actor: 'Orchestrator', kind: 'agent', text: 'built the plan from the DD playbook: 7 key questions.' },
@@ -953,7 +1011,7 @@ const DATA = {
     'Finding': 'A fact with a source.',
     'Risk': 'A sourced fact that could make approval or the deal harder.',
     'Gap: incomplete material': 'The licensor presents it as complete, but it is not submission-ready.',
-    'Gap: not generated': 'The material does not exist yet.',
+    'Gap: not generated': 'Not generated, as far as the sources show. It stays "to verify" until the licensor confirms.',
     'Cannot be confirmed': 'Cannot be decided from what the agents can read. Said plainly, never guessed.'
   },
   statuses: ['Verified', 'Draft', 'Challenged', 'Rejected', 'Flagged to HEOR'],
@@ -977,9 +1035,9 @@ const DATA = {
         { who: 'RA DD lead', kind: 'person', t: '09:48', text: 'Signed.' }
       ] },
     { id: 'F-02', type: 'Gap: not generated',
-      claim: 'No EU paediatric investigation plan has been drafted or agreed. One is likely required before a marketing application. To verify.',
+      claim: 'No EU paediatric investigation plan is in the data room or its correspondence log. One is likely required before a marketing application. Whether a draft exists is asked in R-01. To verify.',
       evidence: 'The correspondence log in the data room has no paediatric entries. A comparable product in the same disease area had an agreed plan.',
-      sources: [{ t: 'Regulatory correspondence log', tier: 'vdr' }, { t: 'EPAR', tier: 'public' }], confidence: 'Medium',
+      sources: [{ t: 'Regulatory correspondence log', tier: 'vdr', doc: 'VDR-03' }, { t: 'EPAR', tier: 'public' }], confidence: 'Medium',
       assumptions: 'No class waiver applies to this indication. The licensor may hold a draft that is not in the data room; asked in R-01.',
       status: 'Draft', prepared: 'sp-paed', request: 'R-01',
       challenge: { state: 'cleared', note: 'Whole log read, not searched' },
@@ -994,7 +1052,7 @@ const DATA = {
     { id: 'F-03', type: 'Risk',
       claim: 'Drug substance comes from a single external manufacturing site, and no second site is qualified or planned.',
       evidence: 'Company disclosure names one contract manufacturer. The licensor states that no second site is qualified or planned (R-04).',
-      sources: [{ t: 'Company disclosure', tier: 'public' }, { t: 'Statement: no second drug-substance site', tier: 'response' }], confidence: 'High',
+      sources: [{ t: 'Company disclosure', tier: 'public' }, { t: 'Statement: no second drug-substance site', tier: 'response', doc: 'RSP-04' }], confidence: 'High',
       assumptions: 'The licensor’s statement is current.',
       status: 'Draft', prepared: 'cmcreg', request: 'R-04',
       challenge: { state: 'cleared', note: 'Comparability sent for an expert view' },
@@ -1050,7 +1108,7 @@ const DATA = {
     { id: 'F-07', type: 'Finding',
       claim: 'Inherited commitments: checked, not applicable. The asset is not approved, so no post-marketing commitments exist.',
       evidence: 'No commitments found in company disclosures, public review documents or the correspondence log.',
-      sources: [{ t: 'Company disclosure', tier: 'public' }, { t: 'Regulatory correspondence log', tier: 'vdr' }], confidence: 'High',
+      sources: [{ t: 'Company disclosure', tier: 'public' }, { t: 'Regulatory correspondence log', tier: 'vdr', doc: 'VDR-03' }], confidence: 'High',
       assumptions: 'No private agreements with health authorities outside these records.',
       status: 'Verified', prepared: 'reglead',
       challenge: { state: 'cleared', note: 'Search scope confirmed' },
@@ -1063,9 +1121,9 @@ const DATA = {
         { who: 'RA DD lead', kind: 'person', t: '10:18', text: 'Signed.' }
       ] },
     { id: 'F-08', type: 'Finding',
-      claim: 'Breakthrough designation: checked, not applicable. No public record of a request or grant.',
+      claim: 'Breakthrough designation: none on record. No public record of a request or grant.',
       evidence: 'No designation found in public records, company disclosures or the correspondence log.',
-      sources: [{ t: 'Company disclosure', tier: 'public' }, { t: 'Regulatory correspondence log', tier: 'vdr' }], confidence: 'Medium',
+      sources: [{ t: 'Company disclosure', tier: 'public' }, { t: 'Regulatory correspondence log', tier: 'vdr', doc: 'VDR-03' }], confidence: 'Medium',
       assumptions: 'A request may exist that is not yet public.',
       status: 'Verified', prepared: 'reglead',
       challenge: { state: 'cleared', note: 'Assumption recorded' },
@@ -1092,8 +1150,8 @@ const DATA = {
     { id: 'F-10', type: 'Gap: incomplete material',
       claim: 'The drug-product stability report is presented as complete, but its long-term data cover 12 of the 24 months proposed for shelf life. Not submission-ready as it stands.',
       evidence: 'The stability report in the data room, released to the agents, ends at the 12-month time point.',
-      sources: [{ t: 'Stability report, drug product', tier: 'vdr' }], confidence: 'High',
-      assumptions: 'Later time points may exist but were not put in the data room. Request R-05 asks, once you approve it.',
+      sources: [{ t: 'Stability report, drug product', tier: 'vdr', doc: 'VDR-04' }], confidence: 'High',
+      assumptions: 'Later time points may exist but were not put in the data room. Request R-05 asks the licensor for them.',
       status: 'Draft', prepared: 'cmcreg', request: 'R-05',
       challenge: { state: 'cleared', note: 'Full report read, not the summary' },
       expert: { state: 'drafted', reviewer: 'CMC regulatory expert' },
@@ -1120,24 +1178,26 @@ const DATA = {
       ] }
   ],
 
-  /* Sanitised questions. Strings are kept; {r} is removed for the expert; {g} replaces {was}. */
+  /* Sanitised questions. Strings are kept; {r} is removed for the expert; {g} replaces {was}.
+     In an {r}, "@asset" stands for the asset / code name as set on the Request screen (sanParts fills
+     it in), so the lead checks the removal of the name actually in use. */
   sanitised: {
     'F-02': { reviewer: 'Paediatric regulatory expert', parts: [
-      'For ', { r: 'ABC-123' }, ', an oral small molecule in Phase 2 for ', { g: 'a rare disease', was: 'a rare metabolic disorder' },
-      ', no EU paediatric investigation plan is drafted or agreed. Is a plan likely to be required before a marketing application, and could a waiver apply?'] },
+      'For ', { r: '@asset' }, ', an oral small molecule in Phase 2 for ', { g: 'a rare disease', was: 'a rare metabolic disorder' },
+      ', no EU paediatric investigation plan has been found. Is a plan likely to be required before a marketing application, and could a waiver apply?'] },
     'F-03': { reviewer: 'CMC regulatory expert', parts: [
-      { r: 'ABC-123' }, ' sources its drug substance from ', { g: 'one external manufacturer', was: 'one named contract manufacturer' },
+      { r: '@asset' }, ' sources its drug substance from ', { g: 'one external manufacturer', was: 'one named contract manufacturer' },
       ', and no second site is planned. If a second site were added before filing, what comparability data would a health authority expect, and how long might that take?'] },
     'F-05': { reviewer: 'Clinical regulatory expert', parts: [
-      'A Phase 1 publication on ', { r: 'ABC-123' }, ' reports more adverse events at the highest dose. Phase 2 safety data are not available. For ',
+      'A Phase 1 publication on ', { r: '@asset' }, ' reports more adverse events at the highest dose. Phase 2 safety data are not available. For ',
       { g: 'a rare-disease oral small molecule', was: 'a rare metabolic disorder, oral small molecule' },
       ', how would a health authority weigh this signal at the end of Phase 2?'] },
     'F-10': { reviewer: 'CMC regulatory expert', parts: [
-      'The drug-product stability report for ', { r: 'ABC-123' }, ' has 12 months of long-term data, and ', { g: 'a longer shelf life', was: 'a 24-month shelf life' },
+      'The drug-product stability report for ', { r: '@asset' }, ' has 12 months of long-term data, and ', { g: 'a longer shelf life', was: 'a 24-month shelf life' },
       ' is proposed. What would a health authority accept at filing, and is extrapolation realistic for ', { g: 'an oral solid dose form', was: 'this tablet' }, '?'] },
     'F-11': { reviewer: 'Disclosure compliance expert', parts: [
-      'A completed Phase 1 trial ', { r: 'registry ID' }, ' run by ', { r: 'Licensor' },
-      ' has no results posted on the public registry. Which posting duties typically apply to a Phase 1 trial of this kind, and in which jurisdictions?'] }
+      'A completed Phase 1 trial, ', { r: '@asset-101' }, ', run by ', { r: '[licensor name]' },
+      ', has no results posted on the public registry. Which posting duties typically apply to a Phase 1 trial of this kind, and in which jurisdictions?'] }
   },
   sanChecks: ['Asset and code name removed', 'Licensor, sites and trial identifiers removed', 'Rare indication and other unusual details generalised', 'Dates and timelines removed or rounded'],
   sanConfirm: 'I checked that a cleared expert could not tell which asset, licensor or deal this is.',
@@ -1158,22 +1218,22 @@ const DATA = {
   },
   requestChannel: 'the data room Q&A',
   requests: [
-    { id: 'R-01', finding: 'F-02', status: 'sent', due: '09 Oct 09:00',
+    { id: 'R-01', finding: 'F-02', status: 'sent', due: '08 Oct 12:00',
       text: 'Is an EU paediatric investigation plan drafted, submitted or agreed? Please share the latest version and any correspondence on it.',
-      drafted: { by: 'Paediatric', t: '10:37' }, sent: '10:46' },
-    { id: 'R-02', finding: 'F-04', status: 'answered', due: '09 Oct 09:00',
+      drafted: { by: 'Paediatric', t: '10:36' }, sent: '10:46' },
+    { id: 'R-02', finding: 'F-04', status: 'answered', due: '08 Oct 12:00',
       text: 'Please provide the closure correspondence for the inspection observation at the drug-substance site.',
       drafted: { by: 'CMC regulatory', t: '09:51' }, sent: '09:58',
       closed: { t: '10:35', note: 'Closure letter and CAPA summary provided.' }, doc: 'RSP-02' },
-    { id: 'R-03', finding: 'F-05', status: 'declined', due: '09 Oct 09:00',
+    { id: 'R-03', finding: 'F-05', status: 'declined', due: '08 Oct 12:00',
       text: 'Please share the available Phase 2 safety data, including adverse events by dose group.',
       drafted: { by: 'Clinical regulatory', t: '09:52' }, sent: '09:58',
       closed: { t: '10:30', note: 'We will share Phase 2 data after exclusivity is agreed.' } },
-    { id: 'R-04', finding: 'F-03', status: 'absent', due: '09 Oct 09:00',
+    { id: 'R-04', finding: 'F-03', status: 'absent', due: '08 Oct 12:00',
       text: 'Is a second drug-substance site qualified or planned? Please share its qualification status or plans.',
       drafted: { by: 'CMC regulatory', t: '09:53' }, sent: '09:58',
       closed: { t: '10:22', note: 'No second site is qualified or planned.' }, doc: 'RSP-04' },
-    { id: 'R-05', finding: 'F-10', status: 'draft', due: '09 Oct 09:00',
+    { id: 'R-05', finding: 'F-10', status: 'draft', due: '08 Oct 12:00',
       text: 'Please provide long-term stability data beyond 12 months for the drug product, or the plan and timing to generate them.',
       drafted: { by: 'CMC regulatory', t: '10:49' } }
   ],
@@ -1185,7 +1245,7 @@ const DATA = {
       { label: 'Applicable guidance for therapeutic area and product type', state: 'checked' } ] },
     { group: 'Special designations', items: [
       { label: 'Orphan', state: 'checked', ref: 'F-01' },
-      { label: 'Breakthrough', state: 'na', ref: 'F-08' },
+      { label: 'Breakthrough: none on record', state: 'checked', ref: 'F-08' },
       { label: 'Paediatric requirements', state: 'open', ref: 'F-02' } ] },
     { group: 'Regions', items: [
       { label: 'FDA', state: 'checked' },
@@ -1202,21 +1262,22 @@ const DATA = {
     { group: 'Bottleneck hunt', items: [
       { label: 'What could make approval hard in any region', state: 'notchecked' } ] },
     { group: 'PTRS inputs', items: [
-      { label: 'Regulatory inputs to the PTRS calculation', state: 'notchecked' } ] },
+      { label: 'Regulatory inputs to the PTRS calculation', state: 'open' } ] },
     { group: 'Reimbursement and HTA', items: [
       { label: 'Reimbursement and HTA risks', state: 'heor', ref: 'F-06' } ] },
     { group: 'Inherited commitments', items: [
       { label: 'Post-marketing and other commitments', state: 'na', ref: 'F-07' } ] },
     { group: 'Filing readiness', items: [ { dyn: 'filing' } ] }
   ],
+  /* out: a region a person took out of this DD on the Request screen. Skipped, never "checked". */
   checklistStates: {
     checked: 'Checked', na: 'Checked: not applicable', open: 'Open', notchecked: 'Not checked yet',
-    cannot: 'Could not confirm', heor: 'Flagged to HEOR'
+    cannot: 'Could not confirm', heor: 'Flagged to HEOR', out: 'Out of scope'
   },
 
   briefing: {
     title: 'Regulatory briefing',
-    notice: 'This briefing prepares the cross-functional discussion. It does not recommend buying or not buying. Expert views come from cleared reviewers who were not read in; they are advice, not evidence.',
+    notice: 'This briefing prepares the cross-functional discussion. It does not recommend buying or not buying. Expert views come from cleared internal experts who were not read in; they are advice, not evidence.',
     sections: [
       { h: 'What was checked', items: [
         { s: 'Applicable guidance and special designations for a rare metabolic disorder, oral small molecule.', refs: ['F-01', 'F-02', 'F-08'] },
@@ -1224,7 +1285,9 @@ const DATA = {
         { s: 'Stability data in the quality module.', refs: ['F-10'] },
         { s: 'Trial registration and results postings.', refs: ['F-11'] },
         { s: 'Inherited commitments: checked, not applicable.', refs: ['F-07'] },
-        { s: 'Filing readiness against the NDA/MAA playbook: not applicable at Phase 2.', refs: [] } ] },
+        /* No finding or request behind it, so it names its basis: the playbook's stage rule. frag-briefing
+           rewrites the part before the first full stop for the stage set; keep that part's wording in step. */
+        { s: 'Filing readiness against the NDA/MAA playbook (concept): not applicable at Phase 2. The DD playbook adds this check at Phase 3 or once filed.', refs: [] } ] },
       { h: 'What was considered', items: [
         { s: 'Whether one early safety signal affects the development path.', refs: ['F-05'] },
         { s: 'Reimbursement and HTA: flagged to HEOR, not assessed.', refs: ['F-06'] } ] },
@@ -1237,9 +1300,9 @@ const DATA = {
         { s: 'Results of a completed trial may be overdue for posting. To verify.', refs: ['F-11'] } ] },
       { h: 'Content gaps', items: [
         { s: 'Incomplete material: the stability report is presented as complete but is not submission-ready.', refs: ['F-10'] },
-        { s: 'Not generated: no EU paediatric investigation plan exists yet.', refs: ['F-02'] } ] },
+        { s: 'Not generated (to verify): no EU paediatric investigation plan is in the data room. Asked in R-01.', refs: ['F-02', 'R-01'] } ] },
       { h: 'Cannot be confirmed', items: [
-        { s: 'Whether the inspection observation was closed. The closure letter is with the DD team and was not released to the agents.', refs: ['F-04', 'R-02'] } ] },
+        { s: 'Whether the inspection observation was closed. The closure letter is in the ring-fenced repository; the agents could not read it when this was drafted.', refs: ['F-04', 'R-02'] } ] },
       { h: 'Not provided by the licensor', items: [
         { s: 'Phase 2 safety data: the licensor chose not to provide them at this stage.', refs: ['R-03', 'F-05'] },
         { s: 'Second-site qualification: it does not exist.', refs: ['R-04'] } ] },
@@ -1248,12 +1311,12 @@ const DATA = {
         { s: 'Ask for long-term stability data beyond 12 months.', refs: ['F-10', 'R-05'] },
         { s: 'Ask again for Phase 2 safety data once exclusivity is agreed.', refs: ['F-05', 'R-03'] } ] },
       { h: 'Open questions', items: [
-        { s: 'Is an EU paediatric investigation plan drafted or planned? Asked; awaiting the licensor.', refs: ['F-02', 'R-01'] },
+        { s: 'Is an EU paediatric investigation plan drafted, submitted or agreed? Asked in R-01; awaiting the licensor.', refs: ['F-02', 'R-01'] },
         { s: 'Was the inspection observation closed? The RA DD lead reads the closure letter.', refs: ['F-04', 'R-02'] } ] }
     ],
     ptrs: [
-      { input: 'Designation status', value: 'US orphan held; breakthrough not applicable', refs: ['F-01', 'F-08'] },
-      { input: 'Paediatric requirement', value: 'Likely in the EU; no plan exists yet. To verify.', refs: ['F-02'] },
+      { input: 'Designation status', value: 'US orphan held; no breakthrough designation on record', refs: ['F-01', 'F-08'] },
+      { input: 'Paediatric requirement', value: 'Likely in the EU; no plan found in the data room. To verify.', refs: ['F-02'] },
       { input: 'CMC readiness', value: 'Single drug-substance site; stability data not submission-ready', refs: ['F-03', 'F-10'] },
       { input: 'Inspection history', value: 'One observation; closure cannot be confirmed by the agents', refs: ['F-04'] },
       { input: 'Safety signal', value: 'Low confidence; Phase 2 data not provided', refs: ['F-05'] }
@@ -1262,10 +1325,10 @@ const DATA = {
 
   decisions: [
     { id: 'D-1', title: 'Deal-breakers', owner: 'DD decision owner', initials: 'R.L.',
-      draft: 'No deal-breaker found with a verified source. F-03, F-05 and F-10 could become one, depending on the licensor’s answers.',
+      draft: 'No deal-breaker found with a verified source. F-03, F-05 and F-10 could become one: F-05 and F-10 depend on the licensor’s answers; F-03 on how soon a second site can be qualified.',
       prepared: 'syn', challenge: { state: 'cleared', note: 'Reviewed against findings' } },
     { id: 'D-2', title: 'Overall assessment', owner: LEAD_YOU, initials: LEAD_INITIALS,
-      draft: 'Regulatory risk looks manageable. Two content gaps and one item that cannot be confirmed need answers from the licensor before the discussion.',
+      draft: 'Regulatory risk looks manageable. Before the discussion, two content gaps need answers from the licensor (R-01, R-05), and the RA DD lead reads the closure letter for the item the agents cannot confirm (F-04, R-02).',
       prepared: 'syn', challenge: { state: 'cleared', note: 'Open questions listed' } },
     { id: 'D-3', title: 'Recommendation', owner: 'DD decision owner', initials: 'R.L.',
       draft: 'Not drafted by agents. Made by people in the cross-functional discussion.',
@@ -1300,9 +1363,9 @@ const DATA = {
       summary: 'The regulatory function, specialists, team roles and other functions',
       holds: [
         'Regulatory function: lead, clinical, CMC, regional, labelling, intelligence, disclosure compliance, operations, medical writing',
-        'Specialists switched on by the asset: paediatric, orphan, expedited, combination product, companion diagnostic, risk management, promotional',
+        'Specialists switched on by the asset: by classification (orphan, paediatric, expedited, combination product, companion diagnostic) or by stage (risk management from Phase 3, promotional review once filed)',
         'Team roles: orchestrator, sanitiser, evidence checker, red team, synthesiser',
-        'Other functions (CMC and TD, quality, safety, medical affairs): in the library, not selected for a regulatory DD',
+        'Other functions (CMC and technical development, quality, safety, medical affairs): in the library, not selected for a regulatory DD',
         'Each defined by role, knowledge sources, tools, guardrails, human owner, autonomy level'
       ],
       owner: 'Agent owners, one per agent',
@@ -1321,7 +1384,7 @@ const DATA = {
       summary: 'One per use case: questions, agents, sources, outputs, decisions for people',
       chips: [{ t: 'Due diligence: MVP', c: 'mvp' }, { t: 'NDA/MAA filing readiness: concept', c: 'concept' }, { t: 'Inspections: concept', c: 'concept' }, { t: 'Disaster response: concept', c: 'concept' }, { t: 'Rapid response: concept', c: 'concept' }],
       holds: [
-        'Key questions and checklist, keeping "checked: not applicable", "not checked" and "could not confirm" apart',
+        'Key questions and checklist, keeping "checked: not applicable", "not checked yet" and "could not confirm" apart',
         'Which agents to select by stage and classification, and which sources',
         'Outputs, decisions reserved for people, autonomy ceiling',
         'Other playbooks as references: for a late-stage asset, the NDA/MAA playbook drives a filing-readiness gap check'
@@ -1329,17 +1392,17 @@ const DATA = {
       owner: 'Playbook owner',
       why: 'A new use case starts here, so the layers below stay unchanged.' }
   ],
-  humanRoles: ['RA DD lead (read in)', 'Sanitised reviewer', 'Decision owner', 'Agent owner', 'Playbook owner'],
+  humanRoles: ['RA DD lead (read in)', 'Cleared expert (not read in)', 'Decision owner', 'Agent owner', 'Playbook owner'],
   archCallouts: [
     { h: 'Autonomy is a ceiling, not a layer', t: 'Each playbook sets it: due diligence L2 Collaborate, inspections L1 Assist. Agents can earn more over time.' },
     { h: 'Scalability test', t: 'A new use case adds a playbook and a few agents, never a new trust or evidence layer.' },
-    { h: 'Knowledge tiers', t: 'Agents read public sources and the data room documents the RA DD lead releases. Everything else stays with the DD team.' }
+    { h: 'Knowledge tiers', t: 'Agents read public sources, plus the data room documents and licensor answers the RA DD lead releases. Everything else stays with the DD team.' }
   ],
   confModel: {
     lead: 'RA DD lead', leadSub: 'Read in: sees everything',
     agents: 'Regulatory agents', agentsSub: 'Read only what is released',
     channel: 'Sanitised questions leave only after the lead approves the redaction. Signed views come back as advice, not evidence.',
-    experts: 'Cleared experts', expertsSub: 'Trained and cleared, not read in'
+    experts: 'Cleared experts', expertsSub: 'Internal, trained and cleared, not read in'
   }
 };
 
@@ -1359,6 +1422,8 @@ const state = {
   log: [],           // activity entries added in this session, newest first
   signed: {},        // decision id -> time
   justSigned: null,  // id whose signature animates on the next render
+  fields: {},        // input id -> value typed by a person (Request fields, the feedback draft)
+  thread: {},        // finding id -> thread entries added by a person in this session
   typeFilter: new Set(),
   stFilter: new Set(),
   otherOpen: false,
@@ -1373,7 +1438,20 @@ const $ = (sel, el) => (el || document).querySelector(sel);
 const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = s => String(s).replace(/[&<>"']/g, c => ESC[c]);
-const nowHHMM = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+/* Demo clock: the illustrative day's last event is at 10:52, so a person's actions are stamped from
+   10:53 onwards, moving with real minutes. The computer clock would put a morning demo's sign-offs
+   before the agents had drafted the work. */
+const DEMO_T0 = Date.now();
+const DEMO_START_MIN = 10 * 60 + 53;
+/* The illustrative day, 07 Oct 2026, as a wall-clock midnight. Deadlines are wall-clock times too, so
+   both are read as UTC: the time left never shifts with the computer's time zone or a DST change. */
+const DEMO_DAY = Date.UTC(2026, 9, 7);
+/* Minutes since the illustrative day's midnight, on the demo clock. */
+const demoMinutes = () => DEMO_START_MIN + Math.floor((Date.now() - DEMO_T0) / 60000);
+const nowHHMM = () => {
+  const m = demoMinutes() % (24 * 60);
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+};
 
 const findingById = id => DATA.findings.find(f => f.id === id);
 const agentById = id => DATA.agents.find(a => a.id === id);
@@ -1385,6 +1463,14 @@ const isLate = () => DATA.request.lateStages.indexOf(state.stage) > -1;
 const selectedCount = () => state.selected.size;
 const releasedCount = () => DATA.knowledge.docs.filter(d => d.kind === 'vdr' && state.release[d.id] === 'yes').length;
 const vdrTotal = () => DATA.knowledge.docs.filter(d => d.kind === 'vdr').length;
+/* Agents the playbook brings in for a development stage: trigger 'late' at Phase 3 or Filed, 'filed' once filed. */
+const stageAgentIds = stage => DATA.agents.filter(a =>
+  (a.trigger === 'late' && DATA.request.lateStages.indexOf(stage) > -1) ||
+  (a.trigger === 'filed' && DATA.request.filedStages.indexOf(stage) > -1)).map(a => a.id);
+/* "A", "A and B", "A, B and C" (plain text; escape the result). */
+const andList = list => list.length > 1 ? list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1] : list.join('');
+/* The asset / code name: what a person typed on the Request screen, else the loaded name. */
+const assetName = () => String(state.fields['f-name'] || '').trim() || DATA.dd.asset;
 
 /* Effective values: data as loaded, overridden by what a person did in this session. */
 const expertOf = f => state.expert[f.id] || f.expert;
@@ -1397,12 +1483,23 @@ const reqSentAt = r => (state.req[r.id] && state.req[r.id].t) || r.sent || '';
 const actColOf = a => state.actCol[a.id] || a.col;
 const actSignedAt = a => state.actSigned[a.id] || a.signed || '';
 
+/* Documents behind a finding (its data room or licensor sources, and its request's answer) whose
+   release a person changed in this session. The agent drafted the item from the old release, so it
+   has to re-check it: until then the item cannot be signed (signBlock), and its record says why. */
+function releaseChangedDocs(f) {
+  const r = f.request ? reqById(f.request) : null;
+  const ids = f.sources.map(s => s.doc).concat(r && r.doc ? [r.doc] : []).filter(Boolean);
+  return ids.filter((id, i) => ids.indexOf(id) === i).map(docById)
+    .filter(d => d && state.release[d.id] !== d.release);
+}
+
 /* Why a finding cannot be signed right now; '' means it can be signed; 'done' means signed, rejected or not awaiting. */
 function signBlock(f) {
   if (state.findSigned[f.id] || f.approval.state !== 'awaiting') return 'done';
   if (f.challenge.state === 'open') return 'Sign after the red-team challenge closes';
+  if (releaseChangedDocs(f).length) return 'Sign after the agent re-checks this item: a source’s release changed';
   const ex = expertOf(f);
-  if (ex.state === 'drafted') return 'Approve or drop the sanitised question first';
+  if (ex.state === 'drafted') return 'Approve the sanitised question first';
   if (ex.state === 'sent') return 'Waiting for the expert view';
   return '';
 }
@@ -1425,7 +1522,10 @@ const refBtn = id => /^R-/.test(id)
   ? `<button type="button" class="ref" data-action="open-request" data-id="${esc(id)}" aria-label="Open licensor request ${esc(id)}">${esc(id)}</button>`
   : `<button type="button" class="ref" data-action="open-finding" data-id="${esc(id)}" aria-label="Open finding ${esc(id)}">${esc(id)}</button>`;
 const refs = list => list.map(refBtn).join(', ');
-const linkify = text => esc(text).replace(/\b[FR]-\d{2}\b/g, m => refBtn(m));
+/* A reference keeps its brackets on the same line: "(R-04)." never breaks after the "(". Data room and
+   repository ids ("(RSP-04)", "VDR-04") stay plain text, but never break at their hyphen either. */
+const linkify = text => esc(text).replace(/(\(?)\b([FR]-\d{2}|(?:VDR|RSP)-\d{2})\b(\)?)/g,
+  (all, open, id, close) => `<span class="nowrap">${open}${/^[FR]-/.test(id) ? refBtn(id) : id}${close}</span>`);
 
 const head = (title, lede, right) =>
   `<div class="screen-head"><div><h1 tabindex="-1" id="screenTitle">${title}</h1>${lede ? `<p class="lede">${lede}</p>` : ''}</div>${right || ''}</div>`;
@@ -1459,13 +1559,20 @@ function docRow(d, where) {
 }
 
 /* Sanitised text: mode 'full' is what the lead sees, mode 'out' is what the expert sees. */
+/* The styles (underline, highlighter, dashed underline) also have a visually hidden text equivalent,
+   so a screen-reader user can check the redaction too. */
+/* The asset / code name as the identifier to remove: what a person typed on the Request screen, else
+   the loaded code name without its "(illustrative)" tag. Fills the "@asset" marker in DATA.sanitised. */
+const sanAsset = () => assetName().replace(/\s*\(illustrative\)\s*$/i, '') || assetName();
 function sanParts(parts, mode) {
   return parts.map(p => {
     if (typeof p === 'string') return esc(p);
     if (p.r) return mode === 'full'
-      ? `<span class="will-redact">${esc(p.r)}</span>`
+      ? `<span class="will-redact">${esc(String(p.r).replace('@asset', sanAsset()))}</span><span class="visually-hidden"> (will be removed)</span>`
       : `<span class="redact" role="img" aria-label="removed"></span>`;
-    return mode === 'full' ? `<span class="will-gen">${esc(p.was)}</span>` : `<span class="gen">${esc(p.g)}</span>`;
+    return mode === 'full'
+      ? `<span class="will-gen">${esc(p.was)}</span><span class="visually-hidden"> (will be generalised to: ${esc(p.g)})</span>`
+      : `<span class="gen">${esc(p.g)}</span><span class="visually-hidden"> (generalised)</span>`;
   }).join('');
 }
 
@@ -1497,20 +1604,21 @@ function expCell(ex, compact) {
     na: { cls: '', who: 'Not needed' },
     drafted: { cls: 'is-open', who: 'Question awaits your approval' },
     sent: { cls: '', who: 'With the ' + lcRole(ex.reviewer) },
-    returned: { cls: 'is-back', who: 'View back from the ' + lcRole(ex.reviewer) }
+    returned: { cls: 'is-back', who: 'View back from the ' + lcRole(ex.reviewer), ic: ICON.check }
   };
   const m = map[ex.state] || map.none;
   let sub = '';
   if (!compact && ex.state === 'sent') sub = `Sent ${ex.when} · not read in`;
-  if (!compact && ex.state === 'returned') sub = `Back ${ex.back} · advice, not evidence`;
-  return `<div class="cell cell-exp ${m.cls}"><span class="caps">Expert review</span><span class="who">${esc(m.who)}</span>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}</div>`;
+  if (!compact && ex.state === 'returned') sub = `Signed ${ex.back} · advice, not evidence`;
+  return `<div class="cell cell-exp ${m.cls}"><span class="caps">Expert review</span><span class="who">${m.ic || ''}<span>${esc(m.who)}</span></span>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}</div>`;
 }
 function signedInner(role, initials, when, animate) {
   return `<span class="caps">Approved</span><span class="role">${esc(role)}</span>` +
     `<span class="sig${animate ? ' anim' : ''}" aria-hidden="true">${esc(initials)}</span>` +
     `<span class="when">Signed ${esc(when)}</span>`;
 }
-/* o: { compact, action, id, block, animate }. A Sign button shows only when action is set and nothing blocks. */
+/* o: { compact, action, id, block, animate, label }. A Sign button shows only when action is set and nothing
+   blocks; label gives it a name that says what is signed ("Sign F-03"). */
 function apprCell(ap, o) {
   o = o || {};
   if (ap.state === 'signed') {
@@ -1520,21 +1628,22 @@ function apprCell(ap, o) {
     return `<div class="cell cell-appr is-rejected"><span class="caps">Approved</span><span class="who">${ICON.cross}<span>Not for approval</span></span></div>`;
   }
   const btn = o.action && !o.block
-    ? `<button type="button" class="btn btn-primary btn-sm" data-action="${esc(o.action)}" data-id="${esc(o.id)}">Sign</button>` : '';
+    ? `<button type="button" class="btn btn-primary btn-sm" data-action="${esc(o.action)}" data-id="${esc(o.id)}"${o.label ? ` aria-label="${esc(o.label)}"` : ''}>Sign</button>` : '';
   const why = !o.compact && o.block && o.block !== 'done' ? `<span class="sub">${esc(o.block)}</span>` : '';
   return `<div class="cell cell-appr is-awaiting"><span class="caps">Approved</span><span class="await-row"><span class="await">Awaiting ${esc(ap.role)}</span>${btn}</span>${why}</div>`;
 }
-/* o: { prepared, challenge, expert?, approval, compact?, action?, id?, block?, animate? }. With expert set, the strip has four cells. */
+/* o: { prepared, challenge, expert?, approval, compact?, action?, id?, block?, animate?, label? }. With expert set, the strip has four cells. */
 function strip(o) {
   const four = !!o.expert;
   return `<div class="strip${four ? ' four' : ''}${o.compact ? ' compact' : ''}" role="group" aria-label="Sign-off">` +
     prepCell(o.prepared) + chalCell(o.challenge, o.compact) + (four ? expCell(o.expert, o.compact) : '') +
-    apprCell(o.approval, { compact: o.compact, action: o.action, id: o.id, block: o.block, animate: o.animate }) + `</div>`;
+    apprCell(o.approval, { compact: o.compact, action: o.action, id: o.id, block: o.block, animate: o.animate, label: o.label }) + `</div>`;
 }
 /* The four-cell strip for a finding, with session state applied. */
 function findingStrip(f, compact) {
   return strip({ prepared: f.prepared, challenge: f.challenge, expert: expertOf(f), approval: approvalOf(f),
-    compact: compact, action: compact ? null : 'sign-finding', id: f.id, block: signBlock(f), animate: state.justSigned === f.id });
+    compact: compact, action: compact ? null : 'sign-finding', id: f.id, block: signBlock(f), animate: state.justSigned === f.id,
+    label: 'Sign ' + f.id });
 }
 
 /* ================= Registries: each screen fragment fills these ================= */
@@ -1553,14 +1662,21 @@ function signFinding(fid) {
   let actId = null;
   DATA.activities.filter(a => a.finding === fid).forEach(a => { state.actCol[a.id] = 'signed'; state.actSigned[a.id] = when; actId = a.id; });
   state.justSigned = fid;
+  addThread(fid, 'Signed.');
   addLog(LEAD, 'person', `signed ${fid}.`);
   return actId;
 }
-/* Where focus should land after an action on a finding, on the current screen. */
+/* A person's action, added to the end of a finding's red-team thread for this session. */
+function addThread(fid, text) {
+  (state.thread[fid] = state.thread[fid] || []).push({ who: LEAD, kind: 'person', t: nowHHMM(), text: text });
+}
+/* Where focus should land after an action on a finding, on the current screen. Targets are tried in
+   order ('|'); 'opener' is the control that opened the drawer, or its card, request or agent; the
+   screen title is the last resort (render() adds it). */
 function focusAfter(fid, actId) {
-  if (state.route === 'run' && actId) return 'card:' + actId;
-  if (state.route === 'findings') return 'id:fid-' + fid;
-  return 'title';
+  if (state.route === 'findings') return 'id:fid-' + fid + '|id:resultCount';
+  if (state.route === 'run' && actId) return 'card:' + actId + '|opener';
+  return 'opener';
 }
 
 /* ================= Toast ================= */
@@ -1575,9 +1691,46 @@ function toast(msg) {
 
 /* ================= Drawer shell ================= */
 let lastFocus = null;
+/* The control that opened the drawer, described so that it (or the card, request, agent or Needs you
+   list around it) can be found again after the screen re-renders: { sel, index, count, host }. */
+let drawerOpener = null;
+let drawerClosedAt = -Infinity;   // performance.now() of the last close
+let drawerOpenedAt = -Infinity;   // performance.now() of the last open, or the last change of drawer content
+let renderedAt = -Infinity;       // performance.now() of the last render() of a screen
+/* The second click of a double-click lands on whatever the first click put under the pointer: the
+   drawer it opened (or the scrim beside it), the page behind the drawer it closed, or the re-drawn
+   screen (a switch, or a card that moved to another column, puts another control there). Such a
+   click is dropped wherever it lands (the click handler and the scrim both ask this). */
+function staleDoubleClick(e) {
+  return e.detail > 1 && performance.now() - Math.max(drawerClosedAt, drawerOpenedAt, renderedAt) < 600;
+}
+function describeOpener(el) {
+  const main = $('#main');
+  if (!el || el === main || !main.contains(el)) return null;
+  const hostEl = el.parentElement && el.parentElement.closest('[id][tabindex="-1"]');
+  const host = hostEl && hostEl !== main && main.contains(hostEl) ? hostEl : null;
+  const a = el.getAttribute('data-action'), id = el.getAttribute('data-id');
+  const sel = a ? `[data-action="${CSS.escape(a)}"]` + (id ? `[data-id="${CSS.escape(id)}"]` : '')
+    : (el.id ? '#' + CSS.escape(el.id) : null);
+  const list = sel ? $$(sel, host || main) : [];
+  return { sel: sel, index: list.indexOf(el), count: list.length, host: host ? host.id : null };
+}
+/* The opener in the re-rendered screen: the same control if the screen still has as many of them,
+   else its host. Returns { el, host } or null. */
+function openerTarget() {
+  const o = drawerOpener, main = $('#main');
+  if (!o) return null;
+  const host = o.host ? document.getElementById(o.host) : null;
+  if (o.sel && o.index > -1) {
+    const list = $$(o.sel, host || main);
+    if (list.length === o.count && list[o.index]) return { el: list[o.index], host: false };
+  }
+  return host && main.contains(host) ? { el: host, host: true } : null;
+}
 function showDrawer(html) {
   const d = $('#drawer');
-  if (d.hidden) lastFocus = document.activeElement;
+  if (d.hidden) { lastFocus = document.activeElement; drawerOpener = describeOpener(lastFocus); }
+  drawerOpenedAt = performance.now();
   d.innerHTML = html;
   $('#scrim').hidden = false;
   d.hidden = false;
@@ -1592,16 +1745,25 @@ function closeDrawer(skipFocus) {
   d.hidden = true;
   $('#scrim').hidden = true;
   document.body.style.overflow = '';
-  if (!skipFocus && lastFocus && document.contains(lastFocus)) lastFocus.focus();
+  drawerClosedAt = performance.now();
+  if (skipFocus) return;
+  if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+  else { const t = $('#screenTitle'); t && t.focus(); }   // the opener has gone: never leave focus on the page body
 }
 
 
 /* ======================= frag-request.js ======================= */
 /* Request screen (route "request"): mode, asset and classification, key questions,
    access and confidentiality, and what the agents may read. No action here re-renders
-   the screen, so anything typed into the fields survives every click and change. */
+   the screen, and typed fields are kept in state.fields, so they also survive leaving
+   the screen and coming back. */
 
-const requestLateHTML = () => isLate() ? `<p class="late-note">${esc(DATA.request.lateNote)}</p>` : '';
+/* Late stages bring in the filing agents; once filed, promotional review joins too. */
+const requestLateHTML = () => isLate()
+  ? `<p class="late-note">${esc(DATA.request.lateNote)}${DATA.request.filedStages.indexOf(state.stage) > -1 ? ' ' + esc(DATA.request.filedNote) : ''}</p>`
+  : '';
+/* A field's value: what the person typed in this session, else the loaded value. */
+const requestFieldValue = (id, loaded) => Object.prototype.hasOwnProperty.call(state.fields, id) ? state.fields[id] : loaded;
 const requestRelText = () => `${releasedCount()} of ${vdrTotal()} data room documents released`;
 /* Agent names for a toast or log line: "Orphan agent", "A and B agents", "A, B and C agents". */
 const requestAgents = ids => {
@@ -1613,12 +1775,36 @@ const requestAgents = ids => {
 const requestRole = (role, mark, note) =>
   `<li><span>${esc(role)}${note ? `<span class="qsub">${esc(note)}</span>` : ''}</span><span class="cleared">${mark}</span></li>`;
 
+/* A key question's sub-line (plain text). A 'dyn' one restates the asset as set on this screen:
+   'product' the therapeutic area and modality ("Rare metabolic disorder, oral small molecule"),
+   'regions' the selected regions ("FDA, EMA and global access, tailored to this product"). */
+function requestQSub(q) {
+  if (q.dyn === 'regions') {
+    const rs = DATA.request.regions.filter(r => state.regions.has(r)).map((r, i) => i ? lcRole(r) : r);
+    return rs.length ? andList(rs) + q.tail : q.none;
+  }
+  if (q.dyn === 'product') {
+    const field = id => String(requestFieldValue(id, DATA.request.asset.find(f => f.id === id).value))
+      .replace(/\s*\(illustrative\)\s*$/i, '').trim();
+    const parts = [field('f-ta'), field('f-mod')].filter(Boolean);
+    if (!parts.length) return q.none;
+    const s = parts.map((p, i) => i ? lcRole(p) : p).join(', ');
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  return q.sub;
+}
+/* Refresh a dynamic sub-line in place (no re-render: it would wipe typed inputs). */
+function requestQSubRefresh(dyn) {
+  const q = DATA.request.questions.find(x => x.dyn === dyn), el = document.getElementById('qsub-' + dyn);
+  if (q && el) el.textContent = requestQSub(q);
+}
+
 SCREENS.request = () => {
   const R = DATA.request, d = DATA.dd, A = DATA.access, K = DATA.knowledge;
 
   const assetFields = R.asset.map(f => {
     if (!f.options) {
-      return `<div class="field"><label for="${esc(f.id)}">${esc(f.label)}</label><input class="input" id="${esc(f.id)}" type="text" value="${esc(f.value)}"></div>`;
+      return `<div class="field"><label for="${esc(f.id)}">${esc(f.label)}</label><input class="input" id="${esc(f.id)}" type="text" data-action="field" value="${esc(requestFieldValue(f.id, f.value))}"></div>`;
     }
     const isStage = f.id === 'f-stage';
     const current = isStage ? state.stage : f.value;
@@ -1630,7 +1816,7 @@ SCREENS.request = () => {
   const regionChips = R.regions.map(r =>
     `<button type="button" class="chip" data-action="region" data-region="${esc(r)}" aria-pressed="${state.regions.has(r)}">${ICON.check}${esc(r)}</button>`).join('');
   const questions = R.questions.map((q, i) =>
-    `<li><span class="qn">Q${i + 1}</span><span>${esc(q.q)}<span class="qsub">${esc(q.sub)}</span></span></li>`).join('');
+    `<li><span class="qn">Q${i + 1}</span><span>${esc(q.q)}<span class="qsub"${q.dyn ? ` id="qsub-${esc(q.dyn)}"` : ''}>${esc(requestQSub(q))}</span></span></li>`).join('');
 
   const vdrRows = K.docs.filter(x => x.kind === 'vdr').map(x => docRow(x, 'request')).join('');
   const rspRows = K.docs.filter(x => x.kind === 'response').map(x => docRow(x, 'request')).join('') ||
@@ -1654,7 +1840,7 @@ SCREENS.request = () => {
           ${assetFields}
           <div class="field full"><span class="flabel" id="l-cls">Classification</span><div class="chips" role="group" aria-labelledby="l-cls" aria-describedby="n-cls">${clsChips}</div><p class="qsub" id="n-cls">${esc(R.classNote)}</p></div>
           <div class="field full"><span class="flabel" id="l-regions">Regions</span><div class="chips" role="group" aria-labelledby="l-regions">${regionChips}</div></div>
-          <div class="field"><label for="f-deadline">Deadline</label><input class="input" id="f-deadline" type="datetime-local" value="${esc(d.deadline[state.mode])}"></div>
+          <div class="field"><label for="f-deadline">Deadline</label><input class="input" id="f-deadline" type="datetime-local" data-action="field" value="${esc(requestFieldValue('f-deadline', d.deadline[state.mode]))}"></div>
         </div>
         <div id="lateHost" aria-live="polite">${requestLateHTML()}</div>
       </section>
@@ -1712,32 +1898,47 @@ CHANGES.mode = el => {
   const v = el.value;
   if (!DATA.dd.modeNote[v] || v === state.mode) return;
   state.mode = v;
-  renderHeader();
   const note = $('#modeNote'), deadline = $('#f-deadline');
   if (note) note.textContent = DATA.dd.modeNote[v];
+  delete state.fields['f-deadline'];   // the new mode brings its own default deadline
   if (deadline) deadline.value = DATA.dd.deadline[v];
+  renderHeader();                      // after the deadline: "Due in" is measured from it
   toast(v === 'reactive' ? 'Switched to reactive DD' : 'Switched to planned DD');
   addLog(LEAD, 'person', `switched to a ${v} DD.`);
 };
 
-/* Stage: at Phase 3 or Filed a filing is near, so the late agents join; before that they leave. */
+/* Stage: the agents whose stage rule the new stage meets join; those whose rule it no longer meets
+   leave (Phase 3 or Filed: operations, medical writing, risk management; Filed: promotional review).
+   An agent a person switched on or off by hand keeps that choice while its rule does not change. */
 CHANGES.stage = el => {
   const v = el.value;
-  if (v === state.stage) return;
-  const wasLate = isLate();
+  if (v === state.stage || DATA.request.asset.find(f => f.id === 'f-stage').options.indexOf(v) < 0) return;
+  const before = stageAgentIds(state.stage), after = stageAgentIds(v);
   state.stage = v;
-  const late = isLate();
-  let team = '';
-  if (late !== wasLate) {
-    const moved = DATA.request.lateAgents.filter(id => state.selected.has(id) !== late);
-    moved.forEach(id => { if (late) state.selected.add(id); else state.selected.delete(id); });
-    renderHeader();
-    if (moved.length) team = `${requestAgents(moved)} ${late ? 'added to' : 'removed from'} the team`;
-  }
+  const added = after.filter(id => before.indexOf(id) < 0 && !state.selected.has(id));
+  const removed = before.filter(id => after.indexOf(id) < 0 && state.selected.has(id));
+  added.forEach(id => state.selected.add(id));
+  removed.forEach(id => state.selected.delete(id));
+  if (added.length || removed.length) renderHeader();
+  const team = [added.length ? `${requestAgents(added)} added to the team` : '',
+    removed.length ? `${requestAgents(removed)} removed from the team` : ''].filter(Boolean).join('; ');
   toast(team ? `${v}: ${team}` : `Development stage set to ${v}`);
-  addLog(LEAD, 'person', `set the development stage to ${v}.` + (team ? (late ? ' A filing is near: ' : ' ') + team + '.' : ''));
+  // Why agents joined: a filing is near at Phase 3; once filed, it has been made.
+  const why = !added.length || !isLate() ? ' '
+    : DATA.request.filedStages.indexOf(v) > -1 ? ' The asset is filed: ' : ' A filing is near: ';
+  addLog(LEAD, 'person', `set the development stage to ${v}.` + (team ? why + team + '.' : ''));
   const host = $('#lateHost');
   if (host) host.innerHTML = requestLateHTML();
+};
+
+/* Typed fields (asset, modality, area, deadline, the feedback draft): kept for the session. The
+   change event fires when the field loses focus, so the value is stored before any tab click.
+   The header shows the asset name and the time to the deadline; Q2 restates area and modality. */
+CHANGES.field = el => {
+  if (!el.id) return;
+  state.fields[el.id] = el.value;
+  if (el.id === 'f-name' || el.id === 'f-deadline') renderHeader();
+  if (el.id === 'f-ta' || el.id === 'f-mod') requestQSubRefresh('product');
 };
 
 /* Classification: each one brings in (or drops) its specialist agent. */
@@ -1756,12 +1957,13 @@ ACTIONS.cls = el => {
     : `removed the classification ${c.label}: ${who} not selected.`);
 };
 
-/* Regions, as v1. */
+/* Regions, as v1; Q4 lists the regions still selected. */
 ACTIONS.region = el => {
   const r = el.dataset.region;
   const on = !state.regions.has(r);
   if (on) state.regions.add(r); else state.regions.delete(r);
   el.setAttribute('aria-pressed', String(on));
+  requestQSubRefresh('regions');
   addLog(LEAD, 'person', on ? `added the region ${r}.` : `removed the region ${r}.`);
 };
 
@@ -1835,20 +2037,24 @@ function teamRegionsHTML() {
     : `<p><span class="tag proposal">No region selected</span></p>`;
 }
 
-/* What switches a triggered agent on: a classification of the asset, or a near filing. */
+/* What switches a triggered agent on: a classification of the asset, a near filing, or a filing made. */
 function teamTrigHTML(a) {
   if (!a.trigger) return '';
-  if (a.trigger === 'late') return `<p class="trig">Joins when a filing is near (Phase 3 or filed)</p>`;
+  const why = a.trigWhy ? ': ' + esc(a.trigWhy) : '';
+  if (a.trigger === 'late') return `<p class="trig">Joins when a filing is near (Phase 3 or filed)${why}</p>`;
+  if (a.trigger === 'filed') return `<p class="trig">Joins once the asset is filed${why}</p>`;
   const c = DATA.request.classes.find(x => x.id === a.trigger);
   return c ? `<p class="trig">Switched on by: ${esc(c.label)}</p>` : '';
 }
 
-/* Status lines are DATA text, with two exceptions.
+/* Status lines are DATA text, with three exceptions.
    DATA gives the "Other functions" agents the status "Not selected". Once a person
    selects one, that line would contradict the switch: the agent has simply not started.
    The Sanitiser waits on the lead only while a sanitised question awaits approval; the
-   lead approves it on the run board or in the finding, so that line follows the state. */
+   lead approves it on the run board or in the finding, so that line follows the state.
+   The regional experts compare only the regions still selected on the Request screen. */
 function teamStatus(a) {
+  if (a.id === 'regional') return teamRegionalStatus(a);
   if (a.id === 'san') {
     const ids = DATA.findings.filter(f => expertOf(f).state === 'drafted').map(f => f.id);
     if (!ids.length) return { text: 'No sanitised question is waiting for your approval', wait: false };
@@ -1857,6 +2063,26 @@ function teamStatus(a) {
       : `Sanitised questions on ${ids.join(', ')} are waiting for your approval`, wait: true };
   }
   return { text: a.status === 'Not selected' ? 'Not started' : a.status, wait: !!a.wait };
+}
+
+/* The regions the regional experts are working on (their activities in Agent working), split into
+   those still in this DD and those a person removed on the Request screen. */
+function teamRegionalStatus(a) {
+  if (!state.regions.size) return { text: 'No region selected for this DD', wait: false };
+  const work = [];
+  DATA.activities.filter(x => x.agent === a.id && x.regions && actColOf(x) === 'working')
+    .forEach(x => x.regions.forEach(r => { if (work.indexOf(r) < 0) work.push(r); }));
+  const kept = work.filter(r => state.regions.has(r)), gone = work.filter(r => !state.regions.has(r));
+  if (!gone.length) return { text: a.status, wait: !!a.wait };
+  if (kept.length) return { text: `Comparing ${andList(kept)} requirements`, wait: false };
+  return { text: `No comparison running: ${andList(gone)} ${gone.length === 1 ? 'is' : 'are'} not in this DD`, wait: false };
+}
+
+/* A knowledge source. A data room document ({ t, doc }) the RA DD lead has not released to the agents
+   is marked the way the findings mark such a source (findingsSrcNote). */
+function teamSourceHTML(s) {
+  if (typeof s === 'string') return `<li>${esc(s)}</li>`;
+  return `<li>${esc(s.t)}${findingsSrcNote(s)}</li>`;
 }
 
 function teamSwitchHTML(a, on) {
@@ -1874,7 +2100,8 @@ function teamAgentHTML(a, g) {
   const status = on
     ? `<p class="agent-status ${st.wait ? 'wait' : 'pencil'}">${st.wait ? ICON.dot : ICON.pencil}<span>${linkify(st.text)}</span></p>`
     : '';
-  return `<article class="agent${on ? '' : ' off'}" role="listitem" aria-labelledby="ag-${id}">
+  // id + tabindex -1: after an action in a drawer opened from this card, focus can come back here.
+  return `<article class="agent${on ? '' : ' off'}" role="listitem" id="agent-${id}" tabindex="-1" aria-labelledby="ag-${id}">
       <div class="agent-top"><div class="left"><span class="tag">${esc(g.tag)}</span>${levelBadge(a.level)}</div>${teamSwitchHTML(a, on)}</div>
       <h3 id="ag-${id}">${esc(a.name)}</h3>
       <p class="desc">${esc(a.desc)}</p>
@@ -1884,7 +2111,7 @@ function teamAgentHTML(a, g) {
         <summary>Specification<span class="visually-hidden"> for ${esc(a.name)}</span></summary>
         <dl class="kv">
           <dt>Human owner</dt><dd>${esc(a.owner)}</dd>
-          <dt>Knowledge sources</dt><dd><ul class="srcs">${a.sources.map(s => `<li>${esc(s)}</li>`).join('')}</ul></dd>
+          <dt>Knowledge sources</dt><dd><ul class="srcs">${a.sources.map(teamSourceHTML).join('')}</ul></dd>
           <dt>Guardrail</dt><dd class="guard">${esc(a.guard)}</dd>
         </dl>
       </details>
@@ -1960,11 +2187,15 @@ function runCount(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
    Acronyms stay as they are ("CMC regulatory expert"). */
 function runLower(s) { return String(s || '').replace(/^[A-Z](?=[a-z])/, c => c.toLowerCase()); }
 
-/* The v1 stepper. */
-function runStepsHTML() {
+/* The v1 stepper. Assess runs alongside Challenge: while a visible activity is still in Backlog or
+   Agent working, it shows "Still running" rather than "Done". */
+function runStepsHTML(visible) {
+  const assessing = visible.some(a => { const c = actColOf(a); return c === 'backlog' || c === 'working'; });
   return DATA.steps.map((s, i) => {
-    const st = i < DATA.currentStep ? 'done' : (i === DATA.currentStep ? 'current' : 'next');
-    const label = st === 'done' ? `${ICON.check}Done` : st === 'current' ? `${ICON.dot}Current` : 'Next';
+    let st = i < DATA.currentStep ? 'done' : (i === DATA.currentStep ? 'current' : 'next');
+    if (st === 'done' && i === DATA.ongoingStep && assessing) st = 'ongoing';
+    const label = st === 'done' ? `${ICON.check}Done` : st === 'current' ? `${ICON.dot}Current`
+      : st === 'ongoing' ? `${ICON.dot}Still running` : 'Next';
     return `<li class="step ${st}"${st === 'current' ? ' aria-current="step"' : ''}><span class="mono">${String(i + 1).padStart(2, '0')}</span>${esc(s)}<br><span class="state">${label}</span></li>`;
   }).join('');
 }
@@ -1990,7 +2221,7 @@ function runCardWorkHTML(a, f, col) {
   if (f.challenge.state === 'open') flags += `<p class="flag">Red team: challenge open</p>`;
   const ex = expertOf(f);
   if (ex.state === 'sent') flags += `<p class="flag wait">With the ${esc(runLower(ex.reviewer))}${ex.when ? ' since ' + esc(ex.when) : ''}</p>`;
-  else if (ex.state === 'returned') flags += `<p class="flag ok">Expert view back</p>`;
+  else if (ex.state === 'returned') flags += `<p class="flag ok">${ICON.check}<span>Expert view back</span></p>`;
 
   const block = signBlock(f);
   const btns = [];
@@ -2007,12 +2238,18 @@ function runCardWorkHTML(a, f, col) {
   return flags + acts + why;
 }
 
-/* One activity card. Cards without a finding carry no flags and no actions. */
+/* An unsigned activity for a region a person removed on the Request screen says so. */
+function runRegionFlagHTML(a) {
+  const gone = (a.regions || []).filter(r => !state.regions.has(r));
+  return gone.length ? `<p class="flag">${gone.length === 1 ? 'Region' : 'Regions'} not in this DD: ${esc(andList(gone))}</p>` : '';
+}
+
+/* One activity card. Cards without a finding carry no actions. */
 function runCardHTML(a) {
   const col = actColOf(a);
   const signed = col === 'signed';
   const f = a.finding ? findingById(a.finding) : null;
-  const body = signed ? runSignedByHTML(a) : (f ? runCardWorkHTML(a, f, col) : '');
+  const body = signed ? runSignedByHTML(a) : runRegionFlagHTML(a) + (f ? runCardWorkHTML(a, f, col) : '');
   return `<li class="card${signed ? ' signed' : ''}" id="card-${esc(a.id)}" tabindex="-1">` +
     `<p class="cid"><span><span class="visually-hidden">Activity </span>${esc(a.id)}</span>${f ? refBtn(f.id) : ''}</p>` +
     `<h3 class="${signed ? 'ink' : 'pencil'}">${esc(a.title)}</h3>` +
@@ -2046,9 +2283,14 @@ function runQueueItems() {
     `${mono(f.id)} is ready for your sign-off`,
     `<button type="button" class="btn btn-sm" data-action="open-finding" data-id="${esc(f.id)}" aria-label="Open finding ${esc(f.id)}">Open</button>`)));
   DATA.knowledge.docs.filter(d => state.release[d.id] === 'undecided').forEach(d => out.push(item(
-    `Decide whether the agents may read ${esc(d.name)}`,
+    `Decide whether the agents may read the ${esc(d.name)} <span class="nowrap">(${esc(d.id)})</span>`,
     `<button type="button" class="btn btn-sm" data-action="go-knowledge" aria-label="Open the release choice for ${esc(d.name)}">Open</button>`)));
   return out;
+}
+
+/* Sign-offs left out of Needs you because the agent that prepared the finding is not selected. */
+function runQueueHidden() {
+  return DATA.findings.filter(f => !state.selected.has(f.prepared) && signBlock(f) === '').length;
 }
 
 /* Activity log: this session's entries first, then the loaded feed. */
@@ -2061,24 +2303,23 @@ function runFeedHTML() {
 SCREENS.run = () => {
   const visible = DATA.activities.filter(a => state.selected.has(a.agent));
   const hidden = DATA.activities.length - visible.length;
-  const countText = runCount(visible.length, 'activity', 'activities') + ' · ' + (hidden
-    ? `${hidden} hidden: ${hidden === 1 ? 'its agent is' : 'their agents are'} not selected`
-    : 'all agents selected');
-  const queue = runQueueItems();
+  const hiddenText = n => `${n} hidden: ${n === 1 ? 'its agent is' : 'their agents are'} not selected`;
+  const countText = runCount(visible.length, 'activity', 'activities') + ' · ' + (hidden ? hiddenText(hidden) : 'none hidden');
+  const queue = runQueueItems(), queueHidden = runQueueHidden();
 
   return head('Run board', `Regulatory activities only, each assigned to an agent. Nothing is done until the ${esc(LEAD)} signs it off.`,
       `<span class="tag">Step ${DATA.currentStep + 1} of ${DATA.steps.length}: ${esc(DATA.steps[DATA.currentStep])}</span>`) +
   `<section class="sheet" aria-labelledby="h-steps">
     <h2 id="h-steps">Standard workflow</h2>
-    <ol class="stepper">${runStepsHTML()}</ol>
+    <ol class="stepper">${runStepsHTML(visible)}</ol>
   </section>
   <section class="sheet run-acts" aria-labelledby="h-acts">
     <h2 class="panel-h" id="h-acts">Activities <small>${esc(countText)}</small></h2>
     <div class="board">${DATA.columns.map(c => runColHTML(c, visible)).join('')}</div>
   </section>
   <div class="under-board">
-    <section class="sheet" aria-labelledby="h-queue">
-      <h2 id="h-queue">Needs you <small>${runCount(queue.length, 'item', 'items')}</small></h2>
+    <section class="sheet" id="needsYou" tabindex="-1" aria-labelledby="h-queue">
+      <h2 id="h-queue">Needs you <small>${runCount(queue.length, 'item', 'items')}${queueHidden ? ' · ' + hiddenText(queueHidden) : ''}</small></h2>
       <ul class="queue">${queue.length ? queue.join('') : `<li class="q-empty">Nothing needs you right now.</li>`}</ul>
     </section>
     <section class="sheet" aria-labelledby="h-feed">
@@ -2127,13 +2368,26 @@ function findingsList() {
 
 function findingsCountText(n) { return `Showing ${n} of ${DATA.findings.length} items`; }
 
+/* A source that is a data room document or licensor answer the agents can no longer read. */
+function findingsSrcNote(s) {
+  return s.doc && state.release[s.doc] !== 'yes' ? '<span class="src-note">Not released to the agents now</span>' : '';
+}
+
 /* Table: each source on its own line, with its tier. */
 function findingsSources(f) {
   if (!f.sources.length) return '<span class="src nosrc">No source</span>';
   return f.sources.map(s =>
-    `<span class="src">${esc(s.t)} <span class="nowrap">[illustrative]</span> ${tierTag(s.tier)}</span>`).join('');
+    `<span class="src">${esc(s.t)} <span class="nowrap">[illustrative]</span> ${tierTag(s.tier)}${findingsSrcNote(s)}</span>`).join('');
 }
 
+/* Plain ids in table text never break at their hyphen or away from their brackets. */
+function findingsNoBreak(text) {
+  return esc(text).replace(/(\(?)\b((?:[FRA]|VDR|RSP)-\d{2})\b(\)?)/g, '<span class="nowrap">$1$2$3</span>');
+}
+
+/* Every cell holds ONE element: in the narrow card layout each td is a two-column grid (label, value),
+   and loose text beside an element (text, a no-break id, text) would become separate grid items, with
+   the id dropped into the label column. */
 function findingsRow(f) {
   const st = statusOf(f);
   const rejected = st === 'Rejected';
@@ -2142,8 +2396,8 @@ function findingsRow(f) {
   return `<tr class="${rejected ? 'is-rejected' : ''}" data-row="${id}">
     <td class="c-id" data-label="ID"><button type="button" class="id-btn" id="fid-${id}" data-action="open-finding" data-id="${id}" aria-label="Open finding ${id}">${id}</button></td>
     <td data-label="Type">${typeTag(f.type)}</td>
-    <td class="c-claim" data-label="Claim"><div><span class="${claimCls}"><span class="claim-text">${esc(f.claim)}</span></span>${rejected ? '<span class="reject-note">Rejected: no source, no finding</span>' : ''}</div></td>
-    <td data-label="Evidence" class="pencil small">${esc(f.evidence)}</td>
+    <td class="c-claim" data-label="Claim"><div><span class="${claimCls}"><span class="claim-text">${findingsNoBreak(f.claim)}</span></span>${rejected ? '<span class="reject-note">Rejected: no source, no finding</span>' : ''}</div></td>
+    <td data-label="Evidence" class="pencil small"><div>${findingsNoBreak(f.evidence)}</div></td>
     <td data-label="Source"><div>${findingsSources(f)}</div></td>
     <td data-label="Confidence"><span class="conf">${esc(f.confidence)}</span></td>
     <td data-label="Status">${statusChip(st)}</td>
@@ -2161,8 +2415,25 @@ function findingsFill() {
     : '<tr><td colspan="8" class="empty">No items match these filters.</td></tr>';
   const rc = $('#resultCount'), txt = findingsCountText(list.length);
   if (rc && rc.textContent !== txt) rc.textContent = txt;
+  findingsCue();
 }
 
+/* At narrower windows the table scrolls sideways and cuts off its right-hand columns (the sign-off).
+   Say so above the table, and shade the cut edge until the person has scrolled to the end. */
+function findingsCue() {
+  const w = $('#ftWrap'), cue = $('#ftCue'), frame = $('#ftFrame');
+  if (!w || !cue || !frame) return;
+  const wide = w.scrollWidth > w.clientWidth + 1;
+  cue.hidden = !wide;
+  frame.classList.toggle('more-right', wide && w.scrollLeft + w.clientWidth < w.scrollWidth - 1);
+}
+window.addEventListener('resize', () => { if (state.route === 'findings') findingsCue(); });
+
+/* Checklist states come from DATA, with four live exceptions: the documents line, the filing line,
+   a region a person removed on the Request screen ("Out of scope": skipped, so never shown as
+   checked), and an open line whose finding the RA DD lead has signed (checked). A "could not
+   confirm" line whose finding is not signed yet keeps its state, with a note that it is still a
+   draft, so it never reads as a settled result while the work is open. */
 function findingsCheckItem(it) {
   let label = it.label, st = it.state, note = '';
   if (it.dyn === 'docs') {
@@ -2172,8 +2443,17 @@ function findingsCheckItem(it) {
     label = 'Gap check against the NDA/MAA playbook (concept)';
     st = isLate() ? 'open' : 'na';
     if (!isLate()) note = 'Not applicable before Phase 3';
+  } else if (DATA.request.regions.indexOf(it.label) > -1 && !state.regions.has(it.label)) {
+    st = 'out';
+    note = 'Removed from this DD on the Request screen';
+  } else if (it.ref && st === 'open') {
+    const f = findingById(it.ref);
+    if (f && approvalOf(f).state === 'signed') st = 'checked';
+  } else if (it.ref && st === 'cannot') {
+    const f = findingById(it.ref);
+    if (f && approvalOf(f).state !== 'signed') note = 'Draft: not signed yet, work still open';
   }
-  const ic = { checked: ICON.check, na: ICON.dash, open: ICON.dot, notchecked: ICON.dot, cannot: ICON.question, heor: ICON.arrow }[st] || ICON.dot;
+  const ic = { checked: ICON.check, na: ICON.dash, open: ICON.dot, notchecked: ICON.dot, cannot: ICON.question, heor: ICON.arrow, out: ICON.dash }[st] || ICON.dot;
   return `<li><span>${esc(label)}${it.ref ? ' ' + refBtn(it.ref) : ''}${note ? `<span class="ck-note">${esc(note)}</span>` : ''}</span>` +
     `<span class="ck ck-${esc(st)}">${ic}${esc(DATA.checklistStates[st])}</span></li>`;
 }
@@ -2192,14 +2472,15 @@ SCREENS.findings = () => {
         <div class="filter-group" role="group" aria-labelledby="fl-type"><span class="caps" id="fl-type">Type</span>${DATA.types.map(t => chip('type', t, state.typeFilter)).join('')}</div>
         <div class="filter-group" role="group" aria-labelledby="fl-st"><span class="caps" id="fl-st">Status</span>${DATA.statuses.map(s => chip('st', s, state.stFilter)).join('')}</div>
       </div>
-      <div class="result-line"><span id="resultCount" aria-live="polite">${findingsCountText(findingsList().length)}</span><button type="button" class="btn btn-quiet btn-sm" data-action="clear-filters">Clear filters</button></div>
-      <div class="table-wrap">
+      <div class="result-line"><span id="resultCount" tabindex="-1" aria-live="polite">${findingsCountText(findingsList().length)}</span><button type="button" class="btn btn-quiet btn-sm" data-action="clear-filters">Clear filters</button></div>
+      <p class="scroll-cue" id="ftCue" hidden>${ICON.arrow}<span>Scroll the table sideways to see the full sign-off.</span></p>
+      <div class="ft-frame" id="ftFrame"><div class="table-wrap" id="ftWrap">
         <table class="ft">
           <colgroup><col style="width:56px"><col style="width:112px"><col><col><col style="width:168px"><col style="width:88px"><col style="width:144px"><col style="width:256px"></colgroup>
           <thead><tr><th scope="col">ID</th><th scope="col">Type</th><th scope="col">Claim</th><th scope="col">Evidence</th><th scope="col">Source</th><th scope="col">Confidence</th><th scope="col">Status</th><th scope="col">Sign-off</th></tr></thead>
           <tbody id="ftBody"></tbody>
         </table>
-      </div>
+      </div></div>
     </section>
     <aside class="sheet checklist" aria-labelledby="h-ck">
       <h2 id="h-ck">Regulatory checklist</h2>
@@ -2208,7 +2489,11 @@ SCREENS.findings = () => {
     </aside>
   </div>`;
 };
-AFTER.findings = () => findingsFill();
+AFTER.findings = () => {
+  findingsFill();
+  const w = $('#ftWrap');
+  if (w) w.addEventListener('scroll', findingsCue, { passive: true });
+};
 
 ACTIONS.filter = el => {
   const set = el.dataset.group === 'type' ? state.typeFilter : state.stFilter;
@@ -2228,7 +2513,7 @@ ACTIONS['clear-filters'] = () => {
 function findingsSourceList(f) {
   if (!f.sources.length) return '<span class="nosrc">No source attached</span>';
   return `<ul class="fnd-srcs">${f.sources.map(s =>
-    `<li>${esc(s.t)} <span class="nowrap">[illustrative]</span> ${tierTag(s.tier)}</li>`).join('')}</ul>`;
+    `<li>${esc(s.t)} <span class="nowrap">[illustrative]</span> ${tierTag(s.tier)}${findingsSrcNote(s)}</li>`).join('')}</ul>`;
 }
 
 /* Expert review: advice from a cleared reviewer who is not read in. Never a source. */
@@ -2243,10 +2528,14 @@ function findingsExpert(f) {
     const box = san
       ? `<div class="san-box san-out"><h4>Sanitised question, as the expert saw it</h4><p>${sanParts(san.parts, 'out')}</p></div>` : '';
     if (ex.state === 'sent') {
-      return box + `<p class="note">Sent to the ${who} at ${esc(ex.when)}. Cleared, not read in.</p>` +
+      return box + `<p class="note">Sent to the ${who} at ${esc(ex.when)}. Internal, cleared, not read in.</p>` +
         '<p class="pencil fnd-say">Waiting for the expert view.</p>';
     }
+    // The expert signs the view: a role mark in signature ink, never a personal name.
+    const mark = DATA.access.reviewerMarks[ex.reviewer] || 'Expert';
     return box + `<blockquote class="expert-view"><b>${esc(ex.reviewer)}</b> (not read in), ${esc(ex.back)}: “${esc(ex.view)}”</blockquote>` +
+      `<p class="expert-signed"><span class="sig" aria-hidden="true">${esc(mark)}</span>` +
+      `<span class="by">Signed by the ${who} at ${esc(ex.back)} · internal, cleared, not read in</span></p>` +
       '<p class="advice">Expert advice, not evidence. It never counts as a source.</p>';
   }
   if (ex.state === 'none' && san && statusOf(f) !== 'Rejected') {
@@ -2256,9 +2545,11 @@ function findingsExpert(f) {
   return '<p class="pencil fnd-say">Not needed for this item.</p>';
 }
 
+/* The loaded thread, then what the RA DD lead did in this session (sign, approve a question). */
 function findingsThread(f) {
-  if (!f.thread.length) return '<p class="pencil fnd-say">No challenge raised yet. The red team picks this up after the evidence check.</p>';
-  return `<ol class="thread">${f.thread.map(m => {
+  const list = f.thread.concat(state.thread[f.id] || []);
+  if (!list.length) return '<p class="pencil fnd-say">No challenge raised yet. The red team picks this up after the evidence check.</p>';
+  return `<ol class="thread">${list.map(m => {
     const cls = m.kind === 'person' ? 't-person' : 't-agent';
     const liCls = [m.who === 'Red team' ? 't-red' : '', m.open ? 't-open' : ''].filter(Boolean).join(' ');
     return `<li${liCls ? ` class="${liCls}"` : ''}><span class="meta"><b class="${cls}">${esc(m.who)}</b><span class="when">${esc(m.t)}</span>` +
@@ -2274,9 +2565,11 @@ function openFinding(id) {
   const ap = approvalOf(f), st = statusOf(f);
   const rejected = st === 'Rejected', signed = ap.state === 'signed';
   const r = f.request ? reqById(f.request) : null;
-  const doc = r && r.doc ? docById(r.doc) : null;
-  const recheck = doc && state.release[doc.id] !== doc.release
-    ? `<p class="recheck">Release changed for ${esc(doc.name)}: the agent will re-check this item.</p>` : '';
+  // A release change behind an unsigned item holds its sign-off until the agent re-checks it (signBlock);
+  // a signed item keeps its signature, and the note says only what changed.
+  const recheck = releaseChangedDocs(f).map(doc => signed
+    ? `<p class="recheck">Release changed for ${esc(doc.name)} after this item was signed. The signed record stands.</p>`
+    : `<p class="recheck">Release changed for ${esc(doc.name)}: the agent will re-check this item.</p>`).join('');
   const claim = rejected
     ? `<dd class="fnd-rej">${esc(f.claim)}<span class="reject-note">Rejected: no source, no finding</span></dd>`
     : `<dd class="${signed ? 'ink' : 'pencil'}">${esc(f.claim)}</dd>`;
@@ -2355,11 +2648,11 @@ function openSanitised(fid) {
     </div>`);
 }
 
-/* Re-render after an action on a finding. If the focus target is gone (row filtered out,
-   card hidden because its agent is not selected), fall back to the screen title. */
+/* Re-render after an action on a finding. focusAfter lists the targets in order (the row, the card,
+   the control that opened the drawer or its card); if all are gone (row filtered out, card hidden
+   because its agent is not selected), render() falls back to the screen title. */
 function findingsRefocus(fid, actId) {
   render({ focus: focusAfter(fid, actId) });
-  if (!$('#main').contains(document.activeElement)) { const t = $('#screenTitle'); t && t.focus(); }
 }
 
 ACTIONS['open-finding'] = el => openFinding(el.dataset.id);
@@ -2397,6 +2690,7 @@ ACTIONS['approve-expert'] = el => {
     else if (!actId) actId = a.id;
   });
   const who = findingsLc(reviewer);
+  addThread(fid, `Approved the sanitised question for the ${who}.`);
   addLog(LEAD, 'person', `approved the sanitised question on ${fid} for the ${who}.`);
   closeDrawer(true);
   findingsRefocus(fid, actId);
@@ -2438,12 +2732,14 @@ function requestsTrailHTML(r, st) {
   return `<ol class="trail">${rows.join('')}</ol>`;
 }
 
-/* One request. Focus target for 'req:R-xx'; its name is the id plus the current status. */
+/* One request. Focus target for 'req:R-xx'; its name is the id plus the current status. The heading
+   is named by the id alone: named from its content, it would take in the "from F-xx" button's label
+   ("Licensor request R-01 from Open finding F-02"). */
 function requestsArticleHTML(r) {
   const st = reqStatus(r), id = esc(r.id);
   return `<article class="req" id="req-${id}" tabindex="-1" aria-labelledby="reqn-${id} reqst-${id}">
       <div class="req-top">
-        <h2 class="req-h"><span id="reqn-${id}"><span class="visually-hidden">Licensor request </span><span class="mono">${id}</span></span>${r.finding ? `<span>from ${refBtn(r.finding)}</span>` : ''}</h2>
+        <h2 class="req-h" aria-labelledby="reqn-${id}"><span id="reqn-${id}"><span class="visually-hidden">Licensor request </span><span class="mono">${id}</span></span>${r.finding ? `<span>from ${refBtn(r.finding)}</span>` : ''}</h2>
         <span id="reqst-${id}">${reqChip(st)}</span>
       </div>
       <p class="req-q ${st === 'draft' ? 'pencil' : 'ink'}">${esc(r.text)}</p>
@@ -2505,6 +2801,9 @@ ACTIONS['approve-request'] = el => {
    --------------------------------------------------------- */
 
 /* ================= Briefing ================= */
+/* The feedback box's prompt; an empty send swaps in a reminder, and a send that goes through puts the
+   prompt back, so the empty box never keeps the reminder after "Feedback sent". */
+const BRIEFING_FB_PROMPT = 'What should the agents do better next time?';
 function briefingSignedCount() { return DATA.decisions.filter(d => state.signed[d.id]).length; }
 function briefingCountText() { return `${briefingSignedCount()} of ${DATA.decisions.length} signed`; }
 function briefingDocStatus() { return briefingSignedCount() === DATA.decisions.length ? 'Signed by people' : 'Draft in pencil'; }
@@ -2512,14 +2811,25 @@ function briefingDocStatus() { return briefingSignedCount() === DATA.decisions.l
 function briefingSigner(dc) { return dc.owner === LEAD_YOU ? LEAD : dc.owner; }
 
 /* The filing-readiness line follows the stage set on the Request screen: it never says
-   "not applicable" once a filing is near, and it names the stage actually set (DATA says
-   Phase 2). Every other statement is DATA as written. */
+   "not applicable" at Phase 3 or once filed, never says a filing is near once it has been made,
+   and names the stage actually set (DATA says Phase 2). Its second sentence, the playbook rule
+   it follows (it has no finding or request to link to), stays as DATA wrote it. Every other
+   statement is DATA as written. */
 function briefingStmtText(it) {
   if (!/^Filing readiness/.test(it.s)) return it.s;
   if (isLate()) {
-    return `Filing readiness against the NDA/MAA playbook (concept): gap check open, because a filing is near (${state.stage}).`;
+    const now = DATA.request.filedStages.indexOf(state.stage) > -1
+      ? `gap check of the filed dossier open (${state.stage}).`
+      : `gap check open, because a filing is near (${state.stage}).`;
+    return it.s.replace(/not applicable at Phase \d\./, now);
   }
   return it.s.replace(/not applicable at Phase \d/, 'not applicable at ' + state.stage);
+}
+
+/* Ink once signed; pencil while an agent's draft; a neutral placeholder when no agent drafts it
+   (the recommendation is made by people), so its text never wears the agents' pencil. */
+function briefingBodyClass(dc, when) {
+  return when ? 'ink' : (dc.prepared ? 'pencil' : 'by-people');
 }
 
 function briefingDecisionCard(dc) {
@@ -2531,8 +2841,8 @@ function briefingDecisionCard(dc) {
   return `<div class="decision" role="group" aria-labelledby="${esc(hid)}" data-decision="${esc(dc.id)}">
     <h3 id="${esc(hid)}">${esc(dc.title)}</h3>
     <p class="owner">Owner: <b>${esc(dc.owner)}</b></p>
-    <p class="decision-body ${when ? 'ink' : 'pencil'}">${dc.prepared && !when ? ICON.pencil : ''}<span>${linkify(dc.draft)}</span></p>
-    ${strip({ prepared: dc.prepared, challenge: dc.challenge, approval: approval, action: 'sign', id: dc.id })}
+    <p class="decision-body ${briefingBodyClass(dc, when)}">${dc.prepared && !when ? ICON.pencil : ''}<span>${linkify(dc.draft)}</span></p>
+    ${strip({ prepared: dc.prepared, challenge: dc.challenge, approval: approval, action: 'sign', id: dc.id, label: 'Sign ' + dc.title })}
   </div>`;
 }
 
@@ -2550,7 +2860,7 @@ SCREENS.briefing = () => {
     <article class="doc" aria-labelledby="docTitle">
       <div class="doc-ctl">
         <div><span>Document</span>${esc(DATA.dd.id)}-BR</div>
-        <div><span>Asset</span>${esc(DATA.dd.asset)}</div>
+        <div><span>Asset</span>${esc(assetName())}</div>
         <div><span>Prepared by</span>${esc(agentName('syn'))}</div>
         <div><span>Status</span><b id="docStatus">${esc(briefingDocStatus())}</b></div>
       </div>
@@ -2581,8 +2891,8 @@ SCREENS.briefing = () => {
         <h2 id="h-fb">Learn</h2>
         <div class="field">
           <label for="feedback">Send feedback to agent owners</label>
-          <textarea class="input" id="feedback" placeholder="What should the agents do better next time?" aria-describedby="fbHint"></textarea>
-          <span class="note" id="fbHint" style="margin-top:2px">Agent owners use this to improve their agent before the next DD.</span>
+          <textarea class="input" id="feedback" data-action="field" placeholder="${esc(BRIEFING_FB_PROMPT)}" aria-describedby="fbHint">${esc(state.fields.feedback || '')}</textarea>
+          <span class="note" id="fbHint" style="margin-top:2px">Agent owners are not read in: do not name the asset, the licensor or the deal. The outbound guard removes the asset and code name before sending.</span>
         </div>
         <div class="actions" style="margin-top:12px"><button type="button" class="btn" data-action="feedback">Send feedback</button></div>
       </section>
@@ -2615,7 +2925,7 @@ ACTIONS.sign = el => {
   }
   const body = card && $('.decision-body', card);
   if (body) {
-    body.classList.remove('pencil');
+    body.classList.remove('pencil', 'by-people');
     body.classList.add('ink');
     const pic = $(':scope > .ic', body);
     if (pic) pic.remove();
@@ -2640,6 +2950,8 @@ ACTIONS.feedback = () => {
     return;
   }
   ta.value = '';
+  ta.setAttribute('placeholder', BRIEFING_FB_PROMPT);
+  delete state.fields.feedback;
   addLog(LEAD, 'person', 'sent feedback to the agent owners.');
   toast('Feedback sent');
 };
@@ -2725,12 +3037,24 @@ ACTIONS['open-request'] = el => { closeDrawer(true); go('requests', 'req:' + el.
 ACTIONS['go-knowledge'] = () => { closeDrawer(true); go('request', 'id:h-know'); };
 
 /* ================= Header ================= */
+/* Time left until the deadline on the Request screen (as typed, else the mode's default), on the demo
+   clock: hours below 72 h, days from there. A cleared field says so; a past deadline says so. */
+function dueText() {
+  const typed = Object.prototype.hasOwnProperty.call(state.fields, 'f-deadline');
+  const v = typed ? state.fields['f-deadline'] : DATA.dd.deadline[state.mode];
+  const at = v ? Date.parse(String(v) + 'Z') : NaN;   // wall clock, like DEMO_DAY
+  if (isNaN(at)) return 'No deadline set';
+  const mins = Math.floor((at - DEMO_DAY) / 60000) - demoMinutes();
+  if (mins <= 0) return 'Deadline passed';
+  const h = Math.floor(mins / 60);
+  return h < 1 ? 'Due in under 1 h' : h < 72 ? `Due in ${h} h` : `Due in ${Math.floor(h / 24)} d`;
+}
 function renderHeader() {
   const d = DATA.dd;
   const parts = [
-    esc(d.id), esc(d.asset),
+    esc(d.id), esc(assetName()),
     state.mode === 'reactive' ? 'Reactive DD' : 'Planned DD',
-    `<span class="due">Due in ${esc(d.due[state.mode])}</span>`,
+    `<span class="due">${esc(dueText())}</span>`,
     'Read in: 1 person',
     `Agents: ${selectedCount()} selected`,
     `Autonomy ceiling: ${esc(d.ceiling)}`
@@ -2755,49 +3079,85 @@ function routeFromHash() {
   const h = (location.hash || '').replace('#', '');
   return SCREENS[h] ? h : 'request';
 }
-/* opts.focus: 'title' | 'tab' | 'req:R-05' | 'card:A-11' | 'id:<element id>' */
+/* opts.focus: 'title' | 'tab' | 'opener' | 'req:R-05' | 'card:A-11' | 'id:<element id>', or several
+   joined by '|' and tried in order. If none can take focus, the screen title does: focus is never
+   left on the page body.
+   A new screen starts at the top. A re-render of the screen on show (after an action on it) keeps the
+   page where it is, so nothing moves under the pointer: the focus target scrolls only if out of view. */
+let renderedRoute = null;   // the route of the screen on show
 function render(opts) {
   state.route = routeFromHash();
+  const same = state.route === renderedRoute;
+  renderedRoute = state.route;
   renderTabs();
   $('#main').innerHTML = SCREENS[state.route]();
   if (AFTER[state.route]) AFTER[state.route]();
-  window.scrollTo(0, 0);
+  if (!same) window.scrollTo(0, 0);
   document.title = DATA.routes.find(r => r.id === state.route).label + ' · DD workspace · UX mockup v2';
   const f = opts && opts.focus;
-  if (f === 'title') { const t = $('#screenTitle'); t && t.focus(); }
-  else if (f === 'tab') { const t = $('#tab-' + state.route); t && t.focus(); }
-  else if (f) focusTarget(f);
+  if (f && !String(f).split('|').some(t => focusTarget(t, same))) focusTarget('title', same);
+  if ($('#drawer').hidden) drawerOpener = null;   // used once, by the render that follows the drawer
   if (narrow.matches) keepTabInView();
+  syncTabCue();
   if (state.justSigned) {
     // The stroke reveal runs as a CSS animation; drop the class afterwards so the
     // final inked state never depends on the animation completing.
     state.justSigned = null;
     setTimeout(() => $$('.sig.anim').forEach(s => s.classList.remove('anim')), 700);
   }
+  renderedAt = performance.now();   // a second click of a double-click is dropped (staleDoubleClick)
 }
-function focusTarget(f) {
-  const i = f.indexOf(':');
-  const kind = f.slice(0, i), id = f.slice(i + 1);
-  const el = kind === 'req' ? document.getElementById('req-' + id)
-    : kind === 'card' ? document.getElementById('card-' + id)
-    : document.getElementById(id);
-  if (!el) return;
+/* Focus one target; returns true only if it now has focus. On a new screen the target is brought to
+   the middle of the window; on the same screen (same) it moves only as far as needed to be seen. */
+function focusTarget(f, same) {
+  if (f === 'title' || f === 'tab') {
+    const t = f === 'title' ? $('#screenTitle') : $('#tab-' + state.route);
+    if (t) t.focus();
+    return !!t && document.activeElement === t;
+  }
+  let el = null, flash = false;
+  if (f === 'opener') {
+    const o = openerTarget();
+    if (o) { el = o.el; flash = o.host; }
+  } else {
+    const i = f.indexOf(':');
+    if (i < 0) return false;
+    const kind = f.slice(0, i), id = f.slice(i + 1);
+    el = kind === 'req' ? document.getElementById('req-' + id)
+      : kind === 'card' ? document.getElementById('card-' + id)
+      : document.getElementById(id);
+    flash = kind === 'req' || kind === 'card';
+  }
+  if (!el) return false;
   el.focus({ preventScroll: true });
-  el.scrollIntoView({ block: 'center' });
-  if (kind === 'req' || kind === 'card') {
+  if (document.activeElement !== el) return false;
+  el.scrollIntoView({ block: same ? 'nearest' : 'center' });
+  if (flash) {
     el.classList.remove('flash');
     void el.offsetWidth;
     el.classList.add('flash');
   }
+  return true;
 }
 /* Scroll the horizontal tab bar by hand: scrollIntoView() would move Chrome's
-   sequential-focus starting point past the skip link and the tabs. */
+   sequential-focus starting point past the skip link and the tabs. The current tab is kept clear of
+   the shaded edges (TAB_CUE_PX, the width of .rail::before/::after in the narrow layout). */
+const TAB_CUE_PX = 48;
 function keepTabInView() {
   const list = $('#tabs'), t = $('#tab-' + state.route);
   if (!list || !t) return;
   const left = t.offsetLeft - list.offsetLeft, right = left + t.offsetWidth;
-  if (left < list.scrollLeft) list.scrollLeft = left - 12;
-  else if (right > list.scrollLeft + list.clientWidth) list.scrollLeft = right - list.clientWidth + 12;
+  if (left < list.scrollLeft + TAB_CUE_PX) list.scrollLeft = left - TAB_CUE_PX;
+  else if (right > list.scrollLeft + list.clientWidth - TAB_CUE_PX) list.scrollLeft = right - list.clientWidth + TAB_CUE_PX;
+}
+/* In the narrow layout the tab bar scrolls sideways with no scrollbar. Shade the edge, with a chevron,
+   on each side where tabs sit out of view, so it is clear there are more sections than fit. */
+function syncTabCue() {
+  const list = $('#tabs'), rail = list && list.parentElement;
+  if (!rail) return;
+  const max = list.scrollWidth - list.clientWidth;
+  rail.classList.toggle('more-left', max > 1 && list.scrollLeft > 1);
+  rail.classList.toggle('more-right', max > 1 && list.scrollLeft < max - 1);
 }
 let pendingFocus = null;
 function go(route, focus) {
@@ -2805,10 +3165,21 @@ function go(route, focus) {
   if (location.hash === '#' + route) { render({ focus: pendingFocus }); pendingFocus = null; }
   else location.hash = route;
 }
-window.addEventListener('hashchange', () => { render({ focus: pendingFocus }); pendingFocus = null; });
+/* Browser Back or Forward: close any drawer first, so it never sits over another screen. The tab or
+   control that had focus is gone after the re-render, so the new screen's title takes it. */
+window.addEventListener('hashchange', () => {
+  closeDrawer(true);
+  render({ focus: pendingFocus || 'title' });
+  pendingFocus = null;
+});
 
 /* ================= Events ================= */
 document.addEventListener('click', e => {
+  // The second click of a double-click lands on what the first click changed: the page behind a
+  // drawer it closed (Sign, Approve), the drawer it opened (a row, Open, Review redaction), or the
+  // re-drawn screen (a Team switch, a card's Sign off). Drop it, and its default action (a label
+  // would tick its checkbox).
+  if (staleDoubleClick(e)) { e.preventDefault(); return; }
   const tab = e.target.closest('[role="tab"]');
   if (tab) { go(tab.dataset.route, 'tab'); return; }
 
@@ -2818,10 +3189,15 @@ document.addEventListener('click', e => {
     if (row) openFinding(row.dataset.row);
     return;
   }
-  if (el.tagName === 'SELECT' || el.tagName === 'INPUT') return;   // handled on change
+  if (el.tagName === 'SELECT' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;   // handled on change
   const fn = ACTIONS[el.dataset.action];
   if (fn) fn(el, e);
 });
+
+/* The second press of such a double-click is dropped too: it would move focus off the control the
+   action focused (the signed card, the switch) onto whatever now sits under the pointer, or open a
+   select there. */
+document.addEventListener('mousedown', e => { if (staleDoubleClick(e)) e.preventDefault(); });
 
 document.addEventListener('change', e => {
   const el = e.target.closest('[data-action]');
@@ -2830,12 +3206,25 @@ document.addEventListener('change', e => {
   if (fn) fn(el, e);
 });
 
+/* While the drawer is open, focus never rests in the page behind it. */
+document.addEventListener('focusin', e => {
+  const d = $('#drawer');
+  if (d.hidden || d.contains(e.target)) return;
+  const c = $('[data-action="close-drawer"]', d);
+  (c || d).focus();
+});
+
 /* <details> toggle does not bubble, so listen in the capture phase. */
 document.addEventListener('toggle', e => {
   if (e.target.id === 'grp-other') state.otherOpen = e.target.open;
 }, true);
 
-$('#scrim').addEventListener('click', () => closeDrawer());
+// A double-click on a row or button opens the drawer with its first click; its second click lands on
+// the scrim beside the drawer and must not close it again.
+$('#scrim').addEventListener('click', e => { if (!staleDoubleClick(e)) closeDrawer(); });
+
+$('#tabs').addEventListener('scroll', syncTabCue, { passive: true });
+window.addEventListener('resize', syncTabCue);
 
 document.addEventListener('keydown', e => {
   const d = $('#drawer');
@@ -2843,10 +3232,13 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { e.preventDefault(); closeDrawer(); return; }
     if (e.key === 'Tab') {                         // keep focus inside the dialog
       const f = $$('button, [href], input, textarea, select, summary, [tabindex]:not([tabindex="-1"])', d).filter(x => !x.disabled);
-      if (!f.length) return;
-      const first = f[0], last = f[f.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      if (!f.length) { e.preventDefault(); return; }
+      const first = f[0], last = f[f.length - 1], cur = document.activeElement;
+      // After a click on drawer text, focus sits on the drawer itself (or the page body), not on a
+      // control: wrap from there too, or Tab would walk out into the page behind the scrim.
+      if (f.indexOf(cur) < 0) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+      else if (e.shiftKey && cur === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && cur === last) { e.preventDefault(); first.focus(); }
     }
     return;
   }
@@ -2867,8 +3259,12 @@ document.addEventListener('keydown', e => {
   if (row && e.key === 'Enter' && e.target === row) openFinding(row.dataset.row);
 });
 
-/* Tab orientation follows the layout: vertical rail or horizontal bar */
-const syncOrientation = () => $('#tabs').setAttribute('aria-orientation', narrow.matches ? 'horizontal' : 'vertical');
+/* Tab orientation follows the layout: vertical rail or horizontal bar (with its edge cue). */
+const syncOrientation = () => {
+  $('#tabs').setAttribute('aria-orientation', narrow.matches ? 'horizontal' : 'vertical');
+  if (narrow.matches) keepTabInView();
+  syncTabCue();
+};
 narrow.addEventListener ? narrow.addEventListener('change', syncOrientation) : narrow.addListener(syncOrientation);
 
 /* ================= Boot ================= */
