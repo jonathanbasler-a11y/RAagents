@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { AgentRail } from './AgentRail';
 import type { AgentsLoad } from './load-agents';
 import { SelectionProvider } from './SelectionProvider';
+import { WORKSPACE_PATH } from './workspace/screens';
+import { TeamChatWorkspaceLink } from './workspace/TeamChatWorkspaceLink';
 
 export const PUBLIC_ONLY_BANNER = 'Public information only. Do not paste confidential or company information.';
 
@@ -24,6 +26,9 @@ export function AppShell({ agentsLoad, children }: { agentsLoad: AgentsLoad; chi
         <p className="doc-control">
           In this phase no documents and no tools are connected. Agent replies are model output, not sources.
         </p>
+        <Link href={WORKSPACE_PATH} className="btn btn-quiet btn-sm">
+          Workspace (illustrative)
+        </Link>
       </header>
       <SelectionProvider>
         <div className="shell">
@@ -35,6 +40,7 @@ export function AppShell({ agentsLoad, children }: { agentsLoad: AgentsLoad; chi
             </nav>
           )}
           <main id="main" className="main" tabIndex={-1}>
+            <TeamChatWorkspaceLink />
             {children}
           </main>
         </div>

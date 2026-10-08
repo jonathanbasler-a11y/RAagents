@@ -1,14 +1,19 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentSpecError } from '@/server/agents';
 import { readSse } from '@/server/chat/test-support';
 import { readLlmConfig } from '@/server/llm';
 import { captureLogs, jsonResponse } from '@/server/llm/test-support/fake-gateway';
 import type { HealthReport } from '@/shared/contracts';
-import { getHealth } from './health';
+import { getHealth, readDemoMode } from './health';
 import { apiHarness, jsonOf, postRequest, TURN_BODY, type ApiHarness } from './test-support';
 import { postTurn } from './turns';
 
 let harness: ApiHarness | undefined;
+
+// A DEMO_MODE in the shell that runs the tests must not change what they see.
+beforeEach(() => {
+  vi.stubEnv('DEMO_MODE', undefined);
+});
 
 afterEach(() => {
   harness?.cleanup();
@@ -21,6 +26,7 @@ function setup(...args: Parameters<typeof apiHarness>): ApiHarness {
 }
 
 type Report = HealthReport & {
+  mode: 'live' | 'practice';
   agentIssueCount: number;
   llmRoutes: Record<'agents' | 'judge', { configured: boolean; missing: string[] }>;
 };
@@ -44,12 +50,34 @@ describe('GET /api/health', () => {
     expect(await jsonOf<Report>(response)).toEqual({
       status: 'ok',
       checks: { database: 'ok', agents: 'ok', llm: 'ok' },
+      mode: 'live',
       agentCount: 6,
       agentIssueCount: 0,
       llm: { configured: true, missing: [], message: null },
       llmRoutes: { agents: { configured: true, missing: [] }, judge: { configured: true, missing: [] } },
       startedAt: api.runtime.startedAt,
     });
+  });
+
+  it('reports mode "practice" while the server runs with DEMO_MODE=practice, read on every call', async () => {
+    const api = setup({ llmConfig: (route) => readLlmConfig(route, FULL_ENV) });
+    expect((await jsonOf<Report>(getHealth(api.deps))).mode).toBe('live');
+
+    vi.stubEnv('DEMO_MODE', 'practice');
+    const report = await jsonOf<Report>(getHealth(api.deps));
+
+    expect(report.mode).toBe('practice');
+    expect(report).toMatchObject({ status: 'ok', checks: { database: 'ok', agents: 'ok', llm: 'ok' }, llm: { configured: true } });
+  });
+
+  it('still reports a missing model setting in practice mode', async () => {
+    vi.stubEnv('DEMO_MODE', 'practice');
+    const api = setup({ llmConfig: (route) => readLlmConfig(route, { LLM_API_KEY: 'fake-key' }) });
+
+    const report = await jsonOf<Report>(getHealth(api.deps));
+
+    expect(report).toMatchObject({ mode: 'practice', status: 'degraded', checks: { llm: 'not_configured' } });
+    expect(report.llm.missing).toEqual(['LLM_BASE_URL', 'LLM_MODEL']);
   });
 
   it('never returns a key, a host or a model id', async () => {
@@ -149,5 +177,18 @@ describe('GET /api/health', () => {
     const report = await jsonOf<Report>(getHealth(api.deps));
 
     expect(report).toMatchObject({ status: 'error', checks: { agents: 'error' }, agentCount: 0, agentIssueCount: 2 });
+  });
+});
+
+describe('readDemoMode', () => {
+  it.each([
+    [{ DEMO_MODE: 'practice' }, 'practice'],
+    [{ DEMO_MODE: ' Practice ' }, 'practice'],
+    [{}, 'live'],
+    [{ DEMO_MODE: '' }, 'live'],
+    [{ DEMO_MODE: 'live' }, 'live'],
+    [{ DEMO_MODE: 'rehearsal' }, 'live'],
+  ])('%j is %s: only "practice" switches practice mode on', (env, mode) => {
+    expect(readDemoMode(env)).toBe(mode);
   });
 });

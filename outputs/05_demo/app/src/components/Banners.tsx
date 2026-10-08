@@ -1,4 +1,18 @@
 import type { LlmSetupStatus } from '@/shared/contracts';
+import { PRACTICE_MODE_BANNER } from './labels';
+
+/**
+ * Practice mode: replies come from the stand-in model. Persistent and not dismissible: it is
+ * meant to sit under the "Public information only" banner on every page. Live renders nothing.
+ */
+export function PracticeBanner({ mode }: { mode: 'live' | 'practice' }) {
+  if (mode !== 'practice') return null;
+  return (
+    <div className="banner banner-practice" role="note">
+      {PRACTICE_MODE_BANNER}
+    </div>
+  );
+}
 
 /** Shown when GET /api/health says the agents' model route is not set up. Names only, never values. */
 export function SetupBanner({ llm }: { llm: LlmSetupStatus }) {

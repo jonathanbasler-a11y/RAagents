@@ -61,6 +61,26 @@ describe('AgentRail', () => {
     pathname.current = '/team';
     render(<AgentRail agents={ROSTER} />);
     expect(screen.getByRole('link', { name: 'Team chat' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Workspace (illustrative)' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('links the illustrative workspace after the team chat, and marks it while you are there', () => {
+    const { unmount } = render(<AgentRail agents={ROSTER} />);
+    const top = screen.getByRole('link', { name: 'Team chat' }).closest('ul');
+    expect(top).not.toBeNull();
+    expect(within(top as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Team overview',
+      'Team chat',
+      'Workspace (illustrative)',
+    ]);
+    expect(screen.getByRole('link', { name: 'Workspace (illustrative)' })).toHaveAttribute('href', '/workspace');
+    expect(screen.getByRole('link', { name: 'Workspace (illustrative)' })).not.toHaveAttribute('aria-current');
+    unmount();
+
+    pathname.current = '/workspace';
+    render(<AgentRail agents={ROSTER} />);
+    expect(screen.getByRole('link', { name: 'Workspace (illustrative)' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Team chat' })).not.toHaveAttribute('aria-current');
   });
 
   it('shows who is selected for this DD once the selection is known', async () => {

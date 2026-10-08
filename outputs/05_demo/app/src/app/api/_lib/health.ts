@@ -6,6 +6,8 @@ import { describeFailure, json } from './http';
 
 // GET /api/health: what the status panel shows. Names and states only: never a key, a
 // host or a model id. Always answers 200 with a report, so the page can show what failed.
+// It also says whether the demo runs in practice mode (the stand-in model, DEMO_MODE=practice);
+// the demo launcher (scripts/demo) reads that to tell its own server from anything else.
 // A configured route that the gateway refused (key or model) is not usable: the model
 // client remembers the refusal and fails every later call at once until a restart, so the
 // report says so, and the setup banner and the disabled composer follow from it.
@@ -26,7 +28,20 @@ export interface HealthRouteState {
   missing: string[];
 }
 
+/**
+ * "practice" when the server runs with DEMO_MODE=practice: `npm run demo:practice` points every
+ * LLM_* name at the stand-in model (scripts/fake-llm.mjs). Any other value, or none, is live.
+ */
+export type DemoMode = 'live' | 'practice';
+
+/** Read on every call, so it always matches the environment this server process was started with. */
+export function readDemoMode(env: Readonly<Record<string, string | undefined>> = process.env): DemoMode {
+  return env.DEMO_MODE?.trim().toLowerCase() === 'practice' ? 'practice' : 'live';
+}
+
 export type HealthResponseBody = HealthReport & {
+  /** practice: replies come from the stand-in model, and the pages say so. */
+  mode: DemoMode;
   /** Problems the agent registry reported (0 when the roster loads). */
   agentIssueCount: number;
   /** Each model route: configured or not, and which variables are missing. */
@@ -84,6 +99,7 @@ export function getHealth(deps: ApiDeps): Response {
   const body: HealthResponseBody = {
     status: database === 'error' || agents === 'error' ? 'error' : llm === 'ok' ? 'ok' : 'degraded',
     checks: { database, agents, llm },
+    mode: readDemoMode(),
     agentCount,
     agentIssueCount,
     llm: setup,

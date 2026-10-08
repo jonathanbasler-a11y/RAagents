@@ -16,6 +16,9 @@
     "smoke": "tsx --conditions=react-server scripts/smoke.ts",
     "avatars": "node scripts/make-avatars.mjs",
     "fake-llm": "node scripts/fake-llm.mjs",
+    "demo": "node scripts/demo/demo.mjs live",
+    "demo:practice": "node scripts/demo/demo.mjs practice",
+    "demo:stop": "node scripts/demo/demo.mjs stop",
     "gate": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {

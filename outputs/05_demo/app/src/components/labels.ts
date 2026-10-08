@@ -80,6 +80,18 @@ export function isMentionable(agent: Pick<PublicAgent, 'kind' | 'mentionOnly'>):
 }
 
 // ---------------------------------------------------------------------------
+// Practice mode (DEMO_MODE=practice, `npm run demo:practice`): the app runs on the stand-in
+// model in scripts/fake-llm.mjs, so no practice reply may pass for a real answer.
+// ---------------------------------------------------------------------------
+
+/** On every page while the demo runs in practice mode. */
+export const PRACTICE_MODE_BANNER =
+  'Practice mode: replies come from a stand-in model, not AI. Do not present them as real answers.';
+
+/** On every agent reply in practice mode, instead of "Model output · not sourced". */
+export const PRACTICE_REPLY_LABEL = 'Practice reply · not AI';
+
+// ---------------------------------------------------------------------------
 // Errors: setup problems read differently from service problems
 // ---------------------------------------------------------------------------
 
