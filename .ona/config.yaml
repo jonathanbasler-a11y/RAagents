@@ -1,2 +1,12 @@
 tasks: {}
-services: {}
+services:
+  ux-mockup:
+    name: UX mockup
+    triggeredBy:
+      - manual
+      - postEnvironmentStart
+    commands:
+      start: |
+        ona environment port open 8000 --admission creator_only --name "UX mockup"
+        python3 -m http.server 8000 --bind 0.0.0.0 --directory outputs/05_demo/ux-mockup
+      ready: curl -fsS http://localhost:8000/
