@@ -42,6 +42,7 @@ Desktop.ini
 # App build output and local data (never committed)
 node_modules/
 .next/
+.next-*/
 next-env.d.ts
 *.tsbuildinfo
 coverage/
