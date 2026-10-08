@@ -23,6 +23,6 @@ services:
     name: Hybrid team chat app
     description: Builds and serves the chat app on port 3000. Start it manually after your secrets are set. Keep the port creator-only.
     commands:
-      start: cd outputs/05_demo/app && npm run build && npm start -- -H 0.0.0.0 -p 3000
+      start: cd outputs/05_demo/app && npm run build && HOST=0.0.0.0 PORT=3000 npm start
     triggeredBy:
       - manual
