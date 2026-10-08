@@ -38,3 +38,16 @@ Desktop.ini
 
 # Office lock files (from later PowerPoint/Word conversions)
 ~$*
+
+# App build output and local data (never committed)
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+coverage/
+.data/
+.avatar-candidates/
+.eval-runs/
+
+# Local confidentiality deny-list used by .githooks/pre-commit (its terms are sensitive)
+.denylist.local

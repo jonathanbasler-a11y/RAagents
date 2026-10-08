@@ -1,0 +1,51 @@
+#!/bin/sh
+# Pre-commit confidentiality guard (CLAUDE.md git rules; docs/BUILD-LEARNINGS.md Part 11).
+# Enable once per clone:  git config core.hooksPath .githooks
+#
+# 1. Refuses staged files under inputs/confidential/.
+# 2. Refuses staged audio files.
+# 3. If a git-ignored .denylist.local exists at the repo root (one term per line,
+#    "#" for comments), refuses staged additions that contain any listed term.
+#    The matching terms are never printed, because the list itself is sensitive.
+set -eu
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$staged" ] && exit 0
+
+confidential=$(printf '%s\n' "$staged" | grep -E '^inputs/confidential/' || true)
+if [ -n "$confidential" ]; then
+  echo "pre-commit: refusing files under inputs/confidential/ (never committed):" >&2
+  printf '%s\n' "$confidential" | sed 's/^/  /' >&2
+  exit 1
+fi
+
+audio=$(printf '%s\n' "$staged" | grep -iE '\.(m4a|mp3|wav|aac|flac|ogg|opus|aiff)$' || true)
+if [ -n "$audio" ]; then
+  echo "pre-commit: refusing audio files:" >&2
+  printf '%s\n' "$audio" | sed 's/^/  /' >&2
+  exit 1
+fi
+
+root=$(git rev-parse --show-toplevel)
+if [ -f "$root/.denylist.local" ]; then
+  terms=$(mktemp)
+  trap 'rm -f "$terms"' EXIT
+  grep -v '^[[:space:]]*#' "$root/.denylist.local" | sed '/^[[:space:]]*$/d' > "$terms" || true
+  if [ -s "$terms" ]; then
+    hits=""
+    printf '%s\n' "$staged" | while IFS= read -r f; do
+      if git diff --cached -U0 -- "$f" | grep '^+' | grep -v '^+++' | grep -qiF -f "$terms"; then
+        echo "  $f"
+      fi
+    done > "$terms.hits"
+    if [ -s "$terms.hits" ]; then
+      echo "pre-commit: staged additions contain a term from .denylist.local in:" >&2
+      cat "$terms.hits" >&2
+      rm -f "$terms.hits"
+      exit 1
+    fi
+    rm -f "$terms.hits"
+  fi
+fi
+
+exit 0
