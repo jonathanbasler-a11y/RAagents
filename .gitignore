@@ -13,6 +13,8 @@ inputs/confidential/
 .env
 .env.*
 !.env.example
+*.env
+!env.example
 
 # Claude Code personal settings
 .claude/settings.local.json
@@ -38,3 +40,18 @@ Desktop.ini
 
 # Office lock files (from later PowerPoint/Word conversions)
 ~$*
+
+# App build output and local data (never committed)
+node_modules/
+.next/
+.next-*/
+next-env.d.ts
+*.tsbuildinfo
+coverage/
+.vitest/
+.data/
+.avatar-candidates/
+.eval-runs/
+
+# Local confidentiality deny-list used by .githooks/pre-commit (its terms are sensitive)
+.denylist.local

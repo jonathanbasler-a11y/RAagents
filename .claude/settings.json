@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(inputs/confidential/**)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.production)",
+      "Read(**/.env.development)",
+      "Read(**/.env.test)",
+      "Edit(inputs/**)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git merge *)",
+      "Bash(git branch -d *)",
+      "Bash(git branch -D *)",
+      "Bash(gh pr merge *)"
+    ]
+  }
+}

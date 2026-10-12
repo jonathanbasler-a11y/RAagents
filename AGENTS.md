@@ -1,0 +1,3 @@
+# AGENTS.md
+
+For AI coding agents other than Claude Code: read [`CLAUDE.md`](CLAUDE.md) (the project brief and the working rules) and [`ORIENTATION.md`](ORIENTATION.md) (the authoritative start: first commands, reading order, invariants and the checks before calling anything done) before you change anything, and follow them as if they were written for you. This repository is public, so never commit credentials, hosts, company names other than regulators, personal names or confidential material. Here "agents" means the product's AI teammates; helper agents like you are called `dev-` agents in plans and reports.
