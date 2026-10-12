@@ -1,6 +1,11 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { changed } from '@/server/agents/test-fixtures';
-import { eventually, gate, parseSse, readSse } from '@/server/chat/test-support';
+import { createChatRuntime, type ChatRuntime } from '@/server/chat/boot';
+import { eventually, gate, parseSse, readSse, sequentialIds } from '@/server/chat/test-support';
+import { DEADLINE_GRACE_MS, STALE_TURN_MARGIN_MS, TURN_DEADLINE_MS } from '@/server/chat/turn-runner';
 import { captureLogs, hangUntilAborted } from '@/server/llm/test-support/fake-gateway';
 import { readLlmConfig } from '@/server/llm';
 import type { ApiErrorBody, ChatEvent, LlmMessage, TurnDuplicateResponse } from '@/shared/contracts';
@@ -210,6 +215,22 @@ describe('POST /api/rooms/[room]/turns: durability', () => {
     expect(api.counts()).toEqual({ threads: 1, turns: 1, messages: 2 });
   });
 
+  it('treats a clientTurnId that differs only by letter case as the same turn, stored in lower case', async () => {
+    const api = setup({ steps: [streamedReply('Once.')] });
+    const upper = 'AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE';
+    const first = await postTurn(postRequest(TURNS, { ...TURN_BODY, clientTurnId: upper }), 'lead', api.deps);
+    const events = await readSse(first.body as ReadableStream<Uint8Array>);
+    const started = events[0] as Extract<ChatEvent, { type: 'turn' }>;
+    expect(started.clientTurnId).toBe(upper.toLowerCase());
+
+    const repeat = await postTurn(postRequest(TURNS, { ...TURN_BODY, clientTurnId: 'aaaaaaaa-BBBB-4ccc-8DDD-eeeeeeeeeeee' }), 'lead', api.deps);
+
+    expect(repeat.status).toBe(200);
+    expect(await jsonOf<TurnDuplicateResponse>(repeat)).toEqual({ duplicate: true, turnId: started.turnId, status: 'done' });
+    expect(api.fake.calls).toHaveLength(1);
+    expect(api.counts()).toEqual({ threads: 1, turns: 1, messages: 2 });
+  });
+
   it('answers a second turn in the same room with 409 room_busy while the first one runs', async () => {
     const hold = gate();
     const api = setup({ steps: [(call) => heldReply('First ', hold.promise, 'turn.', call.signal)] });
@@ -325,5 +346,157 @@ describe('POST /api/rooms/[room]/turns: refusals', () => {
     expect(JSON.stringify(body)).not.toContain('disk full');
     expect(JSON.stringify(body)).not.toContain('/secret/path');
     expect(logs.errors().join('\n')).toContain(body.correlationId);
+  });
+});
+
+const SERVER_BUSY_MESSAGE =
+  'Two turns are already running on this server, the most it runs at once. Your question was not sent; try again when one ends.';
+
+describe('POST /api/rooms/[room]/turns: two turns at once across all rooms', () => {
+  const body = (clientTurnId: string) => ({ ...TURN_BODY, clientTurnId });
+  const ID_2 = '22222222-2222-4222-8222-222222222222';
+  const ID_3 = '33333333-3333-4333-8333-333333333333';
+
+  it('answers a third concurrent turn with 429 server_busy and writes nothing for it: no row, no model call', async () => {
+    const hold = gate();
+    const held = (call: { signal: AbortSignal | null }) => heldReply('Part ', hold.promise, 'two.', call.signal);
+    const api = setup({ steps: [held, held, streamedReply('never')] });
+    const first = await postTurn(postRequest('/api/rooms/lead/turns', body(TURN_BODY.clientTurnId)), 'lead', api.deps);
+    const second = await postTurn(postRequest('/api/rooms/cmc/turns', body(ID_2)), 'cmc', api.deps);
+    expect([first.status, second.status]).toEqual([200, 200]);
+    const before = api.counts();
+    expect(before).toEqual({ threads: 2, turns: 2, messages: 2 });
+
+    const third = await postTurn(postRequest('/api/rooms/labels/turns', body(ID_3)), 'labels', api.deps);
+
+    expect(third.status).toBe(429);
+    expect(third.headers.get('cache-control')).toContain('no-store');
+    expect(await jsonOf<ApiErrorBody>(third)).toEqual({ error: 'server_busy', message: SERVER_BUSY_MESSAGE, correlationId: expect.any(String) });
+    expect(api.counts()).toEqual(before);
+    expect(api.fake.calls).toHaveLength(2);
+    hold.release();
+    await readSse(first.body as ReadableStream<Uint8Array>);
+    await readSse(second.body as ReadableStream<Uint8Array>);
+  });
+
+  it('frees the slot when a turn ends: the same question, sent again, is accepted', async () => {
+    const hold = gate();
+    const held = (call: { signal: AbortSignal | null }) => heldReply('Part ', hold.promise, 'two.', call.signal);
+    const api = setup({ steps: [held, held, streamedReply('Third.')] });
+    const first = await postTurn(postRequest('/api/rooms/lead/turns', body(TURN_BODY.clientTurnId)), 'lead', api.deps);
+    const second = await postTurn(postRequest('/api/rooms/cmc/turns', body(ID_2)), 'cmc', api.deps);
+    expect((await postTurn(postRequest('/api/rooms/labels/turns', body(ID_3)), 'labels', api.deps)).status).toBe(429);
+
+    hold.release();
+    await readSse(first.body as ReadableStream<Uint8Array>);
+    await readSse(second.body as ReadableStream<Uint8Array>);
+    const retry = await postTurn(postRequest('/api/rooms/labels/turns', body(ID_3)), 'labels', api.deps);
+
+    expect(retry.status).toBe(200);
+    expect((await readSse(retry.body as ReadableStream<Uint8Array>)).at(-1)).toMatchObject({ type: 'done', status: 'done' });
+    expect(api.fake.calls).toHaveLength(3);
+  });
+
+  it('keeps answering a busy room with 409 room_busy (the per-room refusal stays), even when the server is at its limit', async () => {
+    const hold = gate();
+    const held = (call: { signal: AbortSignal | null }) => heldReply('Part ', hold.promise, 'two.', call.signal);
+    const api = setup({ steps: [held, held] });
+    const first = await postTurn(postRequest('/api/rooms/lead/turns', body(TURN_BODY.clientTurnId)), 'lead', api.deps);
+    const second = await postTurn(postRequest('/api/rooms/cmc/turns', body(ID_2)), 'cmc', api.deps);
+
+    const sameRoom = await postTurn(postRequest('/api/rooms/lead/turns', body(ID_3)), 'lead', api.deps);
+
+    expect(sameRoom.status).toBe(409);
+    expect(await jsonOf<ApiErrorBody>(sameRoom)).toMatchObject({ error: 'room_busy' });
+    hold.release();
+    await readSse(first.body as ReadableStream<Uint8Array>);
+    await readSse(second.body as ReadableStream<Uint8Array>);
+  });
+});
+
+describe('POST /api/rooms/[room]/turns: a turn past its deadline does not hold its room', () => {
+  const T0 = Date.parse('2026-10-07T20:45:00.000Z');
+  const STALE_AFTER_MS = TURN_DEADLINE_MS + DEADLINE_GRACE_MS + STALE_TURN_MARGIN_MS;
+  let clocked: { runtime: ChatRuntime; dir: string } | undefined;
+
+  afterEach(() => {
+    if (clocked) {
+      clocked.runtime.store.close();
+      rmSync(clocked.dir, { recursive: true, force: true });
+    }
+    clocked = undefined;
+  });
+
+  it('with a frozen clock moved past the deadline plus grace, the next turn in that room starts and the stuck one is interrupted', async () => {
+    let clockMs = T0;
+    const dir = mkdtempSync(path.join(tmpdir(), 'api-clock-'));
+    const runtime = createChatRuntime({
+      dbPath: path.join(dir, 'chat.db'),
+      bootId: 'boot-test',
+      now: () => new Date(clockMs),
+      newId: sequentialIds('row'),
+    });
+    clocked = { runtime, dir };
+    const hold = gate();
+    const api = setup({
+      steps: [(call) => heldReply('Stuck ', hold.promise, 'reply.', call.signal), streamedReply('Fresh.')],
+      overrides: { runtime: () => runtime, now: () => new Date(clockMs) },
+    });
+    const first = await postTurn(postRequest(TURNS, TURN_BODY), 'lead', api.deps);
+    const stuckTurnId = runtime.store.getRunningTurn('demo', 'lead')?.id as string;
+
+    clockMs = T0 + STALE_AFTER_MS;
+    const stillBusy = await postTurn(postRequest(TURNS, { ...TURN_BODY, clientTurnId: '22222222-2222-4222-8222-222222222222' }), 'lead', api.deps);
+    expect(stillBusy.status).toBe(409);
+
+    clockMs = T0 + STALE_AFTER_MS + 1;
+    const second = await postTurn(postRequest(TURNS, { ...TURN_BODY, clientTurnId: '22222222-2222-4222-8222-222222222222' }), 'lead', api.deps);
+
+    expect(second.status).toBe(200);
+    expect(runtime.store.getTurn(stuckTurnId)).toMatchObject({ status: 'interrupted', errorCode: 'out_of_time' });
+    expect((await readSse(second.body as ReadableStream<Uint8Array>)).at(-1)).toMatchObject({ type: 'done', status: 'done' });
+    hold.release();
+    expect((await readSse(first.body as ReadableStream<Uint8Array>)).at(-1)).toMatchObject({ type: 'done', status: 'interrupted' });
+  });
+});
+
+describe('POST /api/rooms/[room]/turns: the log', () => {
+  it('logs the room path segment quoted, so a line break in it cannot forge a log line', async () => {
+    const logs = captureLogs();
+    const api = setup({ steps: [streamedReply('never')] });
+    const room = 'lead\n[api] forged line (correlation 00000000)';
+
+    const response = await postTurn(postRequest(`/api/rooms/${encodeURIComponent(room)}/turns`, TURN_BODY, { 'sec-fetch-site': 'cross-site' }), room, api.deps);
+
+    expect(response.status).toBe(403);
+    const lines = logs.warnings();
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).not.toContain('\n');
+    expect(lines[0]).toContain(JSON.stringify(room));
+    expect(lines[0].startsWith('[api] refused POST /api/rooms/')).toBe(true);
+  });
+
+  it('quotes an ordinary room name too: one format for every line', async () => {
+    const logs = captureLogs();
+    const api = setup({ steps: [streamedReply('never')] });
+
+    await postTurn(postRequest(TURNS, TURN_BODY, { 'sec-fetch-site': 'cross-site' }), 'lead', api.deps);
+
+    expect(logs.warnings()[0]).toContain('POST /api/rooms/"lead"/turns');
+  });
+
+  it('quotes the room in the failure line as well', async () => {
+    const logs = captureLogs();
+    const api = setup({
+      overrides: {
+        runtime: () => {
+          throw new Error('disk full');
+        },
+      },
+    });
+
+    await postTurn(postRequest(TURNS, TURN_BODY), 'lead', api.deps);
+
+    expect(logs.errors().join('\n')).toContain('POST /api/rooms/"lead"/turns failed');
   });
 });

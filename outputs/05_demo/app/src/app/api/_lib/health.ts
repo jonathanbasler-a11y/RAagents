@@ -1,6 +1,14 @@
 import 'server-only';
 import type { RememberedRefusal } from '@/server/llm';
-import { LLM_ROUTES, type HealthCheckState, type HealthReport, type LlmRouteName, type LlmSetupStatus } from '@/shared/contracts';
+import { readDemoMode } from '@/server/demo-mode';
+import {
+  LLM_ROUTES,
+  type DemoMode,
+  type HealthCheckState,
+  type HealthReport,
+  type LlmRouteName,
+  type LlmSetupStatus,
+} from '@/shared/contracts';
 import type { ApiDeps } from './deps';
 import { describeFailure, json } from './http';
 
@@ -28,16 +36,10 @@ export interface HealthRouteState {
   missing: string[];
 }
 
-/**
- * "practice" when the server runs with DEMO_MODE=practice: `npm run demo:practice` points every
- * LLM_* name at the stand-in model (scripts/fake-llm.mjs). Any other value, or none, is live.
- */
-export type DemoMode = 'live' | 'practice';
-
-/** Read on every call, so it always matches the environment this server process was started with. */
-export function readDemoMode(env: Readonly<Record<string, string | undefined>> = process.env): DemoMode {
-  return env.DEMO_MODE?.trim().toLowerCase() === 'practice' ? 'practice' : 'live';
-}
+// The demo mode has one reader (src/server/demo-mode.ts), shared with the root layout, so the
+// pages and this report can never disagree about it.
+export { readDemoMode };
+export type { DemoMode };
 
 export type HealthResponseBody = HealthReport & {
   /** practice: replies come from the stand-in model, and the pages say so. */

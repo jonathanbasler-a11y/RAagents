@@ -199,6 +199,28 @@ describe('runAgent: replies that end badly', () => {
     expect(ctx.events.at(-1)).toEqual({ type: 'agent_end', messageId: 'msg-1', status: 'complete', truncated: true });
   });
 
+  it('keeps the text of a reply the content filter cut off, as partial with an error code and a correlation id, never as complete (COR-2)', async () => {
+    const { deps } = setup([sseResponse([chunkEvent('The filing route is ', { role: true }), chunkEvent(null, { finishReason: 'content_filter' }), DONE_EVENT])]);
+    const ctx = context();
+    const logs = captureLogs();
+
+    const result = await runAgent('lead', ctx, deps);
+
+    expect(result).toMatchObject({ text: 'The filing route is ', status: 'partial', errorCode: 'llm_request', state: 'failed', truncated: false });
+    expect(result.correlationId).toEqual(expect.any(String));
+    expect(logs.warnings().join('\n')).toContain(`(correlation ${result.correlationId})`);
+    expect(ctx.events.slice(-2)).toEqual([
+      { type: 'error', code: 'llm_request', correlationId: result.correlationId, messageId: 'msg-1' },
+      { type: 'agent_end', messageId: 'msg-1', status: 'partial', truncated: false },
+    ]);
+  });
+
+  it('still marks a reply that ended with "stop" as complete (positive control for the content filter case)', async () => {
+    const { deps } = setup([okStream('The filing route is clear.')]);
+
+    await expect(runAgent('lead', context(), deps)).resolves.toMatchObject({ status: 'complete', errorCode: null, state: 'answered' });
+  });
+
   it('keeps the text of a stream that broke after the first token, as partial with an error code and a correlation id', async () => {
     const { deps } = setup([sseResponse([chunkEvent('Half a ', { role: true })], { end: { error: socketClosed() } })]);
     const ctx = context();

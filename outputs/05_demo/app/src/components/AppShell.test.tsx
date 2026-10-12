@@ -2,7 +2,22 @@
 import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROSTER } from '@/client/test-fixtures';
+import type { TimelineItem } from '@/client/timeline';
 import { AppShell } from './AppShell';
+import { AgentBubble } from './MessageBubble';
+
+const AGENT_ITEM = {
+  kind: 'agent',
+  key: 'reply-1',
+  agentId: 'reglead',
+  agentName: 'Rosa',
+  text: 'A short reply.',
+  state: 'complete',
+  truncated: false,
+  errorCode: null,
+  correlationId: null,
+  unsaved: false,
+} as unknown as Extract<TimelineItem, { kind: 'agent' }>;
 
 const pathname = vi.hoisted(() => ({ current: '/' }));
 vi.mock('next/navigation', () => ({ usePathname: () => pathname.current }));
@@ -43,6 +58,57 @@ describe('AppShell navigation to the illustrative workspace', () => {
     renderShell();
 
     expect(within(screen.getByRole('main')).queryByRole('link', { name: WORKSPACE_FROM_TEAM_CHAT })).not.toBeInTheDocument();
+  });
+});
+
+describe('AppShell in practice mode', () => {
+  const PRACTICE_BANNER = 'Practice mode: replies come from a stand-in model, not AI. Do not present them as real answers.';
+
+  it('shows the practice banner on the page, right under the public-information banner', () => {
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} mode="practice">
+        <p>Page body</p>
+      </AppShell>,
+    );
+
+    const publicBanner = screen.getByText('Public information only. Do not paste confidential or company information.');
+    const practiceBanner = screen.getByText(PRACTICE_BANNER);
+    expect(publicBanner.compareDocumentPosition(practiceBanner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(practiceBanner.compareDocumentPosition(screen.getByRole('banner')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('stops calling replies model output in the header line', () => {
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} mode="practice">
+        <p>Page body</p>
+      </AppShell>,
+    );
+
+    const header = screen.getByRole('banner');
+    expect(header).toHaveTextContent('In this phase no documents and no tools are connected. Replies in practice mode are stand-in text, not model output and not sources.');
+    expect(header).not.toHaveTextContent('Agent replies are model output');
+  });
+
+  it.each([undefined, 'live' as const])('shows nothing about practice mode when the mode is %s', (mode) => {
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} mode={mode}>
+        <p>Page body</p>
+      </AppShell>,
+    );
+
+    expect(screen.queryByText(/Practice mode/)).not.toBeInTheDocument();
+    expect(screen.getByRole('banner')).toHaveTextContent('Agent replies are model output, not sources.');
+  });
+
+  it('gives replies below the shell the practice label', () => {
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} mode="practice">
+        <AgentBubble item={AGENT_ITEM} agent={ROSTER[0]} />
+      </AppShell>,
+    );
+
+    expect(screen.getByText('Practice reply · not AI · not sourced')).toBeInTheDocument();
+    expect(screen.queryByText('Model output · not sourced')).not.toBeInTheDocument();
   });
 });
 

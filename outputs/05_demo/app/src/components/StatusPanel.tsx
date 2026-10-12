@@ -3,6 +3,7 @@
 import type { HealthCheckState, HealthReport, HealthStatus } from '@/shared/contracts';
 import { chatClient, type ChatApi } from '@/client/chat-client';
 import { useHealth } from '@/client/use-health';
+import { useDemoMode } from './DemoMode';
 
 const OVERALL: Record<HealthStatus, string> = {
   ok: 'All checks pass',
@@ -21,7 +22,15 @@ function startedAtText(iso: string): string {
   return Number.isNaN(date.getTime()) ? 'unknown' : date.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+function modelConnectionText(report: HealthReport, practice: boolean): string {
+  // In practice mode "Set up" would read as a real model: say what it is.
+  if (practice && report.checks.llm !== 'error') return 'Stand-in model (practice mode), not a real model';
+  if (report.checks.llm === 'error') return 'Refused by the model gateway';
+  return report.llm.configured ? 'Set up' : 'Not set up';
+}
+
 function HealthChecks({ report }: { report: HealthReport }) {
+  const practice = useDemoMode() === 'practice';
   return (
     <>
       <p className={`status-overall is-${report.status}`}>{OVERALL[report.status]}</p>
@@ -29,7 +38,7 @@ function HealthChecks({ report }: { report: HealthReport }) {
         <div>
           <dt>Model connection</dt>
           <dd>
-            {report.checks.llm === 'error' ? 'Refused by the model gateway' : report.llm.configured ? 'Set up' : 'Not set up'}
+            {modelConnectionText(report, practice)}
             {report.checks.llm === 'error' && report.llm.message && <span className="status-detail"> {report.llm.message}</span>}
             {!report.llm.configured && report.llm.missing.length > 0 && (
               <span className="status-missing">

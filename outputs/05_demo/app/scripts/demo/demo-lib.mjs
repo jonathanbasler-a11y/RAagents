@@ -124,6 +124,26 @@ export function findEnvFile({ env, homeDir, cwd, appDir, isFile }) {
   return { file: null, tried, warnings };
 }
 
+/**
+ * What to tell someone who has no model settings file. `install -m 600` creates the copy
+ * private from the first byte, and `mkdir -m 700` keeps the folder private; `cp` then `chmod`
+ * would leave the secret readable in between.
+ * @param {string[]} tried
+ */
+export function noSettingsHelp(tried) {
+  return [
+    `No model settings file was found. Looked for: ${tried.join(', ')}.`,
+    '',
+    'Create ~/.config/raagents/llm.env once, from your own settings. In a copy of the app that has your',
+    'filled-in .env.local, run:',
+    '  mkdir -p -m 700 ~/.config/raagents && install -m 600 .env.local ~/.config/raagents/llm.env',
+    'Or install env.example there the same way (install -m 600 env.example ~/.config/raagents/llm.env)',
+    'and fill in your own values.',
+    '',
+    'No VPN, or no settings at hand? Practise with: npm run demo:practice',
+  ].join('\n');
+}
+
 const GROUP_OR_OTHERS_READ = 0o044;
 
 /**
@@ -149,6 +169,10 @@ export function serverEnv({ mode, baseEnv, appDir, distDir = DIST_DIR, fakeBaseU
   for (const [name, value] of Object.entries(baseEnv)) {
     if (!name.startsWith('LLM_') && value !== undefined) env[name] = value;
   }
+  // The app's Host check (src/server/request-gate.ts) reads HOST. The launcher always binds
+  // to loopback, so say so, whatever the shell exports; ALLOWED_HOSTS has no use here.
+  env.HOST = HOST;
+  delete env.ALLOWED_HOSTS;
   env.NEXT_DIST_DIR = distDir;
   env.NEXT_TELEMETRY_DISABLED = '1';
   env.CHAT_DB_PATH = join(appDir, '.data', mode === 'practice' ? 'demo-practice.db' : 'demo.db');

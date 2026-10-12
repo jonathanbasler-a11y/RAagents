@@ -1,6 +1,11 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { changed } from '@/server/agents/test-fixtures';
-import { gate, parseSse, readSse } from '@/server/chat/test-support';
+import { createChatRuntime, type ChatRuntime } from '@/server/chat/boot';
+import { gate, parseSse, readSse, sequentialIds } from '@/server/chat/test-support';
+import { DEADLINE_GRACE_MS, STALE_TURN_MARGIN_MS, TURN_DEADLINE_MS } from '@/server/chat/turn-runner';
 import type { ApiErrorBody, ChatEvent, NewThreadResponse, RoomMessagesResponse } from '@/shared/contracts';
 import { getRoomMessages, postNewThread } from './rooms';
 import { postTurn } from './turns';
@@ -131,5 +136,66 @@ describe('POST /api/rooms/[room]/new', () => {
     expect((await postNewThread(postRequest('/api/rooms/nobody/new', {}), 'nobody', api.deps)).status).toBe(404);
     expect((await postNewThread(postRequest('/api/rooms/lead/new', 'nope'), 'lead', api.deps)).status).toBe(400);
     expect((await postNewThread(postRequest('/api/rooms/lead/new', []), 'lead', api.deps)).status).toBe(400);
+  });
+});
+
+describe('GET /api/rooms/[room]/messages: a turn past its deadline', () => {
+  const T0 = Date.parse('2026-10-07T20:45:00.000Z');
+  const STALE_AFTER_MS = TURN_DEADLINE_MS + DEADLINE_GRACE_MS + STALE_TURN_MARGIN_MS;
+  let clocked: { runtime: ChatRuntime; dir: string } | undefined;
+
+  afterEach(() => {
+    if (clocked) {
+      clocked.runtime.store.close();
+      rmSync(clocked.dir, { recursive: true, force: true });
+    }
+    clocked = undefined;
+  });
+
+  async function stuckTurn() {
+    let clockMs = T0;
+    const dir = mkdtempSync(path.join(tmpdir(), 'rooms-clock-'));
+    const runtime = createChatRuntime({
+      dbPath: path.join(dir, 'chat.db'),
+      bootId: 'boot-test',
+      now: () => new Date(clockMs),
+      newId: sequentialIds('row'),
+    });
+    clocked = { runtime, dir };
+    const hold = gate();
+    const api = setup({
+      steps: [(call) => heldReply('Stuck ', hold.promise, 'reply.', call.signal)],
+      overrides: { runtime: () => runtime, now: () => new Date(clockMs) },
+    });
+    const response = await postTurn(postRequest('/api/rooms/lead/turns', TURN_BODY), 'lead', api.deps);
+    return { api, response, hold, setClock: (ms: number) => (clockMs = ms) };
+  }
+
+  it('shows the turn as interrupted and no running turn once deadline, grace and margin have passed, so the browser stops polling', async () => {
+    const { api, response, hold, setClock } = await stuckTurn();
+
+    setClock(T0 + STALE_AFTER_MS);
+    const within = await jsonOf<RoomMessagesResponse>(getRoomMessages('lead', api.deps));
+    expect(within.runningTurn).toMatchObject({ status: 'running' });
+
+    setClock(T0 + STALE_AFTER_MS + 1);
+    const after = await jsonOf<RoomMessagesResponse>(getRoomMessages('lead', api.deps));
+
+    expect(after.runningTurn).toBeNull();
+    expect(after.turns).toEqual([expect.objectContaining({ status: 'interrupted', errorCode: 'out_of_time' })]);
+    hold.release();
+    await readSse(response.body as ReadableStream<Uint8Array>);
+  });
+
+  it('frees the room for a new conversation too', async () => {
+    const { api, response, hold, setClock } = await stuckTurn();
+    setClock(T0 + STALE_AFTER_MS + 1);
+
+    getRoomMessages('lead', api.deps);
+    const fresh = await postNewThread(postRequest('/api/rooms/lead/new', {}), 'lead', api.deps);
+
+    expect(fresh.status).toBe(200);
+    hold.release();
+    await readSse(response.body as ReadableStream<Uint8Array>);
   });
 });

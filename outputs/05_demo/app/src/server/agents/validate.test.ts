@@ -145,6 +145,10 @@ describe('validateSpecs: participation flags', () => {
   it('keeps team roles locked on', () => {
     expect(issuesOf(changed('summary', { locked: false }))).toEqual([issue('summary.md', /locked: true/)]);
   });
+
+  it.each(['orphan', 'paed', 'exp', 'combo', 'cdx', 'late', 'filed'] as const)('accepts the trigger %s', (trigger) => {
+    expect(issuesOf(changed('labels', { trigger }))).toEqual([]);
+  });
 });
 
 describe('validateSpecs: routing lists', () => {

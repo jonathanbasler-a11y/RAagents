@@ -9,6 +9,7 @@ import {
   formatPidFile,
   isSameProcess,
   nodeVersionProblem,
+  noSettingsHelp,
   parseArgs,
   parseElapsed,
   parsePidFile,
@@ -146,6 +147,27 @@ describe('envFilePermissionProblem: from the file’s mode bits only', () => {
   });
 });
 
+describe('noSettingsHelp: the advice for creating the settings file', () => {
+  const help = noSettingsHelp(['$RAAGENTS_ENV_FILE (~/vault/llm.env)', '~/.config/raagents/llm.env', '.env.local']);
+
+  it('lists what was tried', () => {
+    expect(help).toContain('Looked for: $RAAGENTS_ENV_FILE (~/vault/llm.env), ~/.config/raagents/llm.env, .env.local.');
+  });
+
+  it('creates the folder private (700) and installs the file private (600) in one step, so the secret is never readable', () => {
+    expect(help).toContain('mkdir -p -m 700 ~/.config/raagents && install -m 600 .env.local ~/.config/raagents/llm.env');
+  });
+
+  it('never uses cp (it leaves a window where the copy is world-readable), and installs the template the same way', () => {
+    expect(help).not.toMatch(/\bcp\b/);
+    expect(help).toContain('install -m 600 env.example ~/.config/raagents/llm.env');
+  });
+
+  it('still points to practice mode', () => {
+    expect(help).toContain('npm run demo:practice');
+  });
+});
+
 describe('serverEnv: the environment next start runs with', () => {
   const INHERITED = {
     PATH: '/usr/bin:/bin',
@@ -189,6 +211,18 @@ describe('serverEnv: the environment next start runs with', () => {
     expect(serverEnv({ mode: 'live', baseEnv: { NEXT_DIST_DIR: '.next-other' }, appDir: APP, distDir: '.next-demo-check' })).toMatchObject({
       NEXT_DIST_DIR: '.next-demo-check',
     });
+  });
+
+  it('binds-to-loopback is stated to the app: HOST is 127.0.0.1 whatever the shell exports, and ALLOWED_HOSTS is not inherited', () => {
+    // An exported HOST of another value would switch off the app's Host check (src/server/request-gate.ts).
+    const inherited = { ...INHERITED, HOST: '0.0.0.0', ALLOWED_HOSTS: 'elsewhere.example.test' };
+
+    for (const mode of ['live', 'practice'] as const) {
+      const env = serverEnv({ mode, baseEnv: inherited, appDir: APP, fakeBaseUrl: 'http://127.0.0.1:45678/v1' });
+
+      expect(env.HOST).toBe('127.0.0.1');
+      expect(env).not.toHaveProperty('ALLOWED_HOSTS');
+    }
   });
 
   it('practice without the stand-in model’s address is a bug, not a silent live run', () => {

@@ -205,6 +205,86 @@ describe('buildTimeline from saved data', () => {
     ]);
   });
 
+  describe('an interruption by a server shutdown', () => {
+    const SHUTDOWN_TEXT =
+      'This turn was interrupted: the server shut down while it ran. The text that had arrived is kept, marked as cut off.';
+
+    it('says the server shut down and that the text that had arrived is kept, instead of the generic restart text', () => {
+      const data = roomData(
+        [
+          makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Q', seq: 1 }),
+          makeMessage({
+            id: 'a1',
+            turnId: 't1',
+            author: 'agent',
+            agentId: 'reglead',
+            agentName: 'Rosa',
+            text: 'First half of the ans',
+            status: 'partial',
+            errorCode: 'server_shutdown',
+            correlationId: 'corr-9',
+            seq: 2,
+          }),
+        ],
+        [makeTurn({ id: 't1', status: 'interrupted', errorCode: 'server_shutdown', correlationId: 'corr-9' })],
+      );
+
+      const items = buildTimeline(data, null, nameOf);
+
+      expect(items.map(show)).toEqual(['you: Q', 'Rosa [partial]: First half of the ans', `error: ${SHUTDOWN_TEXT}`]);
+      expect(items[1]).toMatchObject({ kind: 'agent', errorCode: 'server_shutdown', correlationId: 'corr-9' });
+    });
+
+    it('also says it when the shutdown came while the reply had no text yet (an empty reply saved with the code)', () => {
+      const data = roomData(
+        [
+          makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Q', seq: 1 }),
+          makeMessage({
+            id: 'a1',
+            turnId: 't1',
+            author: 'agent',
+            agentId: 'reglead',
+            agentName: 'Rosa',
+            text: '',
+            status: 'error',
+            errorCode: 'server_shutdown',
+            correlationId: 'corr-9',
+            seq: 2,
+          }),
+        ],
+        [makeTurn({ id: 't1', status: 'interrupted', errorCode: 'server_shutdown', correlationId: 'corr-9' })],
+      );
+
+      expect(buildTimeline(data, null, nameOf).at(-1)).toMatchObject({ kind: 'line', tone: 'error', text: SHUTDOWN_TEXT });
+    });
+
+    it('keeps the restart text for an interrupted turn whose messages carry no shutdown code (positive control)', () => {
+      const data = roomData(
+        [
+          makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Q', seq: 1 }),
+          makeMessage({ id: 'a1', turnId: 't1', author: 'agent', agentId: 'reglead', agentName: 'Rosa', text: 'Done.', errorCode: 'out_of_time', seq: 2 }),
+        ],
+        [makeTurn({ id: 't1', status: 'interrupted' })],
+      );
+
+      expect(buildTimeline(data, null, nameOf).at(-1)).toMatchObject({
+        text: 'This turn was interrupted: the server restarted while it ran. Replies that had finished are kept; a reply still running then was lost.',
+      });
+    });
+
+    it('does not use the shutdown text for a turn that did not end as interrupted', () => {
+      const data = roomData(
+        [
+          makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Q', seq: 1 }),
+          makeMessage({ id: 'a1', turnId: 't1', author: 'agent', agentId: 'reglead', agentName: 'Rosa', text: 'Text', status: 'partial', errorCode: 'server_shutdown', seq: 2 }),
+        ],
+        [makeTurn({ id: 't1', status: 'partial' })],
+      );
+
+      expect(buildTimeline(data, null, nameOf).map(show)).toEqual(['you: Q', 'Rosa [partial]: Text']);
+    });
+  });
+
   it('shows "How this turn ran" only for finished turns that have a trace', () => {
     const trace: TurnTrace = { route: { ...KEYWORD_ROUTE, notConsulted: [] }, agents: [] };
     const data = roomData(

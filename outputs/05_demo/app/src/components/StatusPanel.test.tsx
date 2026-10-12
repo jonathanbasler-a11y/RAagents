@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiResult, ChatApi } from '@/client/chat-client';
 import type { HealthReport, HealthResponse } from '@/shared/contracts';
+import { DemoModeProvider } from './DemoMode';
 import { StatusPanel } from './StatusPanel';
 
 const ok = <T,>(data: T): ApiResult<T> => ({ ok: true, data });
@@ -34,6 +35,17 @@ describe('StatusPanel', () => {
     expect(screen.getByText('25 agents loaded')).toBeInTheDocument();
     expect(screen.getByText('Model connection')).toBeInTheDocument();
     expect(screen.getByText('Set up')).toBeInTheDocument();
+  });
+
+  it('in practice mode says the model connection is a stand-in, never "Set up"', async () => {
+    render(
+      <DemoModeProvider mode="practice">
+        <StatusPanel client={client(ok<HealthResponse>(REPORT))} />
+      </DemoModeProvider>,
+    );
+
+    expect(await screen.findByText('Stand-in model (practice mode), not a real model')).toBeInTheDocument();
+    expect(screen.queryByText('Set up')).not.toBeInTheDocument();
   });
 
   it('names the missing variables when the model connection is not set up', async () => {

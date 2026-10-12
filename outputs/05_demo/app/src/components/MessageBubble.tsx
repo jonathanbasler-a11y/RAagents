@@ -1,13 +1,15 @@
 import type { ChatErrorCode, PublicAgent } from '@/shared/contracts';
 import type { TimelineItem } from '@/client/timeline';
 import { Avatar } from './Avatar';
+import { useDemoMode } from './DemoMode';
 import { Markdown } from './Markdown';
-import { describeChatError, shortCapability } from './labels';
+import { PRACTICE_REPLY_LABEL, describeChatError, shortCapability } from './labels';
 
 type AgentItem = Extract<TimelineItem, { kind: 'agent' }>;
 
 /** Rendered by code on every agent bubble: model output is never a source. */
 export const MODEL_OUTPUT_LABEL = 'Model output · not sourced';
+// In practice mode the reply is stand-in text, so it carries PRACTICE_REPLY_LABEL instead.
 
 export function PencilIcon() {
   return (
@@ -47,6 +49,7 @@ export function AgentBubble({ item, agent }: { item: AgentItem; agent?: PublicAg
   const failed = item.state === 'error';
   const brokeOff = item.state === 'partial';
   const hasErrorDetail = item.errorCode !== null || item.correlationId !== null;
+  const sourceLabel = useDemoMode() === 'practice' ? PRACTICE_REPLY_LABEL : MODEL_OUTPUT_LABEL;
 
   return (
     <article className={`bubble bubble-agent is-${item.state}`} aria-label={capability ? `${name}, ${capability}` : name}>
@@ -57,7 +60,7 @@ export function AgentBubble({ item, agent }: { item: AgentItem; agent?: PublicAg
           {capability && <span className="bubble-cap">{capability}</span>}
           <span className="label-model">
             <PencilIcon />
-            {MODEL_OUTPUT_LABEL}
+            {sourceLabel}
           </span>
           {item.truncated && (
             <span className="badge" title="The reply stopped at the output limit.">

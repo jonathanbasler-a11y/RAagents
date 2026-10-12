@@ -1,5 +1,6 @@
 import 'server-only';
 import { RoomBusyError } from '@/server/chat/store';
+import { reconcileOverdueTurns } from '@/server/chat/turn-runner';
 import type { AgentSpec, NewThreadResponse, RoomMessagesResponse } from '@/shared/contracts';
 import type { ApiDeps } from './deps';
 import { apiError, json, logFailure } from './http';
@@ -18,13 +19,18 @@ export function resolveRoom(room: string, registry: ApiDeps['registry']): Resolv
   return agent === undefined ? null : { kind: 'agent', roomId: agent.id, agent };
 }
 
-/** GET /api/rooms/[room]/messages: the room's active thread, its turns, and the turn running now. */
+/**
+ * GET /api/rooms/[room]/messages: the room's active thread, its turns, and the turn running now.
+ * A turn that is still marked running long after its deadline is ended first, so a browser that
+ * polls it sees it end instead of polling for good.
+ */
 export function getRoomMessages(room: string, deps: ApiDeps): Response {
   const correlationId = deps.newId();
   try {
     const resolved = resolveRoom(room, deps.registry);
     if (resolved === null) return apiError('not_found', correlationId);
-    const { store, workspaceId } = deps.runtime();
+    const { store, workspaceId, bootId } = deps.runtime();
+    reconcileOverdueTurns({ store, bootId, log: deps.log });
     const thread = store.getActiveThread(workspaceId, resolved.roomId);
     const body: RoomMessagesResponse = {
       roomId: resolved.roomId,
@@ -35,7 +41,7 @@ export function getRoomMessages(room: string, deps: ApiDeps): Response {
     };
     return json(body);
   } catch (error) {
-    logFailure(deps.log, `GET /api/rooms/${room}/messages`, correlationId, error);
+    logFailure(deps.log, `GET /api/rooms/${JSON.stringify(room)}/messages`, correlationId, error);
     return apiError('internal', correlationId);
   }
 }
@@ -45,7 +51,7 @@ export async function postNewThread(request: Request, room: string, deps: ApiDep
   const correlationId = deps.newId();
   const guard = checkSameOriginJson(request);
   if (!guard.ok) {
-    deps.log.warn(`[api] refused POST /api/rooms/${room}/new (correlation ${correlationId}): ${guard.reason}`);
+    deps.log.warn(`[api] refused POST /api/rooms/${JSON.stringify(room)}/new (correlation ${correlationId}): ${guard.reason}`);
     return apiError('forbidden', correlationId);
   }
   try {
@@ -66,7 +72,7 @@ export async function postNewThread(request: Request, room: string, deps: ApiDep
       throw error;
     }
   } catch (error) {
-    logFailure(deps.log, `POST /api/rooms/${room}/new`, correlationId, error);
+    logFailure(deps.log, `POST /api/rooms/${JSON.stringify(room)}/new`, correlationId, error);
     return apiError('internal', correlationId);
   }
 }

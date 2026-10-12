@@ -34,6 +34,7 @@ import {
   formatPidFile,
   isSameProcess,
   nodeVersionProblem,
+  noSettingsHelp,
   parseArgs,
   parseElapsed,
   parsePidFile,
@@ -232,20 +233,6 @@ function showPages(port, open) {
   const opener = spawn('open', [urls.team, urls.workspace], { stdio: 'ignore', detached: true });
   opener.on('error', () => say('Could not open the browser: open the addresses above yourself.'));
   opener.unref();
-}
-
-/** @param {string[]} tried */
-function noSettingsHelp(tried) {
-  return [
-    `No model settings file was found. Looked for: ${tried.join(', ')}.`,
-    '',
-    'Create ~/.config/raagents/llm.env once, from your own settings. In a copy of the app that has your',
-    'filled-in .env.local, run:',
-    '  mkdir -p ~/.config/raagents && cp .env.local ~/.config/raagents/llm.env && chmod 600 ~/.config/raagents/llm.env',
-    'Or copy env.example there, fill in your own values and chmod 600 it.',
-    '',
-    'No VPN, or no settings at hand? Practise with: npm run demo:practice',
-  ].join('\n');
 }
 
 /** next build into the build folder, its output on screen and in the log. @param {string} distDir @param {string | null} commit */

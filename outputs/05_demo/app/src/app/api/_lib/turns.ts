@@ -17,7 +17,8 @@ import { sseResponse } from './sse';
 //   3. room: the team chat or an active agent (404);
 //   4. model route configured (503, before any write);
 //   5. start the turn (a repeat clientTurnId answers with the existing turn, no new model
-//      call; another running turn answers 409), run it detached, stream its events.
+//      call; another running turn in the room answers 409; two turns already running on the
+//      server answer 429, with nothing written), run it detached, stream its events.
 // The team chat routes over the active roster and the saved "Selected for this DD".
 
 export const TURN_TEXT_MAX_CHARS: ChatLimits['turnTextMaxChars'] = 8000;
@@ -45,7 +46,8 @@ function parseTurnBody(value: unknown): TurnBody {
 
 export async function postTurn(request: Request, room: string, deps: ApiDeps): Promise<Response> {
   const correlationId = deps.newId();
-  const where = `POST /api/rooms/${room}/turns`;
+  // The room is the raw path segment, not yet checked: quoted, so a line break in it cannot forge a log line.
+  const where = `POST /api/rooms/${JSON.stringify(room)}/turns`;
   const guard = checkSameOriginJson(request);
   if (!guard.ok) {
     deps.log.warn(`[api] refused ${where} (correlation ${correlationId}): ${guard.reason}`);
@@ -91,6 +93,7 @@ export async function postTurn(request: Request, room: string, deps: ApiDeps): P
         newId: deps.newId,
         log: deps.log,
         turnDeadlineMs: deps.turnDeadlineMs,
+        getAgent: deps.registry.getAgent,
       },
     );
 
@@ -103,6 +106,9 @@ export async function postTurn(request: Request, room: string, deps: ApiDeps): P
       }
       case 'busy':
         return apiError('room_busy', correlationId, { runningTurnId: outcome.runningTurnId });
+      case 'server_busy':
+        deps.log.warn(`[api] ${where} refused (correlation ${correlationId}): ${outcome.running} turn(s) already run on this server, the limit is ${outcome.limit}`);
+        return apiError('server_busy', correlationId);
       case 'other_room':
         return apiError('invalid_request', correlationId, { message: 'This clientTurnId was already used in another room.' });
     }

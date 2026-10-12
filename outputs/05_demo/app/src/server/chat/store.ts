@@ -5,12 +5,14 @@ import type {
   AppendResult,
   ChatErrorCode,
   FinishTurnInput,
+  InterruptTurnInput,
   LlmMessage,
   Message,
   MessageAuthor,
   MessageStatus,
   NewThreadResult,
   Provenance,
+  ReconcileOptions,
   RoomId,
   StartTurnResult,
   Store,
@@ -38,6 +40,23 @@ export class RoomBusyError extends Error {
     super(`another turn is running in this room (turn ${runningTurnId})`);
     this.name = 'RoomBusyError';
     this.runningTurnId = runningTurnId;
+  }
+}
+
+/**
+ * Thrown by startTurn when the server already runs as many turns as it may at once, before
+ * anything is written. The API answers 429 server_busy.
+ */
+export class ServerBusyError extends Error {
+  readonly code = 'server_busy' as const;
+  readonly running: number;
+  readonly limit: number;
+
+  constructor(running: number, limit: number) {
+    super(`${running} turn(s) already run on this server, the most it runs at once is ${limit}`);
+    this.name = 'ServerBusyError';
+    this.running = running;
+    this.limit = limit;
   }
 }
 
@@ -225,6 +244,7 @@ export function toPromptHistory(messages: readonly Message[], options: PromptHis
 export function createStore(dbPath: string, options: StoreOptions = {}): Store {
   const now = options.now ?? (() => new Date());
   const newId = options.newId ?? (() => randomUUID());
+  const ownBootId = options.bootId;
   const timestamp = () => now().toISOString();
 
   const db: SqliteDatabase = openDatabase(dbPath);
@@ -243,6 +263,8 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
     turnById: db.prepare('SELECT * FROM turns WHERE id = ?'),
     turnByClientTurnId: db.prepare('SELECT * FROM turns WHERE client_turn_id = ?'),
     runningTurn: db.prepare("SELECT * FROM turns WHERE workspace_id = ? AND room = ? AND status = 'running'"),
+    // Every room and workspace: the cap is per server, and one server has one database.
+    runningTurnCount: db.prepare("SELECT COUNT(*) AS n FROM turns WHERE status = 'running'"),
     turnsOfThread: db.prepare('SELECT * FROM turns WHERE thread_id = ? ORDER BY seq'),
     nextTurnSeq: db.prepare('SELECT COALESCE(MAX(seq), 0) + 1 AS next FROM turns WHERE thread_id = ?'),
     insertTurn: db.prepare(
@@ -262,6 +284,17 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
        SET status = 'interrupted', ended_at = :now,
            error_code = CASE WHEN boot_id = :boot_id THEN 'out_of_time' ELSE error_code END
        WHERE status = 'running' AND (boot_id <> :boot_id OR deadline_at < :now)`,
+    ),
+    // A turn past its deadline and the runner's grace has a stuck runner, whichever process it belongs to.
+    interruptOverdueTurns: db.prepare(
+      `UPDATE turns
+       SET status = 'interrupted', ended_at = :now, error_code = 'out_of_time'
+       WHERE status = 'running' AND deadline_at < :cutoff`,
+    ),
+    interruptOwnTurn: db.prepare(
+      `UPDATE turns
+       SET status = 'interrupted', ended_at = :ended_at, error_code = :error_code, correlation_id = :correlation_id
+       WHERE id = :id AND status = 'running' AND boot_id = :boot_id`,
     ),
     selectionSaved: db.prepare('SELECT 1 AS saved FROM selection_saves WHERE workspace_id = ?'),
     selectedAgents: db.prepare(
@@ -388,6 +421,10 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       requireNonEmpty('clientTurnId', input.clientTurnId);
       requireNonEmpty('bootId', input.bootId);
       const deadlineAt = normalizeInstant('deadlineAt', input.deadlineAt);
+      const { maxRunningTurns } = input;
+      if (maxRunningTurns !== undefined && (!Number.isInteger(maxRunningTurns) || maxRunningTurns < 1)) {
+        throw new RangeError(`maxRunningTurns must be a whole number, 1 or more; got ${maxRunningTurns}`);
+      }
 
       return immediateTransaction(db, (): StartTurnResult => {
         const existing = sql.turnByClientTurnId.get(input.clientTurnId) as TurnRow | undefined;
@@ -397,6 +434,11 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
         }
         const running = runningTurnRow(input.workspaceId, input.roomId);
         if (running) throw new RoomBusyError(running.id);
+        if (maxRunningTurns !== undefined) {
+          // Before the thread is created: a refused turn writes nothing.
+          const { n } = sql.runningTurnCount.get() as { n: number };
+          if (n >= maxRunningTurns) throw new ServerBusyError(Number(n), maxRunningTurns);
+        }
 
         const thread = activeThreadOrCreate(input.workspaceId, input.roomId);
         const id = newId();
@@ -509,6 +551,28 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       });
     },
 
+    interruptTurn(input: InterruptTurnInput) {
+      requireNonEmpty('turnId', input.turnId);
+      requireNonEmpty('errorCode', input.errorCode);
+      requireNonEmpty('correlationId', input.correlationId);
+      if (ownBootId === undefined) {
+        throw new Error('interruptTurn needs a store opened with a boot id (StoreOptions.bootId): it ends only this process\'s turns');
+      }
+      return immediateTransaction(db, () => {
+        const turn = requireTurn(input.turnId);
+        // A finished turn, or one that belongs to another process, is returned as it is.
+        if (turn.status !== 'running' || turn.boot_id !== ownBootId) return toTurn(turn);
+        sql.interruptOwnTurn.run({
+          id: turn.id,
+          boot_id: ownBootId,
+          ended_at: timestamp(),
+          error_code: input.errorCode,
+          correlation_id: input.correlationId,
+        });
+        return toTurn(mustExist(turnRow(turn.id), `turn ${turn.id}`));
+      });
+    },
+
     getTurn(turnId) {
       const row = turnRow(turnId);
       return row ? toTurn(row) : null;
@@ -527,8 +591,17 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       return (sql.turnsOfThread.all(threadId) as unknown as TurnRow[]).map(toTurn);
     },
 
-    reconcileStaleTurns(bootId) {
+    reconcileStaleTurns(bootId, reconcileOptions?: ReconcileOptions) {
       requireNonEmpty('bootId', bootId);
+      const graceMs = reconcileOptions?.graceMs;
+      if (graceMs !== undefined) {
+        if (!Number.isFinite(graceMs) || graceMs < 0) {
+          throw new RangeError(`graceMs must be a number of milliseconds, 0 or more; got ${graceMs}`);
+        }
+        // At runtime only the overdue turns: another boot's turn within its deadline may be a live process's.
+        const cutoff = new Date(now().getTime() - graceMs).toISOString();
+        return Number(sql.interruptOverdueTurns.run({ now: timestamp(), cutoff }).changes);
+      }
       // One statement, so it is atomic on its own. A turn left by an earlier process can
       // never finish; a turn of this process past its deadline has a stuck runner.
       const { changes } = sql.interruptStaleTurns.run({ boot_id: bootId, now: timestamp() });

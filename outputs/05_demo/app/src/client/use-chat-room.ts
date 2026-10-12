@@ -48,6 +48,8 @@ export interface UseChatRoomOptions {
   client?: RoomClient;
   /** How often to poll while a turn runs without a live stream. */
   pollIntervalMs?: number;
+  /** How long to poll a running turn before stopping and offering "check again". Default 5 minutes. */
+  maxPollMs?: number;
   /** In a 1:1 room: the agent shown thinking as soon as the question is sent. */
   soloAgentId?: AgentId;
   nameOf?: (id: AgentId) => string;
@@ -66,6 +68,11 @@ export interface ChatRoomModel {
   timeline: TimelineItem[];
   notice: RoomNotice | null;
   loadError: { message: string; correlationId: string | null } | null;
+  /**
+   * True when the room stopped polling a turn that was still marked running after the bound
+   * (phase is "error", loadError says "Still running? Check again."). reload() checks again.
+   */
+  pollingStopped: boolean;
   send(text: string): Promise<SendOutcome>;
   reload(): void;
   newConversation(): Promise<boolean>;
@@ -73,6 +80,13 @@ export interface ChatRoomModel {
 }
 
 export const POLL_INTERVAL_MS = 2000;
+/**
+ * The longest a room polls a running turn. A turn ends within about 3 minutes (its deadline plus
+ * grace), and the server ends a stuck one when the messages are read, so polling past this means
+ * something is wrong: the room says so, honestly, instead of polling for ever.
+ */
+export const MAX_POLL_MS = 5 * 60_000;
+export const STILL_RUNNING_TEXT = 'Still running? Check again.';
 /** About a minute of failed polls before the room shows an error with a retry button. */
 const MAX_POLL_FAILURES = 30;
 
@@ -101,15 +115,19 @@ interface State {
   notice: RoomNotice | null;
   loadError: { message: string; correlationId: string | null } | null;
   pollFailures: number;
+  /** The room gave up polling a running turn after the bound; the user can check again. */
+  pollingStopped: boolean;
   /** Bumped on every load or poll result, so the poll effect schedules the next tick. */
   pollTick: number;
 }
 
 type Action =
   | { type: 'reload_start' }
-  | { type: 'loaded'; data: RoomMessagesResponse }
+  /** fromPoll: the result of a poll, which is ignored once the room has stopped polling (a late result must not restart it). */
+  | { type: 'loaded'; data: RoomMessagesResponse; fromPoll?: boolean }
   | { type: 'load_failed'; message: string; correlationId: string | null }
   | { type: 'poll_failed' }
+  | { type: 'poll_limit' }
   | { type: 'send_start'; text: string; soloAgentId?: AgentId }
   | { type: 'responded'; status: number }
   | { type: 'event'; event: ChatEvent; nameOf: (id: AgentId) => string }
@@ -126,15 +144,17 @@ const INITIAL_STATE: State = {
   notice: null,
   loadError: null,
   pollFailures: 0,
+  pollingStopped: false,
   pollTick: 0,
 };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'reload_start':
-      return { ...state, phase: 'loading', loadError: null };
+      return { ...state, phase: 'loading', loadError: null, pollingStopped: false };
 
     case 'loaded': {
+      if (action.fromPoll && state.pollingStopped) return state;
       const { data } = action;
       const running = data.runningTurn !== null;
       let { live, retained } = state;
@@ -164,6 +184,7 @@ function reducer(state: State, action: Action): State {
         notice,
         loadError: null,
         pollFailures: 0,
+        pollingStopped: false,
         pollTick: state.pollTick + 1,
       };
     }
@@ -172,6 +193,7 @@ function reducer(state: State, action: Action): State {
       return { ...state, phase: 'error', loadError: { message: action.message, correlationId: action.correlationId } };
 
     case 'poll_failed': {
+      if (state.pollingStopped) return state;
       const pollFailures = state.pollFailures + 1;
       if (pollFailures >= MAX_POLL_FAILURES) {
         return {
@@ -183,6 +205,17 @@ function reducer(state: State, action: Action): State {
       }
       return { ...state, pollFailures, notice: POLL_TROUBLE, pollTick: state.pollTick + 1 };
     }
+
+    case 'poll_limit':
+      // Only a room that is still polling: a result that arrived first has already ended it.
+      if (state.phase !== 'polling') return state;
+      return {
+        ...state,
+        phase: 'error',
+        pollingStopped: true,
+        loadError: { message: STILL_RUNNING_TEXT, correlationId: null },
+        notice: state.notice?.clearOnIdle ? null : state.notice,
+      };
 
     case 'send_start':
       return { ...state, phase: 'sending', notice: null, live: startLiveTurn(action.text, { soloAgentId: action.soloAgentId }) };
@@ -250,6 +283,7 @@ function sameQuestionSaved(data: RoomMessagesResponse, knownIds: ReadonlySet<str
 export function useChatRoom(roomId: RoomId, options: UseChatRoomOptions = {}): ChatRoomModel {
   const client = options.client ?? chatClient;
   const pollMs = options.pollIntervalMs ?? POLL_INTERVAL_MS;
+  const maxPollMs = options.maxPollMs ?? MAX_POLL_MS;
   const { soloAgentId, onSetupProblem } = options;
   const nameOf = options.nameOf ?? idAsName;
 
@@ -279,7 +313,7 @@ export function useChatRoom(roomId: RoomId, options: UseChatRoomOptions = {}): C
     const timer = setTimeout(() => {
       fetchMessages(controller.signal).then((result) => {
         if (controller.signal.aborted) return;
-        if (result.ok) dispatch({ type: 'loaded', data: result.data });
+        if (result.ok) dispatch({ type: 'loaded', data: result.data, fromPoll: true });
         else dispatch({ type: 'poll_failed' });
       });
     }, pollMs);
@@ -288,6 +322,14 @@ export function useChatRoom(roomId: RoomId, options: UseChatRoomOptions = {}): C
       clearTimeout(timer);
     };
   }, [state.phase, state.pollTick, roomId, pollMs]);
+
+  // The bound on polling: counted from when the room started polling (the effect depends on the
+  // phase, not on each tick), so a slow turn is not given a fresh bound by every poll.
+  useEffect(() => {
+    if (state.phase !== 'polling') return;
+    const timer = setTimeout(() => dispatch({ type: 'poll_limit' }), maxPollMs);
+    return () => clearTimeout(timer);
+  }, [state.phase, maxPollMs]);
 
   // Leaving the room stops reading the stream; the turn itself keeps running on the server.
   useEffect(() => () => streamAbort.current?.abort(), []);
@@ -467,6 +509,7 @@ export function useChatRoom(roomId: RoomId, options: UseChatRoomOptions = {}): C
     timeline,
     notice: state.notice,
     loadError: state.loadError,
+    pollingStopped: state.pollingStopped,
     send,
     reload,
     newConversation,

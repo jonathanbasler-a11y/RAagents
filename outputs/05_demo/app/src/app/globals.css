@@ -141,6 +141,15 @@ code {
   padding: 4px 12px;
   letter-spacing: 0.02em;
 }
+/* Practice mode: replies are stand-in text. Loud on purpose, and never dismissible. */
+.banner-practice {
+  background: #f3d34a; /* the mockup's highlighter yellow, solid so it cannot be missed */
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--ink);
+}
 .docbar {
   background: var(--sheet);
   border-bottom: 1px solid var(--line);

@@ -40,10 +40,11 @@ export type AutonomyLevel = 1 | 2 | 3;
 export const CLASSIFICATION_IDS = ['orphan', 'paed', 'exp', 'combo', 'cdx'] as const;
 export type ClassificationId = (typeof CLASSIFICATION_IDS)[number];
 
-export const AGENT_TRIGGERS = [...CLASSIFICATION_IDS, 'late'] as const;
+export const AGENT_TRIGGERS = [...CLASSIFICATION_IDS, 'late', 'filed'] as const;
 /**
- * What brings an agent into a DD: an asset classification, or `late` (the development
- * stage is Phase 3 or Filed). Shown on the profile; in this phase selection stays manual.
+ * What brings an agent into a DD: an asset classification, `late` (the development stage
+ * is Phase 3 or Filed), or `filed` (the agent joins only when the asset is filed). Shown on
+ * the profile; in this phase selection stays manual.
  */
 export type AgentTrigger = (typeof AGENT_TRIGGERS)[number];
 
@@ -328,7 +329,8 @@ export const TURN_STATUSES = ['running', 'done', 'partial', 'error', 'interrupte
  * - done: every planned step finished.
  * - partial: finished, but some planned text is missing (a reply broke off, a secondary failed, the deadline hit).
  * - error: no usable answer (the primary failed, or setup is missing).
- * - interrupted: the server restarted while it ran (set by reconcileStaleTurns).
+ * - interrupted: the server restarted or shut down while it ran, or the turn outlived its deadline
+ *   and grace (set by reconcileStaleTurns or interruptTurn).
  */
 export type TurnStatus = (typeof TURN_STATUSES)[number];
 export type TerminalTurnStatus = Exclude<TurnStatus, 'running'>;
@@ -503,8 +505,11 @@ export const LLM_ERROR_KINDS = [
  */
 export type LlmErrorKind = (typeof LLM_ERROR_KINDS)[number];
 
-/** Error codes in chat messages, turns and SSE `error` events. */
-export type ChatErrorCode = `llm_${LlmErrorKind}` | 'out_of_time' | 'internal';
+/**
+ * Error codes in chat messages, turns and SSE `error` events.
+ * server_shutdown: the server process got SIGINT or SIGTERM while the reply streamed; the text that had arrived was saved.
+ */
+export type ChatErrorCode = `llm_${LlmErrorKind}` | 'out_of_time' | 'server_shutdown' | 'internal';
 
 // ---------------------------------------------------------------------------
 // Server-sent events: POST /api/rooms/[room]/turns
@@ -648,6 +653,8 @@ export interface StoreOptions {
   now?: () => Date;
   /** Id generator; default crypto.randomUUID. */
   newId?: () => string;
+  /** The boot id of this server process: the only turns interruptTurn may end. Without it interruptTurn throws. */
+  bootId?: string;
 }
 
 export interface StartTurnInput {
@@ -656,6 +663,27 @@ export interface StartTurnInput {
   clientTurnId: string;
   bootId: string;
   deadlineAt: string;
+  /**
+   * The most turns that may run at once across all rooms. When that many already run, startTurn
+   * throws ServerBusyError before it writes anything. Left out: no limit. A repeated clientTurnId
+   * and a busy room are answered first.
+   */
+  maxRunningTurns?: number;
+}
+
+export interface InterruptTurnInput {
+  turnId: string;
+  errorCode: ChatErrorCode;
+  correlationId: string;
+}
+
+/** How long past its deadline a running turn may go before reconcileStaleTurns ends it. */
+export interface ReconcileOptions {
+  /**
+   * Runtime mode: end only turns of any process that are past their deadline by more than this
+   * many ms (the runner's own grace). Left out: boot mode (turns of another boot, and this boot's turns past their deadline).
+   */
+  graceMs?: number;
 }
 
 export interface StartTurnResult {
@@ -747,8 +775,19 @@ export interface Store {
   listMessages(threadId: string): Message[];
   /** A thread's turns, oldest first. */
   listTurns(threadId: string): Turn[];
-  /** On boot: running turns from another bootId become interrupted. Returns how many changed. */
-  reconcileStaleTurns(bootId: string): number;
+  /**
+   * Ends a running turn of this server process as interrupted (the server is shutting down), keeping
+   * the code and correlation id. Only turns started with this store's bootId are touched: a turn of
+   * another process, or one that already finished, is returned unchanged. Throws if the store was
+   * opened without a bootId.
+   */
+  interruptTurn(input: InterruptTurnInput): Turn;
+  /**
+   * On boot: running turns from another bootId become interrupted, and so do this boot's turns past
+   * their deadline. At runtime (options.graceMs): only turns past deadline plus grace, any boot.
+   * Returns how many changed.
+   */
+  reconcileStaleTurns(bootId: string, options?: ReconcileOptions): number;
   /** The saved selection, or null if this workspace never saved one (use the defaults). */
   getSelection(workspaceId: WorkspaceId): AgentId[] | null;
   setSelection(workspaceId: WorkspaceId, agentIds: AgentId[]): void;
@@ -796,11 +835,16 @@ export const API_ERROR_CODES = [
   'forbidden',
   'not_found',
   'room_busy',
+  'server_busy',
   'locked_agent',
   'llm_not_configured',
   'internal',
 ] as const;
-/** HTTP status: invalid_request 400, forbidden 403, not_found 404, room_busy 409, locked_agent 409, llm_not_configured 503, internal 500. */
+/**
+ * HTTP status: invalid_request 400, forbidden 403, not_found 404, room_busy 409, server_busy 429,
+ * locked_agent 409, llm_not_configured 503, internal 500.
+ * server_busy: two turns already run on this server (the most it runs at once); nothing was written.
+ */
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
 
 /** Body of every non-2xx JSON response. Generic text only; details stay in the server log under the correlation id. */
@@ -829,6 +873,12 @@ export interface LlmSetupStatus {
 
 export type HealthStatus = 'ok' | 'degraded' | 'error';
 export type HealthCheckState = 'ok' | 'error' | 'not_configured';
+
+/**
+ * "practice" when the server runs on the stand-in model (`npm run demo:practice`, DEMO_MODE=practice).
+ * Every page and every reply then says so; any other setting is live.
+ */
+export type DemoMode = 'live' | 'practice';
 
 export interface HealthReport {
   status: HealthStatus;

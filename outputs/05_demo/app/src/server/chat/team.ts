@@ -33,6 +33,15 @@ export const SYNTHESIS_MIN_CONTRIBUTIONS: ChatLimits['synthesisMinContributions'
 export const SPECIALIST_CONTEXT_MESSAGES: ChatLimits['specialistContextMessages'] = 8;
 /** NO_ADDITION may carry a short reason ("NO_ADDITION: Rosa covered it"); a longer reply is a contribution. */
 const NO_ADDITION_MAX_WORDS = 12;
+/** A reason that turns on one of these is a point, not a reason: "NO_ADDITION, but the stability data need a check". */
+const CONTRAST_WORDS: ReadonlySet<string> = new Set(['but', 'however', 'although', 'though', 'except', 'yet', 'apart', 'aside', 'besides', 'unless', 'whereas']);
+/** Quotes, code ticks and emphasis a model wraps around the signal. */
+const WRAPPING = /^[\s"'`*_~“”‘’]+/;
+const CLOSING = /[\s"'`*_~“”‘’.!]+/g;
+const SIGNAL = /^no[\s_]+addition(?![\p{L}\p{N}])/iu;
+const PLAIN_PHRASE = /^nothing[\s_]+to[\s_]+add(?![\p{L}\p{N}])/iu;
+/** What may introduce the reason after the signal. */
+const REASON_SEPARATOR = /^[:;,.\-–—(]\s*([\s\S]*)$/;
 
 export interface TeamDeps extends RunAgentDeps {
   store: Store;
@@ -42,23 +51,34 @@ export interface TeamDeps extends RunAgentDeps {
   selected: ReadonlySet<AgentId>;
 }
 
-/**
- * Whether a reply is the "nothing to add" signal: NO_ADDITION (or the plain phrase "nothing to
- * add") in any case, with spaces or underscores, in quotes, code or emphasis, optionally
- * followed by a short reason.
- */
-export function isNoAddition(text: string): boolean {
-  const words = text
+const wordsOf = (text: string): string[] =>
+  text
     .toLowerCase()
-    .replace(/_/g, ' ')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .split(/\s+/)
     .filter(Boolean);
-  if (words.length < 2 || words.length > NO_ADDITION_MAX_WORDS) return false;
-  // The signal word itself ("NO_ADDITION"), or the plain phrase a model often writes instead.
-  const signal = words[0] === 'no' && words[1] === 'addition';
-  const plain = words[0] === 'nothing' && words[1] === 'to' && words[2] === 'add';
-  return signal || plain;
+
+/**
+ * Whether a reply is the "nothing to add" signal. Losing a real point is worse than showing a
+ * redundant reply, so doubt means contribution:
+ * - NO_ADDITION (any case, spaces or underscores, in quotes, code or emphasis) is the signal. It
+ *   may carry a short reason after a separator ("NO_ADDITION: Rosa covered it"), unless the reason
+ *   turns on "but", "however" and the like.
+ * - The plain phrase "nothing to add" counts only when it is the whole reply. Anything after it
+ *   ("Nothing to add on comparability, but ...") is a contribution.
+ */
+export function isNoAddition(text: string): boolean {
+  const body = text.replace(WRAPPING, '');
+  const signal = SIGNAL.exec(body);
+  const head = signal ?? PLAIN_PHRASE.exec(body);
+  if (head === null) return false;
+  const rest = body.slice(head[0].length).replace(WRAPPING, '');
+  if (rest.replace(CLOSING, '') === '') return true;
+  if (signal === null) return false;
+  const reason = REASON_SEPARATOR.exec(rest);
+  if (reason === null) return false;
+  const words = wordsOf(reason[1]);
+  return words.length <= NO_ADDITION_MAX_WORDS && !words.some((word) => CONTRAST_WORDS.has(word));
 }
 
 function andList(names: readonly string[]): string {

@@ -4,12 +4,14 @@
 #
 # 1. Refuses staged files under inputs/confidential/.
 # 2. Refuses staged audio files.
-# 3. If a git-ignored .denylist.local exists at the repo root (one term per line,
+# 3. Refuses staged environment files (they hold secrets): .env, .env.* and *.env,
+#    except the templates .env.example and env.example.
+# 4. If a git-ignored .denylist.local exists at the repo root (one term per line,
 #    "#" for comments), refuses staged additions that contain any listed term.
 #    The matching terms are never printed, because the list itself is sensitive.
 set -eu
 
-staged=$(git diff --cached --name-only --diff-filter=ACMR)
+staged=$(git diff --cached -z --name-only --diff-filter=ACMR | tr '\0' '\n')
 [ -z "$staged" ] && exit 0
 
 confidential=$(printf '%s\n' "$staged" | grep -E '^inputs/confidential/' || true)
@@ -23,6 +25,15 @@ audio=$(printf '%s\n' "$staged" | grep -iE '\.(m4a|mp3|wav|aac|flac|ogg|opus|aif
 if [ -n "$audio" ]; then
   echo "pre-commit: refusing audio files:" >&2
   printf '%s\n' "$audio" | sed 's/^/  /' >&2
+  exit 1
+fi
+
+envfiles=$(printf '%s\n' "$staged" \
+  | grep -E '(^|/)(\.env(\..*)?|[^/]*\.env)$' \
+  | grep -vE '(^|/)(\.env\.example|env\.example)$' || true)
+if [ -n "$envfiles" ]; then
+  echo "pre-commit: refusing environment files (they hold secrets; only .env.example and env.example may be committed):" >&2
+  printf '%s\n' "$envfiles" | sed 's/^/  /' >&2
   exit 1
 fi
 

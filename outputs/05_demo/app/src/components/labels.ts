@@ -39,7 +39,7 @@ export const GROUP_INFO: Record<AgentGroup, GroupInfo> = {
   role: {
     label: 'Team roles',
     tag: 'Team role',
-    note: 'Run in every DD. Always on.',
+    note: 'Always on in every DD. Oskar and Sofia join by rule; Emeka, Saskia and Ruben answer when @mentioned.',
     collapsed: false,
   },
   other: {
@@ -71,6 +71,7 @@ const CLASSIFICATION_LABELS: Record<ClassificationId, string> = {
 export function triggerText(trigger: AgentTrigger | undefined): string | null {
   if (!trigger) return null;
   if (trigger === 'late') return 'Usually joins when a filing is near (Phase 3 or filed).';
+  if (trigger === 'filed') return 'Joins only when the asset is filed.';
   return `Usually switched on by the asset classification: ${CLASSIFICATION_LABELS[trigger]}.`;
 }
 
@@ -89,7 +90,7 @@ export const PRACTICE_MODE_BANNER =
   'Practice mode: replies come from a stand-in model, not AI. Do not present them as real answers.';
 
 /** On every agent reply in practice mode, instead of "Model output · not sourced". */
-export const PRACTICE_REPLY_LABEL = 'Practice reply · not AI';
+export const PRACTICE_REPLY_LABEL = 'Practice reply · not AI · not sourced';
 
 // ---------------------------------------------------------------------------
 // Errors: setup problems read differently from service problems
@@ -115,6 +116,10 @@ const CHAT_ERRORS: Record<ChatErrorCode, { kind: ErrorKind; text: string }> = {
   llm_timeout: { kind: 'service', text: 'The model took too long to answer.' },
   llm_network: { kind: 'service', text: 'The connection to the model gateway broke.' },
   out_of_time: { kind: 'service', text: 'The turn ran out of time.' },
+  server_shutdown: {
+    kind: 'service',
+    text: 'The server shut down during this reply. The text shown is what had arrived before it stopped.',
+  },
   internal: { kind: 'app', text: 'Something went wrong in the app.' },
 };
 

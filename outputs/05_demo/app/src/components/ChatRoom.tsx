@@ -116,10 +116,11 @@ export function ChatRoom({ roomId, agents, client = chatClient }: ChatRoomProps)
 
   const loadErrorBox = room.loadError && (
     <div className="state-error" role="alert">
-      <p>Could not load this room’s messages. {room.loadError.message}</p>
+      {/* Nothing failed when polling merely stopped: the turn is still running. Say only that. */}
+      <p>{room.pollingStopped ? room.loadError.message : `Could not load this room’s messages. ${room.loadError.message}`}</p>
       {room.loadError.correlationId && <p className="mono">Reference {room.loadError.correlationId}</p>}
       <button type="button" className="btn btn-quiet btn-sm" onClick={room.reload}>
-        Try again
+        {room.pollingStopped ? 'Check again' : 'Try again'}
       </button>
     </div>
   );

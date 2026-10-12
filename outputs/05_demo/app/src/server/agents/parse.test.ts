@@ -164,6 +164,10 @@ describe('parseAgentSpec: a valid spec', () => {
     expect(parseAgentSpec(specText(fixtureSpec('critic')), 'critic.md').teamRole).toBe('red-team');
   });
 
+  it.each(['orphan', 'paed', 'exp', 'combo', 'cdx', 'late', 'filed'] as const)('accepts trigger: %s', (trigger) => {
+    expect(parseAgentSpec(specText(labels, { front: { trigger } }), 'labels.md').trigger).toBe(trigger);
+  });
+
   it('does not treat a "## " line inside a fenced code block as a section heading', () => {
     const parts = bodyParts(labels.sections);
     parts[2] = ['Persona and voice', 'Lena writes plain sentences.\n\n```markdown\n## Not a heading\n```'];
@@ -253,7 +257,7 @@ describe('parseAgentSpec: front matter', () => {
     ['kind', 'specialist', /kind.*orchestrator, domain, team-role/],
     ['team_role', 'critic', /team_role.*orchestrator, sanitiser, evidence-checker, red-team, synthesiser/],
     ['model_route', 'judge', /model_route.*agents/],
-    ['trigger', 'urgent', /trigger.*orphan, paed, exp, combo, cdx, late/],
+    ['trigger', 'urgent', /trigger.*orphan, paed, exp, combo, cdx, late, filed/],
   ])('refuses %s outside its allowed values: %j', (key, value, pattern) => {
     expect(frontIssues({ [key]: value })).toEqual([issue(pattern)]);
   });

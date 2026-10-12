@@ -351,6 +351,40 @@ describe('ChatRoom', () => {
   });
 });
 
+describe('ChatRoom: a turn that keeps running past the polling limit', () => {
+  /** Moves the fake clock in steps, each in its own act, so the poll and bound timers are re-set between steps. */
+  async function advanceBy(ms: number, step = 10_000) {
+    for (let done = 0; done < ms; done += step) {
+      await act(() => vi.advanceTimersByTimeAsync(Math.min(step, ms - done)));
+    }
+  }
+
+  it('says "Still running? Check again." without a "could not load" prefix, and keeps the question on screen', async () => {
+    vi.useFakeTimers();
+    try {
+      const running = roomData(
+        [makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Hello Rosa', seq: 1 })],
+        [makeTurn({ id: 't1', roomId: 'reglead', status: 'running', finishedAt: null })],
+        'reglead',
+      );
+      const api = fakeApi({ getMessages: vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(running)) });
+      renderRoom('reglead', api);
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+      await advanceBy(5 * 60_000 + 10_000);
+
+      const alert = screen.getByRole('alert');
+      expect(alert).toHaveTextContent('Still running? Check again.');
+      expect(alert).not.toHaveTextContent('Could not load');
+      expect(within(alert).getByRole('button', { name: 'Check again' })).toBeInTheDocument();
+      expect(screen.getByText('Hello Rosa')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('ChatRoom: the live demo’s prompts', () => {
   it('the empty team chat lists the walkthrough’s prompts, steps 3 to 8 with 4b, instead of general starters', async () => {
     renderRoom('team', fakeApi());

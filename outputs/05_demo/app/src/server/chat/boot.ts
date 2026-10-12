@@ -3,12 +3,14 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { checkEnvFilePermissions } from '@/server/llm';
 import type { DefaultWorkspaceId, Store } from '@/shared/contracts';
+import { installShutdownHandler, type ShutdownProcess } from './shutdown';
 import { createStore } from './store';
 
 // The chat runtime of this server process: one store, one boot id, reconciled once.
 // It lives on globalThis, not in a module variable: Next.js may load this module more than
 // once (one copy per route bundle, or again after a dev reload), and a second boot id in
 // the same process would mark that process's own running turns as interrupted.
+// The same goes for the shutdown handler (shutdown.ts): once per process, on the first use.
 
 export const WORKSPACE_ID: DefaultWorkspaceId = 'demo';
 
@@ -45,8 +47,9 @@ export function defaultChatDbPath(env: Readonly<Record<string, string | undefine
 
 /** Opens the store and marks turns left running by another process as interrupted. */
 export function createChatRuntime(options: ChatRuntimeOptions = {}): ChatRuntime {
-  const store = createStore(options.dbPath ?? defaultChatDbPath(), { now: options.now, newId: options.newId });
   const bootId = options.bootId ?? randomUUID();
+  // The store knows the boot id so that interruptTurn can end this process's turns, and no others.
+  const store = createStore(options.dbPath ?? defaultChatDbPath(), { now: options.now, newId: options.newId, bootId });
   let reconciled: number;
   try {
     reconciled = store.reconcileStaleTurns(bootId);
@@ -61,8 +64,16 @@ export function createChatRuntime(options: ChatRuntimeOptions = {}): ChatRuntime
   return Object.freeze({ store, bootId, startedAt, workspaceId: WORKSPACE_ID, reconciled });
 }
 
-/** The process-wide runtime, created on first use (that first use reconciles stale turns). */
-export function getChatRuntime(): ChatRuntime {
+export interface GetChatRuntimeOptions {
+  /** Default: the real process. Tests pass a stand-in so no real signal handler is installed. */
+  shutdownProcess?: ShutdownProcess;
+}
+
+/**
+ * The process-wide runtime, created on first use (that first use reconciles stale turns and,
+ * once per process, installs the handler that saves running turns on SIGINT or SIGTERM).
+ */
+export function getChatRuntime(options: GetChatRuntimeOptions = {}): ChatRuntime {
   const holder = globalThis as RuntimeHolder;
   const existing = holder[RUNTIME_KEY];
   if (existing) return existing;
@@ -70,6 +81,7 @@ export function getChatRuntime(): ChatRuntime {
   checkEnvFilePermissions();
   const runtime = createChatRuntime();
   holder[RUNTIME_KEY] = runtime;
+  installShutdownHandler({ process: options.shutdownProcess });
   return runtime;
 }
 

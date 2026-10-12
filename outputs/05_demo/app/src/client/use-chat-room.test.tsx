@@ -142,6 +142,137 @@ describe('useChatRoom: loading', () => {
   });
 });
 
+describe('useChatRoom: polling a running turn is bounded', () => {
+  const STILL_RUNNING = 'Still running? Check again.';
+
+  /** Moves the fake clock in small steps, each in its own act: effects (the poll and bound timers) are set between steps. */
+  async function advanceBy(ms: number, step = 1_000) {
+    for (let done = 0; done < ms; done += step) {
+      await act(() => vi.advanceTimersByTimeAsync(Math.min(step, ms - done)));
+    }
+  }
+
+  it('stops polling after the bound and shows an honest state with a way to check again, instead of polling for ever', async () => {
+    vi.useFakeTimers();
+    const getMessages = vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(RUNNING));
+    const { result } = renderHook(() => useChatRoom('reglead', { client: fakeClient({ getMessages }), nameOf, maxPollMs: 10_000 }));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(result.current.phase).toBe('polling');
+    expect(result.current.pollingStopped).toBe(false);
+
+    await advanceBy(9_999);
+    expect(result.current.phase).toBe('polling');
+    await advanceBy(1);
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.pollingStopped).toBe(true);
+    expect(result.current.loadError).toEqual({ message: STILL_RUNNING, correlationId: null });
+    expect(result.current.busy).toBe(false);
+    // The saved data stays on screen: the question and the running turn are not erased.
+    expect(result.current.timeline.map(show)).toContain('you: Hello Rosa');
+
+    const calls = getMessages.mock.calls.length;
+    await advanceBy(600_000, 30_000);
+    expect(getMessages).toHaveBeenCalledTimes(calls);
+  });
+
+  it('polls about once per interval until the bound, not once per bound: the clock is not reset by each poll', async () => {
+    vi.useFakeTimers();
+    const getMessages = vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(RUNNING));
+    renderHook(() => useChatRoom('reglead', { client: fakeClient({ getMessages }), nameOf, maxPollMs: 10_000 }));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    await advanceBy(60_000);
+
+    // One load, then a poll every 2 seconds for 10 seconds.
+    expect(getMessages.mock.calls.length).toBeGreaterThanOrEqual(5);
+    expect(getMessages.mock.calls.length).toBeLessThanOrEqual(7);
+  });
+
+  it('checks again on the button: a turn that has ended since then shows its reply and clears the state', async () => {
+    vi.useFakeTimers();
+    const getMessages = vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(RUNNING));
+    const { result } = renderHook(() => useChatRoom('reglead', { client: fakeClient({ getMessages }), nameOf, maxPollMs: 4_000 }));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    await advanceBy(4_000);
+    expect(result.current.pollingStopped).toBe(true);
+    getMessages.mockResolvedValue(ok(SAVED));
+
+    await act(async () => {
+      result.current.reload();
+    });
+
+    expect(result.current.phase).toBe('idle');
+    expect(result.current.pollingStopped).toBe(false);
+    expect(result.current.loadError).toBeNull();
+    expect(result.current.timeline.map(show)).toEqual(['you: Hello Rosa', 'Rosa [complete]: Full reply']);
+  });
+
+  it('checks again on the button: a turn that still runs resumes polling for another bounded time', async () => {
+    vi.useFakeTimers();
+    const getMessages = vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(RUNNING));
+    const { result } = renderHook(() => useChatRoom('reglead', { client: fakeClient({ getMessages }), nameOf, maxPollMs: 4_000 }));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    await advanceBy(4_000);
+    expect(result.current.pollingStopped).toBe(true);
+
+    await act(async () => {
+      result.current.reload();
+    });
+    expect(result.current.phase).toBe('polling');
+    expect(result.current.pollingStopped).toBe(false);
+    expect(result.current.loadError).toBeNull();
+
+    await advanceBy(4_000);
+    expect(result.current.phase).toBe('error');
+    expect(result.current.pollingStopped).toBe(true);
+  });
+
+  it('is five minutes by default', async () => {
+    vi.useFakeTimers();
+    const getMessages = vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(RUNNING));
+    const { result } = renderHook(() => useChatRoom('reglead', { client: fakeClient({ getMessages }), nameOf }));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    await advanceBy(299_999, 10_000);
+    expect(result.current.phase).toBe('polling');
+    await advanceBy(1);
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.loadError?.message).toBe(STILL_RUNNING);
+  });
+
+  it('also bounds the polling that follows a lost stream', async () => {
+    vi.useFakeTimers();
+    const getMessages = vi.fn<ChatApi['getMessages']>().mockResolvedValueOnce(ok(EMPTY)).mockResolvedValue(ok(RUNNING));
+    const postTurn = vi.fn<ChatApi['postTurn']>().mockResolvedValue({ kind: 'stream', clientTurnId: 'c1', done: null, broken: true });
+    const { result } = renderHook(() => useChatRoom('reglead', { client: fakeClient({ postTurn, getMessages }), nameOf, maxPollMs: 6_000 }));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    await act(async () => {
+      await result.current.send('Hello Rosa');
+    });
+    expect(result.current.phase).toBe('polling');
+
+    await advanceBy(6_000);
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.pollingStopped).toBe(true);
+  });
+
+  it('does not stop a room that is not polling: an idle room stays idle past the bound (positive control)', async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useChatRoom('reglead', { client: fakeClient(), nameOf, maxPollMs: 1_000 }));
+
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    await advanceBy(10_000);
+
+    expect(result.current.phase).toBe('idle');
+    expect(result.current.pollingStopped).toBe(false);
+    expect(result.current.loadError).toBeNull();
+  });
+});
+
 describe('useChatRoom: sending', () => {
   it('streams events into live bubbles, then reloads the room from the API', async () => {
     const { postTurn, control } = controlledPostTurn();
@@ -248,6 +379,29 @@ describe('useChatRoom: sending', () => {
 
     expect(outcome).toMatchObject({ status: 'not_sent' });
     expect(result.current.phase).toBe('polling');
+    expect(result.current.timeline).toEqual([]);
+  });
+
+  it('a server that is at its limit (429) leaves the text unsent, says so in the server\'s words and does not wait for a turn here', async () => {
+    const message =
+      'Two turns are already running on this server, the most it runs at once. Your question was not sent; try again when one ends.';
+    const postTurn = vi.fn<ChatApi['postTurn']>().mockResolvedValue({
+      kind: 'rejected',
+      clientTurnId: 'c1',
+      status: 429,
+      error: { error: 'server_busy', message, correlationId: 'corr-5' },
+    });
+    const { result } = renderHook(() => useChatRoom('reglead', { client: fakeClient({ postTurn }), nameOf }));
+    await waitFor(() => expect(result.current.phase).toBe('idle'));
+
+    let outcome: SendOutcome | undefined;
+    await act(async () => {
+      outcome = await result.current.send('Too many at once');
+    });
+
+    expect(outcome).toEqual({ status: 'not_sent', reason: message });
+    expect(result.current.phase).toBe('idle');
+    expect(result.current.notice).toMatchObject({ tone: 'error', text: message, correlationId: 'corr-5' });
     expect(result.current.timeline).toEqual([]);
   });
 

@@ -9,6 +9,7 @@ import {
   createFakeFetch,
   hangUntilAborted,
   jsonResponse,
+  socketClosed,
   sseResponse,
   testConfig,
   type FakeStep,
@@ -265,8 +266,43 @@ describe('teamExecutor: "nothing to add"', () => {
     ['There is something to add: NO_ADDITION is not right here.', false],
     ['No additional concerns from the CMC side.', false],
     ['No addition', true],
+    ['NO_ADDITION: Rosa covered it.', true],
+    // A short reply that adds a point is a contribution, even when it opens with the phrase (COR-1).
+    ['Nothing to add on comparability, but shelf life drives the label.', false],
+    ['Nothing to add. The stability data still need a check.', false],
+    ['Nothing to add here, although the PIP timeline matters.', false],
+    ['NO_ADDITION, but the stability data need a check.', false],
+    ['NO_ADDITION is not right here: the stability data need a check.', false],
   ])('reads %j as nothing to add: %s', (text, expected) => {
     expect(isNoAddition(text)).toBe(expected);
+  });
+
+  it('keeps the text of a short secondary reply that opens with "nothing to add" but adds a point, and counts it for Sofia', async () => {
+    const point = 'Nothing to add on comparability, but shelf life drives the label.';
+    const { fake, deps } = setup(
+      byAgent({
+        Rosa: () => okStream('Rosa answer.'),
+        Carlos: () => okStream(point),
+        Sofia: () => okStream('Summary.'),
+      }),
+    );
+
+    const turn = run(deps, QUESTION);
+    const finished = await turn.finished;
+
+    expect(shown(temp.store.listMessages(turn.thread.id))).toEqual([
+      ['human', null, QUESTION],
+      ['agent', 'Rosa', 'Rosa answer.'],
+      ['agent', 'Carlos', point],
+      ['agent', 'Sofia', 'Summary.'],
+    ]);
+    expect(turn.events.some((event) => event.type === 'no_addition')).toBe(false);
+    expect(finished.trace?.agents.map((outcome) => [outcome.agentId, outcome.state])).toEqual([
+      ['lead', 'answered'],
+      ['cmc', 'answered'],
+      ['summary', 'answered'],
+    ]);
+    expect(fake.calls).toHaveLength(3);
   });
 });
 
@@ -514,5 +550,137 @@ describe('teamExecutor: order and context', () => {
       expect(system).toMatch(fenced('Rosa', `old reply ${index}`));
     }
     for (const left of ['old question 1', 'old reply 1', 'old summary', 'old note']) expect(system).not.toContain(left);
+  });
+
+  /** One finished earlier team turn: the question, then the given agent replies in order. */
+  function seedEarlierTurn(
+    question: string,
+    replies: Array<{ id: string; agentId: string; agentName: string; text: string; status?: 'complete' | 'partial' | 'error' }>,
+  ) {
+    const { turn } = temp.store.startTurn({
+      workspaceId: 'demo',
+      roomId: 'team',
+      clientTurnId: `seed-${question}`,
+      bootId: 'boot-1',
+      deadlineAt: '2026-10-07T20:48:00.000Z',
+    });
+    temp.store.appendUserMessage({ turnId: turn.id, text: question });
+    for (const reply of replies) {
+      temp.store.appendAgentMessage({
+        turnId: turn.id,
+        agentVersion: '0.1.0',
+        promptHash: null,
+        model: null,
+        truncated: false,
+        ...reply,
+        status: reply.status ?? 'complete',
+      });
+    }
+    temp.store.finishTurn({ turnId: turn.id, status: 'done', trace: null });
+  }
+
+  it("keeps Oskar's earlier answers out of what a specialist sees, while a specialist's earlier reply stays in", async () => {
+    seedEarlierTurn('earlier question', [
+      { id: 'seed-oskar', agentId: 'conductor', agentName: 'Oskar', text: 'oskar routed this one to the team' },
+      { id: 'seed-rosa', agentId: 'lead', agentName: 'Rosa', text: 'rosa earlier reply' },
+    ]);
+    const { fake, deps } = setup(byAgent({ Rosa: () => okStream('Rosa answer.') }));
+
+    await run(deps, '@Rosa and now?').finished;
+
+    const system = systemOf(callFor(fake.calls, 'Rosa'));
+    expect(system).toMatch(fenced('Rosa', 'rosa earlier reply'));
+    expect(system).not.toContain('oskar routed this one to the team');
+  });
+
+  it('keeps a reply that ended in error out of what a specialist sees, even when it holds text', async () => {
+    seedEarlierTurn('earlier question', [
+      { id: 'seed-failed', agentId: 'lead', agentName: 'Rosa', text: 'text of a reply that failed', status: 'error' },
+      { id: 'seed-good', agentId: 'lead', agentName: 'Rosa', text: 'text of a reply that worked' },
+    ]);
+    const { fake, deps } = setup(byAgent({ Rosa: () => okStream('Rosa answer.') }));
+
+    await run(deps, '@Rosa and now?').finished;
+
+    const system = systemOf(callFor(fake.calls, 'Rosa'));
+    expect(system).toMatch(fenced('Rosa', 'text of a reply that worked'));
+    expect(system).not.toContain('text of a reply that failed');
+  });
+});
+
+describe('teamExecutor: when Sofia sums up', () => {
+  const NO_SUMMARY = { agentId: 'summary', agentName: 'Sofia', role: 'synthesis', state: 'not_consulted', reason: 'too_few_contributions' };
+
+  it('does not call Sofia when the first answer says it has nothing to add and only one teammate contributed', async () => {
+    const { fake, deps } = setup(
+      byAgent({
+        Rosa: () => okStream('NO_ADDITION'),
+        Carlos: () => okStream('Carlos adds a risk.'),
+        Sofia: () => okStream('Summary.'),
+      }),
+    );
+
+    const turn = run(deps, QUESTION);
+    const finished = await turn.finished;
+
+    expect(fake.calls.map(agentNameOf)).not.toContain('Sofia');
+    expect(finished.trace?.agents.at(-1)).toEqual(NO_SUMMARY);
+    expect(shown(temp.store.listMessages(turn.thread.id)).map(([, name]) => name)).not.toContain('Sofia');
+  });
+
+  it('does not call Sofia when a secondary broke off and only one complete answer exists, though the broken text is saved', async () => {
+    captureLogs();
+    const { fake, deps } = setup(
+      byAgent({
+        Rosa: () => okStream('Rosa answer.'),
+        Carlos: () => sseResponse([chunkEvent('Half a ', { role: true })], { end: { error: socketClosed() } }),
+        Sofia: () => okStream('Summary.'),
+      }),
+    );
+
+    const turn = run(deps, QUESTION);
+    const finished = await turn.finished;
+
+    expect(fake.calls.map(agentNameOf)).not.toContain('Sofia');
+    expect(finished.trace?.agents.map((outcome) => [outcome.agentId, outcome.state])).toEqual([
+      ['lead', 'answered'],
+      ['cmc', 'failed'],
+      ['summary', 'not_consulted'],
+    ]);
+    expect(finished.trace?.agents.at(-1)).toEqual(NO_SUMMARY);
+    expect(shown(temp.store.listMessages(turn.thread.id)).at(2)).toEqual(['agent', 'Carlos', 'Half a ']);
+  });
+
+  it('calls Sofia once two complete, real contributions exist (positive control for the gate)', async () => {
+    const { fake, deps } = setup(
+      byAgent({
+        Rosa: () => okStream('Rosa answer.'),
+        Carlos: () => okStream('Carlos adds a risk.'),
+        Sofia: () => okStream('Summary.'),
+      }),
+    );
+
+    const finished = await run(deps, QUESTION).finished;
+
+    expect(fake.calls.map(agentNameOf)).toContain('Sofia');
+    expect(finished.trace?.agents.at(-1)).toMatchObject({ agentId: 'summary', state: 'answered' });
+  });
+});
+
+describe('teamExecutor: who Oskar is told is selected', () => {
+  it('lists the selected domain agents and the mention-only team roles, never Sofia, Oskar or an agent that is not selected', async () => {
+    const { fake, deps } = setup(byAgent({ Oskar: () => okStream('Ask Rosa.') }));
+
+    await run(deps, 'Hello team, what can you do?').finished;
+
+    const system = systemOf(callFor(fake.calls, 'Oskar'));
+    // In roster order. Ruben (red team) joins only when @mentioned, which is exactly how Oskar
+    // tells the person to bring him in, so he is listed. Sofia joins by rule: she is not.
+    expect(system).toContain(
+      'Selected for this DD: Rosa (Regulatory lead), Carlos (CMC regulatory), Ruben (Red team), Dara (Dosing strategy), Pia (Paediatric specialist).',
+    );
+    expect(system).not.toContain('Sofia (');
+    expect(system).not.toContain('Oskar (');
+    expect(system).not.toContain('Lena (');
   });
 });

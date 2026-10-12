@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { OLU, ROSA } from '@/client/test-fixtures';
 import type { TimelineItem } from '@/client/timeline';
+import { DemoModeProvider } from './DemoMode';
 import { AgentBubble, HumanBubble, SystemLine } from './MessageBubble';
 
 type AgentItem = Extract<TimelineItem, { kind: 'agent' }>;
@@ -112,6 +113,36 @@ describe('AgentBubble', () => {
     render(<AgentBubble item={agentItem({ unsaved: true, state: 'partial' })} agent={ROSA} />);
 
     expect(screen.getByText('not saved')).toBeInTheDocument();
+  });
+});
+
+describe('AgentBubble labels the source of every reply', () => {
+  it('in practice mode says "Practice reply" and never "Model output"', () => {
+    render(
+      <DemoModeProvider mode="practice">
+        <AgentBubble item={agentItem()} agent={ROSA} />
+      </DemoModeProvider>,
+    );
+
+    expect(screen.getByText('Practice reply · not AI · not sourced')).toBeInTheDocument();
+    expect(screen.queryByText('Model output · not sourced')).not.toBeInTheDocument();
+  });
+
+  it('in live mode says "Model output" and never "Practice reply"', () => {
+    render(
+      <DemoModeProvider mode="live">
+        <AgentBubble item={agentItem()} agent={ROSA} />
+      </DemoModeProvider>,
+    );
+
+    expect(screen.getByText('Model output · not sourced')).toBeInTheDocument();
+    expect(screen.queryByText(/Practice reply/)).not.toBeInTheDocument();
+  });
+
+  it('without a provider (a page outside the shell) falls back to live, as before', () => {
+    render(<AgentBubble item={agentItem()} agent={ROSA} />);
+
+    expect(screen.getByText('Model output · not sourced')).toBeInTheDocument();
   });
 });
 

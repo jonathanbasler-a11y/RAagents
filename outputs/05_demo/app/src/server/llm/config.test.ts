@@ -151,14 +151,71 @@ describe('readLlmConfig: agents route', () => {
     expect(result.warnings[0]).toContain('LLM_MODEL');
   });
 
-  it('warns when the key would travel over plain http to a host that is not local', () => {
-    const remote = readLlmConfig('agents', { ...AGENTS_ENV, LLM_BASE_URL: 'http://gateway.example.test/v1' });
-    const local = readLlmConfig('agents', { ...AGENTS_ENV, LLM_BASE_URL: 'http://localhost:4010/v1' });
+  describe('plain http to a remote host', () => {
+    const REMOTE_HTTP = { ...AGENTS_ENV, LLM_BASE_URL: 'http://gateway.example.test/v1' };
 
-    expect(remote.ok).toBe(true);
-    expect(remote.warnings).toHaveLength(1);
-    expect(remote.warnings[0]).toContain('LLM_BASE_URL');
-    expect(local.warnings).toEqual([]);
+    it('is a configuration problem that names LLM_BASE_URL and says what to do', () => {
+      const error = errorOf(readLlmConfig('agents', REMOTE_HTTP));
+
+      expect(error.kind).toBe('config');
+      expect(error.missing).toEqual(['LLM_BASE_URL']);
+      expect(error.message).toContain('The agents model route is not configured');
+      expect(error.message).toContain('LLM_BASE_URL');
+      expect(error.message).toMatch(/plain http/);
+      expect(error.message).toMatch(/https/);
+      expect(error.message).toContain('LLM_ALLOW_PLAIN_HTTP');
+    });
+
+    it('refuses an explicit port and a remote IP address just the same', () => {
+      for (const base of ['http://gateway.example.test:8080/v1', 'http://10.1.2.3/v1', 'http://192.168.0.7:4010']) {
+        expect(readLlmConfig('agents', { ...AGENTS_ENV, LLM_BASE_URL: base }).ok).toBe(false);
+      }
+    });
+
+    it('does not put the host, the key or the URL into the message', () => {
+      const shown = JSON.stringify(readLlmConfig('agents', REMOTE_HTTP));
+
+      expect(shown).not.toContain('gateway.example.test');
+      expect(shown).not.toContain('test-key-agents-123');
+    });
+
+    it('accepts https (positive control)', () => {
+      expect(readLlmConfig('agents', AGENTS_ENV)).toMatchObject({ ok: true, warnings: [] });
+    });
+
+    it.each(['http://localhost:4010/v1', 'http://127.0.0.1:4010/v1', 'http://127.0.0.2:4010/v1', 'http://[::1]:4010/v1', 'http://fake.localhost:4010/v1'])(
+      'accepts plain http to this machine: %s',
+      (base) => {
+        expect(readLlmConfig('agents', { ...AGENTS_ENV, LLM_BASE_URL: base })).toMatchObject({ ok: true, warnings: [] });
+      },
+    );
+
+    it('can be allowed with LLM_ALLOW_PLAIN_HTTP=1, and then still warns', () => {
+      const result = readLlmConfig('agents', { ...REMOTE_HTTP, LLM_ALLOW_PLAIN_HTTP: '1' });
+
+      expect(result.ok).toBe(true);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain('LLM_BASE_URL');
+    });
+
+    it.each(['true', 'yes', '0', '', ' ', 'on', '11'])('is not allowed by LLM_ALLOW_PLAIN_HTTP=%j', (value) => {
+      expect(readLlmConfig('agents', { ...REMOTE_HTTP, LLM_ALLOW_PLAIN_HTTP: value }).ok).toBe(false);
+    });
+
+    it('still reports the other missing settings together with the http problem', () => {
+      const error = errorOf(readLlmConfig('agents', { LLM_BASE_URL: 'http://gateway.example.test/v1' }));
+
+      expect(error.missing).toEqual(['LLM_BASE_URL', 'LLM_API_KEY', 'LLM_MODEL']);
+    });
+
+    it('names LLM_JUDGE_BASE_URL on the judge route when that is the variable in use, and LLM_BASE_URL when it falls back', () => {
+      const judge = { LLM_JUDGE_MODEL: 'vendor-b.judge-1', LLM_JUDGE_API_KEY: 'test-key-judge-456' };
+      const own = errorOf(readLlmConfig('judge', { ...judge, LLM_JUDGE_BASE_URL: 'http://judge.example.test/v1' }));
+      const fallback = errorOf(readLlmConfig('judge', { ...judge, LLM_BASE_URL: 'http://gateway.example.test/v1' }));
+
+      expect(own.missing).toEqual(['LLM_JUDGE_BASE_URL']);
+      expect(fallback.missing).toEqual(['LLM_BASE_URL']);
+    });
   });
 
   it('never puts a value or a host into the error or the warnings', () => {

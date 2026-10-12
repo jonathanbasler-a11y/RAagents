@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { loadPublicAgents } from '@/components/load-agents';
+import { readDemoMode } from '@/server/demo-mode';
 import './globals.css';
 
 // The rail lists the agents read from the spec files on every request.
@@ -16,10 +17,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const roster = loadPublicAgents();
+  // Read on every request (this layout is dynamic), so it matches how this server was started.
+  const mode = readDemoMode();
   return (
     <html lang="en">
       <body>
-        <AppShell agentsLoad={roster}>{children}</AppShell>
+        <AppShell agentsLoad={roster} mode={mode}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );

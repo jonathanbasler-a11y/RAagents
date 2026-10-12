@@ -12,7 +12,7 @@ import type {
   TurnTrace,
 } from '@/shared/contracts';
 import { CHAT_MIGRATIONS, migrateChatSchema } from './schema';
-import { createStore, RoomBusyError, toPromptHistory } from './store';
+import { createStore, RoomBusyError, ServerBusyError, toPromptHistory } from './store';
 
 // Every test gets a fresh folder and database file, a frozen clock it moves by hand, and
 // predictable ids. Raw connections (openRaw) reach under the store to check what the
@@ -837,6 +837,217 @@ describe('new conversation (newThread)', () => {
     expect(() => remove.run(archived.id)).toThrow(/never deleted/);
     expect(() => remove.run(active.id)).toThrow(/never deleted/);
     expect(store.getActiveThread('demo', 'team')).toEqual(active);
+  });
+});
+
+describe('starting turns: the cap on turns running at once', () => {
+  const capped = (overrides: Partial<StartTurnInput> = {}) => turnInput({ maxRunningTurns: 2, ...overrides });
+  const counts = () => {
+    const db = openRaw();
+    const count = (table: string) => Number((db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n);
+    return { threads: count('threads'), turns: count('turns'), messages: count('messages') };
+  };
+
+  it('throws ServerBusyError for a third turn, and writes nothing for it: no thread, no turn', () => {
+    const store = openStore();
+    store.startTurn(capped({ roomId: 'a', clientTurnId: 'client-1' }));
+    store.startTurn(capped({ roomId: 'b', clientTurnId: 'client-2' }));
+    const before = counts();
+
+    const error = thrownBy(() => store.startTurn(capped({ roomId: 'c', clientTurnId: 'client-3' })));
+
+    expect(error).toBeInstanceOf(ServerBusyError);
+    expect(error).toMatchObject({ code: 'server_busy', running: 2, limit: 2 });
+    expect(counts()).toEqual(before);
+    expect(counts()).toEqual({ threads: 2, turns: 2, messages: 0 });
+    expect(store.getRunningTurn('demo', 'c')).toBeNull();
+  });
+
+  it('counts the running turns in the database, so a second connection sees them', () => {
+    openStore().startTurn(capped({ roomId: 'a', clientTurnId: 'client-1' }));
+    openStore().startTurn(capped({ roomId: 'b', clientTurnId: 'client-2' }));
+    const third = openStore();
+
+    expect(() => third.startTurn(capped({ roomId: 'c', clientTurnId: 'client-3' }))).toThrow(ServerBusyError);
+  });
+
+  it('frees a slot when a turn ends, whatever way it ends', () => {
+    const store = openStore();
+    const first = store.startTurn(capped({ roomId: 'a', clientTurnId: 'client-1' }));
+    const second = store.startTurn(capped({ roomId: 'b', clientTurnId: 'client-2' }));
+    expect(() => store.startTurn(capped({ roomId: 'c', clientTurnId: 'client-3' }))).toThrow(ServerBusyError);
+
+    store.finishTurn({ turnId: first.turn.id, status: 'done', trace: null });
+    expect(store.startTurn(capped({ roomId: 'c', clientTurnId: 'client-3' })).created).toBe(true);
+    expect(() => store.startTurn(capped({ roomId: 'd', clientTurnId: 'client-4' }))).toThrow(ServerBusyError);
+
+    store.finishTurn({ turnId: second.turn.id, status: 'error', trace: null });
+    expect(store.startTurn(capped({ roomId: 'd', clientTurnId: 'client-4' })).created).toBe(true);
+  });
+
+  it('does not count a turn that was interrupted', () => {
+    const store = openStore();
+    store.startTurn(capped({ bootId: 'boot-old', roomId: 'a', clientTurnId: 'client-1' }));
+    store.startTurn(capped({ bootId: 'boot-old', roomId: 'b', clientTurnId: 'client-2' }));
+    store.reconcileStaleTurns('boot-a');
+
+    expect(store.startTurn(capped({ roomId: 'c', clientTurnId: 'client-3' })).created).toBe(true);
+  });
+
+  it('answers a repeated clientTurnId with the existing turn even at the cap (the repeat is not a new turn)', () => {
+    const store = openStore();
+    const first = store.startTurn(capped({ roomId: 'a', clientTurnId: 'client-1' }));
+    store.startTurn(capped({ roomId: 'b', clientTurnId: 'client-2' }));
+
+    const repeat = store.startTurn(capped({ roomId: 'a', clientTurnId: 'client-1' }));
+
+    expect(repeat).toMatchObject({ created: false, turn: { id: first.turn.id } });
+  });
+
+  it('says the room is busy, not the server, when the room itself is taken at the cap', () => {
+    const store = openStore();
+    const first = store.startTurn(capped({ roomId: 'a', clientTurnId: 'client-1' }));
+    store.startTurn(capped({ roomId: 'b', clientTurnId: 'client-2' }));
+
+    const error = thrownBy(() => store.startTurn(capped({ roomId: 'a', clientTurnId: 'client-3' })));
+
+    expect(error).toBeInstanceOf(RoomBusyError);
+    expect(error).toMatchObject({ runningTurnId: first.turn.id });
+  });
+
+  it('has no limit when the input names none (positive control)', () => {
+    const store = openStore();
+    for (const room of ['a', 'b', 'c', 'd']) store.startTurn(turnInput({ roomId: room, clientTurnId: `client-${room}` }));
+
+    expect(counts().turns).toBe(4);
+  });
+
+  it.each([0, -1, 1.5, Number.NaN])('refuses a limit of %s', (limit) => {
+    const store = openStore();
+
+    expect(() => store.startTurn(turnInput({ maxRunningTurns: limit }))).toThrow(RangeError);
+    expect(counts()).toEqual({ threads: 0, turns: 0, messages: 0 });
+  });
+});
+
+describe('interruptTurn', () => {
+  const open = () => {
+    const store = createStore(dbPath, { now, newId, bootId: 'boot-a' });
+    stores.push(store);
+    return store;
+  };
+
+  it("ends a running turn of this process as interrupted, keeping the code and the correlation id, and frees its room", () => {
+    const store = open();
+    const { turn } = store.startTurn(turnInput({ bootId: 'boot-a' }));
+    advance(2_000);
+
+    const interrupted = store.interruptTurn({ turnId: turn.id, errorCode: 'server_shutdown', correlationId: 'corr-1' });
+
+    expect(interrupted).toEqual({
+      ...turn,
+      status: 'interrupted',
+      finishedAt: '2026-10-07T10:00:02.000Z',
+      errorCode: 'server_shutdown',
+      correlationId: 'corr-1',
+    });
+    expect(store.getTurn(turn.id)).toEqual(interrupted);
+    expect(store.getRunningTurn('demo', 'team')).toBeNull();
+    expect(store.startTurn(turnInput({ clientTurnId: 'client-2' })).created).toBe(true);
+  });
+
+  it('leaves a running turn of another process alone and returns it unchanged', () => {
+    const store = open();
+    const { turn } = store.startTurn(turnInput({ bootId: 'boot-other' }));
+
+    const result = store.interruptTurn({ turnId: turn.id, errorCode: 'server_shutdown', correlationId: 'corr-1' });
+
+    expect(result).toEqual(turn);
+    expect(store.getTurn(turn.id)?.status).toBe('running');
+  });
+
+  it('leaves a finished turn alone: a terminal status is set once', () => {
+    const store = open();
+    const { turn } = store.startTurn(turnInput({ bootId: 'boot-a' }));
+    const done = store.finishTurn({ turnId: turn.id, status: 'done', trace: null });
+
+    const result = store.interruptTurn({ turnId: turn.id, errorCode: 'server_shutdown', correlationId: 'corr-1' });
+
+    expect(result).toEqual(done);
+  });
+
+  it('keeps the trace saved while the turn ran', () => {
+    const store = open();
+    const { turn } = store.startTurn(turnInput({ bootId: 'boot-a' }));
+    store.saveTurnTrace(turn.id, SOLO_TRACE);
+
+    const result = store.interruptTurn({ turnId: turn.id, errorCode: 'server_shutdown', correlationId: 'corr-1' });
+
+    expect(result.trace).toEqual(SOLO_TRACE);
+  });
+
+  it('refuses to guess which turns are this process: a store opened without a boot id throws', () => {
+    const store = openStore();
+    const { turn } = store.startTurn(turnInput());
+
+    expect(() => store.interruptTurn({ turnId: turn.id, errorCode: 'server_shutdown', correlationId: 'corr-1' })).toThrow(/boot id/);
+    expect(store.getTurn(turn.id)?.status).toBe('running');
+  });
+
+  it('throws for an unknown turn and for empty arguments', () => {
+    const store = open();
+
+    expect(() => store.interruptTurn({ turnId: 'nope', errorCode: 'server_shutdown', correlationId: 'corr-1' })).toThrow(/does not exist/);
+    expect(() => store.interruptTurn({ turnId: ' ', errorCode: 'server_shutdown', correlationId: 'corr-1' })).toThrow(TypeError);
+    expect(() => store.interruptTurn({ turnId: 'x', errorCode: 'server_shutdown', correlationId: '' })).toThrow(TypeError);
+  });
+});
+
+describe('reconcileStaleTurns: at runtime, with a grace period', () => {
+  it('leaves a turn alone until its deadline plus the grace has passed, then ends it as out of time', () => {
+    const store = openStore();
+    const { turn } = store.startTurn(turnInput({ bootId: 'boot-a' }));
+
+    advance(180_000 + 15_000);
+    expect(store.reconcileStaleTurns('boot-a', { graceMs: 15_000 })).toBe(0);
+    expect(store.getTurn(turn.id)?.status).toBe('running');
+
+    advance(1);
+    expect(store.reconcileStaleTurns('boot-a', { graceMs: 15_000 })).toBe(1);
+    expect(store.getTurn(turn.id)).toEqual({
+      ...turn,
+      status: 'interrupted',
+      finishedAt: '2026-10-07T10:03:15.001Z',
+      errorCode: 'out_of_time',
+    });
+    expect(store.getRunningTurn('demo', 'team')).toBeNull();
+  });
+
+  it("does not end a turn of another boot that is still within its deadline: at runtime it may be a live process's turn", () => {
+    const store = openStore();
+    const { turn } = store.startTurn(turnInput({ bootId: 'boot-other' }));
+    advance(60_000);
+
+    expect(store.reconcileStaleTurns('boot-a', { graceMs: 15_000 })).toBe(0);
+    expect(store.getTurn(turn.id)?.status).toBe('running');
+  });
+
+  it('ends a stuck turn of another boot once it is past deadline and grace, and leaves finished turns alone', () => {
+    const store = openStore();
+    const stuck = store.startTurn(turnInput({ bootId: 'boot-other', roomId: 'a', clientTurnId: 'client-1' }));
+    const done = store.startTurn(turnInput({ bootId: 'boot-a', roomId: 'b', clientTurnId: 'client-2' }));
+    const doneTurn = store.finishTurn({ turnId: done.turn.id, status: 'done', trace: null });
+    advance(200_000);
+
+    expect(store.reconcileStaleTurns('boot-a', { graceMs: 15_000 })).toBe(1);
+    expect(store.getTurn(stuck.turn.id)).toMatchObject({ status: 'interrupted', errorCode: 'out_of_time' });
+    expect(store.getTurn(done.turn.id)).toEqual(doneTurn);
+  });
+
+  it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])('refuses a grace of %s', (graceMs) => {
+    const store = openStore();
+
+    expect(() => store.reconcileStaleTurns('boot-a', { graceMs })).toThrow(RangeError);
   });
 });
 

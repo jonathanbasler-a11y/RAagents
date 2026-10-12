@@ -110,6 +110,9 @@ export const TURN_FAILED_TEXT = 'This turn failed.';
 export const TURN_INTERRUPTED_TEXT = 'This turn was interrupted: the server restarted while it ran. No reply was saved.';
 export const TURN_INTERRUPTED_KEPT_TEXT =
   'This turn was interrupted: the server restarted while it ran. Replies that had finished are kept; a reply still running then was lost.';
+// A stop that the server saw coming (SIGINT, SIGTERM) saves the text that had arrived, marks it, and says so.
+export const TURN_SHUT_DOWN_TEXT =
+  'This turn was interrupted: the server shut down while it ran. The text that had arrived is kept, marked as cut off.';
 
 /** "Lena", "Lena and Ines", "Lena, Ines and Dara". */
 export function andList(names: readonly string[]): string {
@@ -391,8 +394,10 @@ function footerItems(turn: Turn, group: readonly Message[], savedIds: ReadonlySe
     if (!shown) items.push(savedLine(`turnerr:${turn.id}`, 'error', TURN_FAILED_TEXT, turn));
   }
   if (turn.status === 'interrupted') {
+    const shutDown = group.some((message) => message.author === 'agent' && message.errorCode === 'server_shutdown');
     const kept = group.some((message) => message.author === 'agent');
-    items.push(savedLine(`interrupted:${turn.id}`, 'error', kept ? TURN_INTERRUPTED_KEPT_TEXT : TURN_INTERRUPTED_TEXT));
+    const text = shutDown ? TURN_SHUT_DOWN_TEXT : kept ? TURN_INTERRUPTED_KEPT_TEXT : TURN_INTERRUPTED_TEXT;
+    items.push(savedLine(`interrupted:${turn.id}`, 'error', text));
   }
   if (turn.status !== 'running' && turn.trace) items.push({ kind: 'turn', key: `panel:${turn.id}`, turn });
   return items;

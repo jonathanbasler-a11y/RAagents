@@ -83,7 +83,8 @@ const ROUTE_NAMES: Record<LlmRouteName, RouteNames> = {
 
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 const PRINTABLE_NO_SPACE = /^[\x21-\x7e]+$/;
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const LOCAL_HOSTS = new Set(['localhost', '[::1]']);
+const LOOPBACK_IPV4 = /^127(?:\.\d{1,3}){3}$/;
 
 interface Problem {
   name: string;
@@ -99,7 +100,7 @@ function parseBaseUrl(value: string): { url: string; plainHttpRemote: boolean } 
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
   if (url.username !== '' || url.password !== '') return null;
-  const local = LOCAL_HOSTS.has(url.hostname) || url.hostname.endsWith('.localhost');
+  const local = LOCAL_HOSTS.has(url.hostname) || LOOPBACK_IPV4.test(url.hostname) || url.hostname.endsWith('.localhost');
   return {
     url: `${url.origin}${url.pathname.replace(/\/+$/, '')}${url.search}`,
     plainHttpRemote: url.protocol === 'http:' && !local,
@@ -130,9 +131,19 @@ export function readLlmConfig(route: LlmRouteName, env: EnvSource = process.env)
     if (parsed === null) {
       problems.push({ name: base.name, text: `${base.name} is not a plain http(s) URL` });
     } else {
-      baseUrl = parsed.url;
-      if (parsed.plainHttpRemote) {
-        warnings.push(`${base.name} uses plain http for a host that is not local, so the key travels unencrypted.`);
+      if (parsed.plainHttpRemote && env.LLM_ALLOW_PLAIN_HTTP?.trim() !== '1') {
+        // The key would travel unencrypted, so the route stays unconfigured until the URL is https.
+        problems.push({
+          name: base.name,
+          text:
+            `${base.name} uses plain http for a host that is not this machine, so the key would travel unencrypted. ` +
+            'Use an https URL (LLM_ALLOW_PLAIN_HTTP=1 overrides this, for a test stand-in on a network you control only)',
+        });
+      } else {
+        baseUrl = parsed.url;
+        if (parsed.plainHttpRemote) {
+          warnings.push(`${base.name} uses plain http for a host that is not local (LLM_ALLOW_PLAIN_HTTP=1), so the key travels unencrypted.`);
+        }
       }
     }
   }
