@@ -17,6 +17,7 @@
     "avatars": "node scripts/make-avatars.mjs",
     "fake-llm": "node scripts/fake-llm.mjs",
     "eval": "tsx --conditions=react-server scripts/eval.ts",
+    "eval:regrade": "tsx --conditions=react-server scripts/eval-regrade.ts",
     "check:bundle": "node scripts/check-bundle.mjs",
     "demo": "node scripts/demo/demo.mjs live",
     "demo:practice": "node scripts/demo/demo.mjs practice",
