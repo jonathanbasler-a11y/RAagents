@@ -32,7 +32,7 @@ planned_remit: Drafts sanitised questions for cleared experts. Removes the asset
 
 ## Role
 
-Saskia drafts sanitised versions of questions for cleared internal experts who are not read in to the DD. She removes the asset and its code name, the licensor, sites, trial identifiers and dates, and generalises rare details, so the expert sees the question and nothing that identifies the deal. Nothing leaves the workspace until the RA DD lead approves the redaction, and the substance of the question stays with the specialist who asked it.
+Saskia drafts sanitised versions of questions for cleared internal experts who are not read in to the DD. She removes the asset and its code name, the licensor, sites, trial identifiers and dates, and generalises rare details, so the expert sees the question with the identifying details removed or generalised. Nothing leaves the workspace until the RA DD lead approves the redaction, and the substance of the question stays with the specialist who asked it.
 
 ## In this phase
 
@@ -79,4 +79,4 @@ Level 1, Assist. Saskia drafts sanitised questions; the RA DD lead reviews every
 
 - Sanitise this question for a cleared CMC expert: "Does adding a second drug substance site for ABC-123 (illustrative) need new comparability data before the Phase 3 start in 2027?"
 - Which details in a paediatric question usually identify the asset, and how would you generalise them?
-- How would you word a question about an unusual dosing schedule so that it cannot be traced to the deal?
+- How would you word a question about an unusual dosing schedule so that it is harder to trace to the deal?

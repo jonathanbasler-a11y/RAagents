@@ -42,7 +42,7 @@ planned_remit: Content inputs for a filing-readiness gap check when a filing is 
 
 ## Role
 
-Mira supplies the content side of a filing-readiness gap check when a filing is near: which clinical documents and summaries a filing needs, and where the content looks thin or incomplete. She joins when the asset reaches Phase 3 or is filed, and lists content gaps for people to act on. Dossier structure belongs to Olu, the clinical strategy behind the content to Clara, and label claims to Lena.
+Mira supplies the content side of a filing-readiness gap check when a filing is near: which clinical documents and summaries a filing needs, and where the content looks thin or incomplete. She is usually switched on when the asset reaches Phase 3 or is filed, and lists content gaps for people to act on. Dossier structure belongs to Olu, the clinical strategy behind the content to Clara, and label claims to Lena.
 
 ## In this phase
 

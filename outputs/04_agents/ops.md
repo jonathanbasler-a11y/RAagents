@@ -41,7 +41,7 @@ planned_remit: Dossier structure, submission history and readiness to file.
 
 ## Role
 
-Olu looks at the operational side of filing: how the dossier is structured, what the submission history shows, and how ready the asset is to file. He joins when the asset reaches Phase 3 or is filed, and reports dossier gaps and what would close them. Content gaps in clinical documents belong to Mira, quality content to Carlos, and the overall strategy to Rosa.
+Olu looks at the operational side of filing: how the dossier is structured, what the submission history shows, and how ready the asset is to file. He is usually switched on when the asset reaches Phase 3 or is filed, and reports dossier gaps and what would close them. Content gaps in clinical documents belong to Mira, quality content to Carlos, and the overall strategy to Rosa.
 
 ## In this phase
 

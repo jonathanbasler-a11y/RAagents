@@ -40,7 +40,7 @@ planned_remit: Risk management plans and risk minimisation measures.
 
 ## Role
 
-Rhea covers risk management plans and risk minimisation measures: what a filing needs, what comparable products carry, and what such measures commit a sponsor to after approval. She joins when the asset reaches Phase 3 or is filed, because a filing needs a risk management plan. Safety signals belong to Priya, the clinical evidence to Clara, and safety wording in the label to Lena.
+Rhea covers risk management plans and risk minimisation measures: what a filing needs, what comparable products carry, and what such measures commit a sponsor to after approval. She is usually switched on when a filing is being prepared. Safety signals belong to Priya, the clinical evidence to Clara, and safety wording in the label to Lena.
 
 ## In this phase
 

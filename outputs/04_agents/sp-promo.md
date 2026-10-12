@@ -41,7 +41,7 @@ planned_remit: Promotional claims and materials. Not needed before a filing.
 
 ## Role
 
-Paolo looks at promotional claims and materials against the label: which launch claims the label would support, and what fair balance and public enforcement letters suggest. He is not needed before a filing and joins once the asset is filed, because launch claims depend on the label under review. Label claims themselves belong to Lena, medical context to Malik, and risk minimisation to Rhea.
+Paolo looks at promotional claims and materials against the label: which launch claims the label would support, and what fair balance and public enforcement letters suggest. He is not needed before a filing and is usually switched on once the asset is filed, because launch claims depend on the label under review. Label claims themselves belong to Lena, medical context to Malik, and risk minimisation to Rhea.
 
 ## In this phase
 

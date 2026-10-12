@@ -53,7 +53,7 @@ YAML keys are snake_case. The app maps them to the camelCase fields of `AgentSpe
 | `mention_only` | `mentionOnly` | boolean | Joins a team turn only when @mentioned. |
 | `locked` | `locked` | boolean | Always selected. |
 | `default_selected` | `defaultSelected` | boolean | Selected until someone changes the switches. |
-| `trigger` | `trigger` | `orphan`, `paed`, `exp`, `combo`, `cdx` or `late`, optional | What brings the agent into a DD (see "Participation flags"). |
+| `trigger` | `trigger` | `orphan`, `paed`, `exp`, `combo`, `cdx`, `late` or `filed`, optional | What brings the agent into a DD (see "Participation flags"). |
 | `handoffs` | `handoffs` | list of agent ids | Teammates to name when a question is outside the remit. Narrowed to active agents when the app loads. `[]` is fine. |
 | `source_allowlist` | `sourceAllowlist` | list of strings | Always `[]` in this phase. Planned: a hard filter on what the agent may retrieve. |
 | `avatar` | `avatar` | string | Exactly `/avatars/<id>.svg`. The file lives in `outputs/05_demo/app/public/avatars/`. |
@@ -91,7 +91,7 @@ In the team chat, @mentions decide who answers. Without a mention, the app match
 | `mention_only: true` | The agent joins a team turn only when @mentioned, never through keywords. Needs `routable: false`. Used by the sanitiser, the evidence checker and the red team. |
 | `locked: true` | Always selected: the switch shows on and cannot be turned off. The five team roles. Needs `default_selected: true`. |
 | `default_selected: true` | Selected in a workspace that has not saved its own selection. These are mockup v2's defaults: 14 agents. |
-| `trigger` | What brings the agent into a DD in the mockup: an asset classification (`orphan`, `paed`, `exp`, `combo`, `cdx`), or `late` (development stage Phase 3 or Filed). The profile shows it. In this phase people switch agents on and off by hand. |
+| `trigger` | What brings the agent into a DD in the mockup: an asset classification (`orphan`, `paed`, `exp`, `combo`, `cdx`), `late` (development stage Phase 3 or Filed), or `filed` (the agent joins only when the asset is filed). The profile shows it. In this phase people switch agents on and off by hand. |
 
 Team roles join by rule:
 
