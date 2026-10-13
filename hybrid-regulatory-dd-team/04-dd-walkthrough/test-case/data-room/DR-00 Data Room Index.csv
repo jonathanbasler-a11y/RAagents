@@ -1,0 +1,24 @@
+doc_id,title,category,status,date,notes
+DR-01,Company Overview,Corporate,Provided,2026-10-05,
+DR-02,Investor Deck Summary (September 2026),Corporate,Provided,2026-09,Company presentation; not a regulatory record
+DR-03,Asset Profile and TPP,Asset,Provided,2026-08,
+DR-04,Clinical Development Summary,Clinical,Provided,2026-09,CSR synopsis only for study 101
+DR-05,Regulatory Correspondence Log,Regulatory,Provided,2026-10,Company-maintained log
+DR-06,Agency Meeting Minutes (excerpts),Regulatory,Provided,2026-10,Excerpts only (A FDA 2024-03, B EMA 2024-09, C FDA 2025-11)
+DR-07,Designations and IND/CTA History,Regulatory,Provided,2026-10,
+DR-08,CMC Summary,CMC,Provided,2026-09,Summary only; no Module 3
+DR-09,Manufacturing Sites and Inspections,CMC,Provided,2026-10,
+DR-10,Draft Labeling and Claims v0.3,Labeling,Provided,2026-08,US draft only
+DR-11,Competitive Landscape,Commercial,Provided,2026-09,
+DR-12,Safety Summary,Safety,Provided,2026-09,High level
+DR-13,Patent and Exclusivity Summary,Legal,Provided,2026-09,High level
+DR-14,Companion Diagnostic Summary,Device,Provided,2026-09,
+DR-15,Interim Topline Table,Clinical,Provided,2026-09,
+DR-16,FDA written response to Type C request (2025-03-20),Regulatory,Not provided,,Referenced in DR-05 entry 13
+DR-17,EMA PIP decision or waiver,Regulatory,Not provided,,No record in data room
+DR-18,CDx analytical and clinical bridging study report (CTA v2 to kit v3),Device,Not provided,,Referenced in DR-14
+DR-19,Drug substance comparability report (route A to B),CMC,Not provided,,Referenced in DR-08 and DR-06 Excerpt A Q6
+DR-20,Study 101 full CSR and cohort B BICR charter,Clinical,Not provided,,Synopsis only
+DR-21,FDA OPDP untitled letter (2026-03-09) and company response,Regulatory,Not provided,,Referenced in DR-05 entry 16
+DR-22,Form 483 and company response (Halvern),CMC,Not provided,,Referenced in DR-05 entries 18 and 19
+DR-23,CDRH Pre-Sub feedback (2024-11-20),Device,Not provided,,Referenced in DR-05 entry 10

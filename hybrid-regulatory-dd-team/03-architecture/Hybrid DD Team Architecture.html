@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hybrid Due-Diligence Team</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#011a24; --glass:rgba(255,255,255,.055); --glass2:rgba(255,255,255,.09);
+  --line:rgba(169,207,213,.18); --ink:#e8f3f5; --muted:#9dbcc2; --faint:#6f8f96;
+  --navy:#024157; --teal:#238A91; --mid:#56A3AE; --light:#65B8C1; --pale:#A9CFD5;
+  --orange:#CB773D; --lorange:#DE9A64;
+  --human:#A9CFD5; --agent:#DE9A64; --tool:#56A3AE; --control:#8aa3a4; --external:#8a9ba3;
+  --green:#6cc3a0; --amber:#e8b45c; --red:#e07a6a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Figtree,"Century Gothic",Futura,Arial,sans-serif}
+body{min-height:100vh;overflow-x:hidden}
+.field{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(60vw 50vh at 12% 8%,rgba(35,138,145,.35),transparent 60%),radial-gradient(50vw 50vh at 92% 18%,rgba(0,125,165,.25),transparent 60%),radial-gradient(70vw 60vh at 60% 110%,rgba(203,119,61,.16),transparent 60%),linear-gradient(180deg,#011a24,#02293a 60%,#011a24);
+  animation:drift 30s ease-in-out infinite alternate}
+@keyframes drift{to{filter:hue-rotate(-12deg) saturate(1.15);transform:scale(1.04)}}
+.spot{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(420px 420px at var(--mx,50%) var(--my,30%),rgba(101,184,193,.10),transparent 70%)}
+.wrap{position:relative;z-index:1;max-width:1340px;margin:0 auto;padding:28px 24px 60px}
+header{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end;justify-content:space-between;margin-bottom:8px}
+h1{font-size:clamp(26px,3.4vw,40px);font-weight:800;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);margin-top:6px;font-size:15px;max-width:780px;line-height:1.45}
+.status{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lorange);border:1px solid rgba(222,154,100,.4);padding:6px 10px;border-radius:999px;white-space:nowrap}
+.kpis{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 4px}
+.kpi{padding:10px 14px;min-width:150px}
+.kpi b{display:block;font-size:24px;font-weight:800}.kpi span{font-size:12px;color:var(--muted);letter-spacing:.04em}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 18px}
+nav button{font:600 14px Figtree,Arial,sans-serif;color:var(--ink);background:var(--glass);border:1px solid var(--line);padding:9px 14px;border-radius:10px;cursor:pointer;backdrop-filter:blur(14px);transition:.2s}
+nav button:hover{background:var(--glass2)} nav button.on{background:var(--teal);border-color:var(--teal)}
+.glass{background:var(--glass);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2)}
+.view{display:none}.view.on{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}}
+.hint{color:var(--muted);font-size:14px;line-height:1.5}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle}
+.zone{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;color:#011a24}
+.z-green{background:var(--green)}.z-amber{background:var(--amber)}.z-red{background:var(--red)}
+.tier{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pale);border:1px solid var(--line);padding:2px 8px;border-radius:999px}
+.archgrid{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:18px;align-items:start}
+.stage{position:relative;padding:14px}
+svg.edges{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+svg.edges path{fill:none;stroke:rgba(169,207,213,.10);stroke-width:1.3;transition:.25s}
+svg.edges path.hot{stroke:var(--lorange);stroke-width:2.2;stroke-dasharray:6 5;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-22}}
+.layer{position:relative;display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px dashed var(--line)}
+.layer:last-child{border-bottom:0}
+.layer.agentband{background:linear-gradient(90deg,rgba(222,154,100,.07),transparent);border-radius:12px}
+.lname{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 0 0 6px;line-height:1.35}
+.lname b{display:block;color:var(--pale);font-size:13px;margin-bottom:3px}
+.nodes{display:flex;flex-wrap:wrap;gap:10px}
+.node{position:relative;z-index:2;flex:1 1 150px;max-width:220px;min-height:62px;padding:10px 12px;border-radius:12px;cursor:pointer;background:rgba(2,65,87,.6);border:1px solid var(--line);backdrop-filter:blur(10px);transition:transform .18s,border-color .18s,box-shadow .18s,opacity .2s}
+.node.agent{background:rgba(110,62,28,.45);border-color:rgba(222,154,100,.35)}
+.node.external{background:rgba(255,255,255,.03);border-style:dashed}
+.layer.externalband{opacity:.85}
+.tb.external{background:transparent;border-style:dashed}
+.node .k{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.node .k .zd{margin-left:auto}
+.node .t{font-weight:700;font-size:14px;line-height:1.25;margin-top:4px}
+.node:hover,.node.sel{transform:translateY(-2px);border-color:var(--pale);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.node.dim{opacity:.25}.node.sel{outline:2px solid var(--pale)}
+.agent .pulse{position:absolute;right:8px;bottom:8px;display:flex;gap:2px;align-items:flex-end;height:10px}
+.agent .pulse i{width:2px;background:var(--lorange);animation:eq 1.2s ease-in-out infinite}
+.agent .pulse i:nth-child(2){animation-delay:.2s}.agent .pulse i:nth-child(3){animation-delay:.4s}
+@keyframes eq{0%,100%{height:3px}50%{height:10px}}
+.detail{position:sticky;top:16px;padding:18px;max-height:calc(100vh - 32px);overflow:auto}
+.detail h2{margin:6px 0 6px;font-size:20px;line-height:1.2}
+.detail .desc{font-size:15px;line-height:1.5;margin:8px 0 12px}
+.kv{border-top:1px solid var(--line);padding:9px 0}
+.kv span{display:block;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+.kv div,.kv li{font-size:14px;line-height:1.45}
+.kv ul{margin:2px 0 0;padding-left:18px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 12px;font-size:13px;color:var(--muted);align-items:center}
+.legend label{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.legend input{accent-color:var(--teal)}
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr));gap:14px}
+.card{padding:16px 18px;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-2px);border-color:rgba(222,154,100,.45)}
+.card h3{margin:6px 0 8px;font-size:17px}
+.card .why{font-size:14px;line-height:1.5;margin-bottom:10px}
+.card .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.card .traits{margin:6px 0 0;padding-left:18px;font-size:13.5px;line-height:1.45;color:var(--muted)}
+.card .pair{font-size:13px;color:var(--pale);margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.card .src{font-size:12px;color:var(--faint);margin-top:6px}
+.card.tool{border-style:dashed}
+.sect{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:22px 0 10px}
+.sect:first-child{margin-top:0}
+.shared{padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{font-size:13px;padding:6px 10px;border-radius:999px;background:rgba(169,207,213,.12);border:1px solid var(--line)}
+.lanes{display:grid;grid-template-columns:200px 1fr 1fr;overflow:hidden}
+.lanes > div{min-width:0;padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;line-height:1.45}
+.lanes .h{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:rgba(255,255,255,.04)}
+.lanes .st{font-weight:700}
+.lanes .ag{background:rgba(222,154,100,.07)}
+.lanes .hu{background:rgba(169,207,213,.07)}
+.zonekey{display:flex;flex-wrap:wrap;gap:12px 24px;margin:0 2px 14px;font-size:13px;color:var(--muted)}
+.zonekey div{display:flex;gap:8px;align-items:flex-start;max-width:400px}
+.techwrap{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:14px}
+.tiers{display:flex;flex-direction:column;gap:8px;padding:14px}
+.trow{display:grid;grid-template-columns:140px 1fr;gap:12px;align-items:center}
+.trow .tn{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.trow .ti{display:flex;flex-wrap:wrap;gap:8px}
+.tb{font-size:13.5px;padding:8px 11px;border-radius:10px;border:1px solid var(--line);background:rgba(2,65,87,.55)}
+.tb.agent{background:rgba(110,62,28,.45);border-color:rgba(222,154,100,.35)}
+.tb.human{background:rgba(169,207,213,.14)}
+.tb.tool{border-style:dashed}
+.arrowdown{text-align:center;color:var(--faint);font-size:12px}
+.rail{padding:14px;display:flex;flex-direction:column;gap:8px}
+.rail h3{margin:0 0 4px;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--lorange)}
+.rail div{font-size:13.5px;padding:8px 10px;border-radius:10px;background:rgba(203,119,61,.14);border:1px solid rgba(222,154,100,.3)}
+.tablewrap{overflow-x:auto;padding:6px}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:14px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.4}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+td.c{text-align:center;font-weight:800}
+.r-A{color:#011a24;background:var(--lorange);border-radius:8px}.r-R{color:#011a24;background:var(--light);border-radius:8px}
+.r-AR{color:#011a24;background:linear-gradient(90deg,var(--lorange),var(--light));border-radius:8px}
+.r-C{color:var(--pale)}.r-I{color:var(--faint)}.r-S{color:var(--orange)}
+.raci-key{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin:10px 4px 2px}
+.phases{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.phase{padding:18px 18px 18px 28px;margin-right:-10px;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 50%,calc(100% - 16px) 100%,0 100%,16px 50%);background:rgba(35,138,145,.28)}
+.phase:first-child{clip-path:polygon(0 0,calc(100% - 16px) 0,100% 50%,calc(100% - 16px) 100%,0 100%);padding-left:18px}
+.phase:nth-child(2){background:rgba(35,138,145,.38)}.phase:nth-child(3){background:rgba(35,138,145,.5)}.phase:nth-child(4){background:rgba(35,138,145,.64)}
+.phase.gate{background:rgba(203,119,61,.55)}
+.phase .n{font-size:12px;font-weight:800;letter-spacing:.08em;color:var(--pale)}
+.phase h3{margin:4px 0 6px;font-size:16px}.phase p{margin:0;font-size:13.5px;line-height:1.45}
+.phase .prove{margin-top:10px;font-size:12.5px;color:var(--pale)}
+.tbd{display:inline-block;margin-top:10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--lorange)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.panel{padding:16px 18px}.panel h3{margin:0 0 10px;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.meas{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.meas em{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.meas em.p{color:var(--light)}.meas em.s{color:var(--faint)}
+.dec{padding:10px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.4}.dec b{display:block}.dec span{color:var(--muted);font-size:13px}
+footer{margin-top:26px;color:var(--faint);font-size:12.5px;line-height:1.5}
+@media (max-width:1050px){.archgrid,.techwrap{grid-template-columns:1fr}.detail{position:relative;top:0;max-height:none}.phases{grid-template-columns:1fr;gap:8px}.phase,.phase:first-child{clip-path:none;border-radius:12px;margin:0;padding:16px}.cols{grid-template-columns:1fr}svg.edges{display:none}.lanes{grid-template-columns:1fr}.lanes .h{display:none}.lanes .st{border-top:2px solid var(--line);background:rgba(255,255,255,.04)}}
+@media (max-width:620px){.wrap{padding:18px 16px 40px}.layer,.trow{grid-template-columns:1fr}.node{max-width:none}.roster{grid-template-columns:1fr}}
+
+/* sticky notes */
+.notelayer{position:absolute;inset:0;pointer-events:none;z-index:20}
+body.notemode .wrap{cursor:crosshair}
+body.notemode .wrap *{cursor:crosshair}
+body.notemode .stage::after,body.notemode .view.on::after{content:"";position:absolute;inset:0;pointer-events:none}
+.sticky{position:absolute;width:230px;pointer-events:auto;background:#fff2a8;color:#2b2610;border-radius:6px;box-shadow:0 10px 24px rgba(0,0,0,.4),0 2px 4px rgba(0,0,0,.25);font-size:13.5px;line-height:1.4;transform:rotate(-.6deg);transition:transform .15s,box-shadow .15s}
+.sticky:nth-child(even){transform:rotate(.7deg)}
+.sticky.hot{transform:rotate(0) scale(1.03);box-shadow:0 0 0 3px var(--lorange),0 14px 30px rgba(0,0,0,.5)}
+.sticky.min .sbody{display:none}
+.sticky.done{background:#d9e8c4}
+.shead{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid rgba(0,0,0,.08);cursor:grab;user-select:none;font-size:11px;font-weight:700;letter-spacing:.04em}
+.shead:active{cursor:grabbing}
+.shead select{font:700 11px Figtree,Arial,sans-serif;background:rgba(0,0,0,.07);border:0;border-radius:4px;padding:2px 4px;color:#2b2610}
+.shead .sp{flex:1}
+.shead button{all:unset;cursor:pointer;width:20px;height:20px;text-align:center;border-radius:4px;font-size:13px;line-height:20px}
+.shead button:hover{background:rgba(0,0,0,.1)}
+.sbody{padding:6px 8px 8px}
+.sbody .on{font-size:11px;color:#6b5f22;margin-bottom:4px}
+.sbody textarea{width:100%;min-height:70px;resize:vertical;border:0;background:transparent;font:13.5px/1.4 Figtree,Arial,sans-serif;color:#2b2610;outline:none}
+.sbody .meta{font-size:11px;color:#7a6d2c;margin-top:2px}
+.sbody .reply{margin-top:6px;padding:6px 8px;border-radius:5px;background:rgba(2,65,87,.12);font-size:12.5px}
+.sbody .reply b{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#024157}
+.fab{position:fixed;right:20px;bottom:20px;z-index:50;display:flex;gap:8px}
+.fab button{font:700 14px Figtree,Arial,sans-serif;border:0;border-radius:999px;padding:12px 16px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.fab .add{background:#fff2a8;color:#2b2610}
+body.notemode .fab .add{background:var(--lorange);color:#011a24}
+.fab .list{background:var(--glass2);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(14px)}
+.modebar{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:50;background:var(--lorange);color:#011a24;font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;display:none}
+body.notemode .modebar{display:block}
+.npanel{position:fixed;right:20px;bottom:80px;z-index:50;width:min(360px,calc(100vw - 32px));max-height:60vh;overflow:auto;padding:14px;display:none}
+.npanel.open{display:block}
+.npanel h3{margin:0 0 4px;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.npanel .src{font-size:12px;color:var(--faint);margin-bottom:8px}
+.nitem{padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;cursor:pointer}
+.nitem:hover{color:var(--pale)}
+.nitem small{display:block;color:var(--faint);font-size:11.5px}
+.npanel .acts{display:flex;gap:8px;margin-top:10px}
+.npanel .acts button{font:600 12.5px Figtree,Arial,sans-serif;background:var(--glass2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+@media (max-width:620px){.sticky{width:min(230px,70vw)}}
+</style>
+</head>
+<body>
+<div class="field"></div><div class="spot"></div>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Hybrid Regulatory Due-Diligence Team</h1>
+    <div class="sub" id="sub"></div>
+  </div>
+  <div class="status">Proposal</div>
+</header>
+<div class="kpis" id="kpis"></div>
+<nav id="tabs">
+  <button data-v="arch" class="on">Team architecture</button>
+  <button data-v="roster">Agent roster</button>
+  <button data-v="lanes">Agents vs humans</button>
+  <button data-v="tech">Technical architecture</button>
+  <button data-v="raci">Decision rights</button>
+  <button data-v="pilot">Experiments and measures</button>
+</nav>
+
+<section class="view on" id="v-arch">
+  <div class="legend" id="legend"></div>
+  <div class="archgrid">
+    <div class="glass stage" id="stage"><svg class="edges" id="edges"></svg></div>
+    <aside class="glass detail" id="detail"></aside>
+  </div>
+</section>
+
+<section class="view" id="v-roster">
+  <div class="sect">Specialist agents</div>
+  <div class="roster" id="roster"></div>
+  <div class="sect">Traits every agent shares</div>
+  <div class="glass shared" id="shared"></div>
+  <div class="sect">Deliberately not agents</div>
+  <div class="roster" id="tools"></div>
+</section>
+
+<section class="view" id="v-lanes">
+  <div class="glass lanes" id="lanes"></div>
+  <div class="glass panel" style="margin-top:14px"><h3>Always human</h3><div class="roster" style="grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:8px" id="always"></div></div>
+</section>
+
+<section class="view" id="v-tech">
+  <div class="techwrap">
+    <div class="glass tiers" id="tiers"></div>
+    <div class="glass rail" id="rail"><h3>Guardrails across every tier</h3></div>
+  </div>
+  <div class="glass panel" style="margin-top:14px"><h3>Agent permission tiers</h3><div id="tiersdef"></div></div>
+</section>
+
+<section class="view" id="v-raci">
+  <div class="glass tablewrap"><table id="raci"></table></div>
+  <div class="raci-key"><span><b class="r-A" style="padding:2px 7px">A</b> Accountable</span><span><b class="r-R" style="padding:2px 7px">R</b> Responsible</span><span><b class="r-C">C</b> Consulted</span><span><b class="r-I">I</b> Informed</span><span><b class="r-S">S</b> Agent support (never accountable)</span></div>
+</section>
+
+<section class="view" id="v-pilot">
+  <div class="phases" id="phases"></div>
+  <div class="cols">
+    <div class="glass panel"><h3>Measures</h3><div id="meas"></div><div class="tbd">Baselines and targets: decision needed</div></div>
+    <div class="glass panel"><h3>Experiment hypothesis</h3><div class="hint" style="color:var(--ink)" id="hyp"></div>
+      <h3 style="margin-top:18px">Scale gate</h3><div class="hint" style="color:var(--ink)" id="gate"></div></div>
+  </div>
+</section>
+
+
+
+<footer id="foot"></footer>
+<div class="notelayer" id="notelayer"></div>
+
+</div>
+
+<script>
+const DATA = {"layers": [{"id": "L1", "name": "The deal", "who": "human"}, {"id": "L2", "name": "Regulatory lead", "who": "human"}, {"id": "L3", "name": "Regulatory specialists", "who": "human"}, {"id": "L4", "name": "Regulatory agents", "who": "agent"}, {"id": "L5", "name": "Outside the regulatory team", "who": "external"}], "zones": {"green": "Agent may complete: retrieval with citation, consistency checks, structured queries, inventories", "amber": "Agent drafts, a named human owns the output: summaries, gap analysis, risk drafts, challenges", "red": "Human only: materiality, rPTS position, risk acceptance, go/no-go, anything leaving the team unreviewed"}, "tiers": {"observe": "Reads and reports only", "recommend": "Drafts and proposes; a human accepts or rejects", "act": "Executes bounded workflow actions (routing, requests, status); never conclusions"}, "nodes": [{"id": "deal", "layer": "L1", "label": "Deal governance committee", "kind": "human", "owns": "Go/no-go decision and accepted enterprise risk", "inputs": "Deal recommendation, signed regulatory assessment, other workstream findings", "outputs": "Acquisition decision, risk-acceptance record", "control": "Dissent stays visible in the record", "desc": "Makes the acquisition decision and records the enterprise risks accepted with it"}, {"id": "sponsor", "layer": "L1", "label": "Executive deal sponsor", "kind": "human", "owns": "The deal: thesis, timeline, and the recommendation to the committee", "inputs": "Signed regulatory assessment and other workstream findings", "outputs": "Deal recommendation", "control": "Asks the regulatory team for its assessment; does not set it", "desc": "Owns the deal thesis and timeline, then brings the recommendation to the governance committee"}, {"id": "lead", "layer": "L2", "label": "Regulatory due-diligence lead", "kind": "human", "owns": "The regulatory assessment, materiality, the rPTS position for Phase III assets, and the signed recommendation", "inputs": "Validated specialist findings, risk register, issues list", "outputs": "Signed regulatory recommendation", "control": "Human sign-off; 'the machine said so' is not a rationale", "desc": "Sets regulatory scope and materiality, owns the Phase III rPTS position, and signs the regulatory recommendation"}, {"id": "crd", "layer": "L3", "label": "Clinical regulatory documentation specialist", "kind": "human", "owns": "Conclusions on the clinical regulatory record and pathway", "inputs": "Clinical regulatory documentation agent output", "outputs": "Validated clinical regulatory findings", "control": "Time-boxed, risk-tiered review", "desc": "Validates the clinical regulatory record and determines whether the evidence supports the proposed pathway"}, {"id": "cmc", "layer": "L3", "label": "CMC regulatory specialist", "kind": "human", "owns": "CMC regulatory readiness conclusions", "inputs": "CMC regulatory agent output", "outputs": "Validated CMC findings", "control": "Reviews every CMC red flag", "desc": "Determines CMC regulatory readiness for the next milestone and reviews every material gap"}, {"id": "ri", "layer": "L3", "label": "Regulatory intelligence specialist", "kind": "human", "owns": "Agency history, guidance and precedent interpretation", "inputs": "Regulatory intelligence agent output", "outputs": "Validated history and precedent view", "control": "Judges applicability; the agent only retrieves", "desc": "Interprets agency history, guidance and precedent to determine what applies to the assessment"}, {"id": "md", "layer": "L3", "label": "Medical device specialist (as needed)", "kind": "human", "owns": "Device constituent and combination-product conclusions", "inputs": "Medical device agent output", "outputs": "Validated device findings", "control": "Engaged when the asset includes a device", "desc": "Assesses device constituents, combination-product requirements and classification questions when a device is in scope"}, {"id": "lab", "layer": "L3", "label": "Labeling specialist", "kind": "human", "owns": "Labeling claims and label-strategy conclusions", "inputs": "Labeling agent output", "outputs": "Validated labeling findings", "control": "Owns any judgment on claim strength", "desc": "Judges whether current and proposed labeling claims are supported and identifies implications for label strategy"}, {"id": "rc", "layer": "L3", "label": "Regional / country specialist", "kind": "human", "owns": "Regional filing strategy and country-specific requirements", "inputs": "Regional / country agent output", "outputs": "Validated regional findings", "control": "Engaged for the regions in scope", "desc": "Sets regional filing strategy and validates country-specific requirements, commitments and agency positions"}, {"id": "cr", "layer": "L3", "label": "Commercial regulatory specialist", "kind": "human", "owns": "Post-approval, promotional and lifecycle regulatory conclusions", "inputs": "Commercial regulatory agent output", "outputs": "Validated commercial regulatory findings", "control": "Engaged for marketed or near-launch assets", "desc": "Assesses post-approval obligations, promotional exposure and pending lifecycle changes for marketed or near-launch assets"}, {"id": "drm", "layer": "L4", "label": "Data room manager agent", "kind": "agent", "zone": "green", "tier": "act", "pair": "lead", "owns": "Maps the data room to the regulatory evidence pack, tracks coverage, and routes regulatory requests through the portfolio DD team", "inputs": "Data-room documents, regulatory evidence pack", "outputs": "Regulatory evidence inventory, coverage score, request list", "control": "Read-only on documents; may only raise requests", "traits": ["Answers 'did it pull everything?' with a coverage report", "Says 'not found in the data room', never 'does not exist'", "Reconciles document counts like-for-like", "Turns missing cross-referenced documents into requests", "Batches and de-duplicates requests so the seller is not swamped", "Logs who reviewed each document"], "basis": "", "desc": "Maps the data room to the regulatory evidence pack, tracks coverage and routes requests through the portfolio team", "why": "Data rooms are large, uneven and change during diligence. An agent can reconcile the inventory, trace missing cross-references and batch requests continuously while accountable reviewers confirm coverage"}, {"id": "a_crd", "layer": "L4", "label": "Clinical regulatory documentation agent", "kind": "agent", "zone": "amber", "tier": "recommend", "pair": "crd", "owns": "Extracts and checks the clinical regulatory record: protocols, CSRs, investigator brochure, briefing documents, agency advice and registry entries", "inputs": "Clinical regulatory documents", "outputs": "Cited fact tables, advice-alignment check, version and registry gaps", "control": "No citation, no claim; specialist validates", "traits": ["Phase-aware expectations", "Separates what the data show from what the sponsor claims", "Checks endpoints and design against agency advice", "Checks core document versions and registry entries against the submission record", "Labels every inference as inference"], "basis": "Workshop input", "desc": "Builds cited clinical regulatory fact tables and checks document versions, registry entries and alignment with agency advice", "why": "The clinical regulatory record spans versions, registries, agency advice and study documents that must be checked together. An agent can maintain cited fact tables and surface gaps for specialist validation"}, {"id": "a_cmc", "layer": "L4", "label": "CMC regulatory agent", "kind": "agent", "zone": "amber", "tier": "recommend", "pair": "cmc", "owns": "Assesses CMC regulatory readiness against the next milestone: Module 3, specifications, stability, comparability, sites and inspection history", "inputs": "Module 3, specifications, stability, site and inspection records", "outputs": "Cited CMC gap list, open commitments, inspection exposure", "control": "Every CMC red flag goes to the specialist", "traits": ["Conservative: treats missing CMC evidence as a risk", "Phase-appropriate: judges readiness against the next milestone", "Reads deviation and out-of-spec history over time", "Tracks open CMC commitments and CAPAs", "Treats procedures as written, not as proof of practice"], "basis": "Workshop input (later CMC problems)", "desc": "Builds the cited CMC gap list against the next milestone, including commitments, inspection exposure and evidence gaps", "why": "CMC readiness depends on patterns across Module 3, stability, specifications, sites, deviations, commitments and inspection records. An agent can track those links at scale while the specialist judges each red flag"}, {"id": "a_ri", "layer": "L4", "label": "Regulatory intelligence agent", "kind": "agent", "zone": "green", "tier": "observe", "pair": "ri", "owns": "Builds the agency-interaction chronology and commitment ledger, and retrieves dated guidance and precedent", "inputs": "Correspondence, meeting minutes, submissions, approved external sources", "outputs": "Chronology, commitment ledger, holds, dated precedent set", "control": "Approved sources only; specialist judges applicability", "traits": ["Quotes agency language; does not paraphrase it", "Tracks every commitment to closure or 'open'", "Date-, version- and jurisdiction-stamps every source", "Flags superseded or draft guidance", "Keeps watching during the deal and alerts on new agency actions"], "basis": "", "desc": "Builds the agency chronology and commitment ledger, retrieves dated precedent and monitors approved sources during diligence", "why": "Agency history changes with each correspondence, commitment, guidance version and jurisdiction. An agent can maintain a dated chronology and monitor approved sources while the specialist decides what applies"}, {"id": "a_md", "layer": "L4", "label": "Medical device agent (conditional)", "kind": "agent", "zone": "amber", "tier": "recommend", "pair": "md", "owns": "Checks device constituent, combination-product and classification evidence", "inputs": "Device files, design documentation, scope flag", "outputs": "Cited device findings and classification questions", "control": "Runs only when the asset includes a device", "traits": ["Dormant by default to save cost and noise", "Maps each classification question to the evidence", "Flags missing device documentation as a request"], "basis": "Workshop input (device expertise)", "desc": "Maps device and combination-product evidence to classification questions when the assessment includes a device", "why": "Device review is conditional and requires evidence to be connected across constituent, combination-product and classification files. An agent can activate when needed, build the cited map and route classification questions to the specialist"}, {"id": "a_lab", "layer": "L4", "label": "Labeling agent", "kind": "agent", "zone": "amber", "tier": "recommend", "pair": "lab", "owns": "Maps current and proposed labeling claims to supporting evidence and agency positions", "inputs": "Current and draft labeling, clinical evidence, agency advice", "outputs": "Claim-to-evidence map, unsupported or at-risk claims", "control": "Specialist owns any judgment on claim strength", "traits": ["Maps every claim to its evidence", "Compares label versions across regions", "Flags claims without support", "Never rewrites label language"], "basis": "Workshop input (labeling expertise)", "desc": "Maps each labeling claim to supporting evidence and agency positions, then flags unsupported or exposed claims", "why": "Labeling review requires each claim to be traced across evidence, agency positions and regional versions. An agent can maintain that map and flag unsupported claims while the specialist judges claim strength"}, {"id": "a_rc", "layer": "L4", "label": "Regional / country agent", "kind": "agent", "zone": "amber", "tier": "recommend", "pair": "rc", "owns": "Maps filing status, approvals, commitments and country-specific requirements by region", "inputs": "Regional submissions, approvals, agency correspondence", "outputs": "Region-by-region status table and divergent agency positions", "control": "Specialist owns regional filing strategy", "traits": ["One row per region in scope", "Surfaces country-specific requirements and local commitments", "Flags where agencies have taken different positions", "Date-stamps every status"], "basis": "new design", "desc": "Builds a dated region-by-region view of filing status, approvals, commitments and divergent agency positions", "why": "Regional diligence repeats the same status checks across jurisdictions while requirements and agency positions diverge. An agent can keep a dated comparison table current while the specialist owns filing strategy"}, {"id": "a_cr", "layer": "L4", "label": "Commercial regulatory agent", "kind": "agent", "zone": "amber", "tier": "recommend", "pair": "cr", "owns": "For marketed or near-launch assets, reviews post-approval obligations, promotional history and pending lifecycle changes", "inputs": "Post-marketing commitments, promotional materials and correspondence, variation filings", "outputs": "Post-approval obligations ledger, promotional exposure, pending changes", "control": "Runs for marketed or near-launch assets", "traits": ["Activated by asset stage", "Tracks post-marketing commitments to closure", "Flags agency enforcement history on promotion", "Lists pending lifecycle changes and their filing status"], "basis": "new design", "desc": "Tracks post-approval obligations, promotional exposure and pending lifecycle changes for marketed or near-launch assets", "why": "Post-approval obligations, promotional history and lifecycle filings form a moving record for marketed or near-launch assets. An agent can track status and exposure continuously while the specialist assesses regulatory risk"}, {"id": "a_risk", "layer": "L4", "label": "Regulatory risk assessment agent", "kind": "agent", "zone": "amber", "tier": "recommend", "pair": "lead", "owns": "Drafts the regulatory risk register and mitigations; for Phase III assets only, drafts the rPTS drivers", "inputs": "Validated findings from every specialist, red-team challenge log", "outputs": "Draft risk register, mitigations, rPTS driver table (Phase III)", "control": "Never outputs go/no-go; the lead owns materiality and the rPTS position", "traits": ["Limits rPTS drivers to Phase III assets", "Uses qualitative risk views for earlier phases", "Uses ranges and drivers, never a lone number", "Separates fact, inference and recommendation", "Receives red-team challenges for lead resolution"], "basis": "Workshop input (rPTS)", "desc": "Drafts the regulatory risk register, mitigations and Phase III rPTS drivers, incorporating validated findings and recorded red-team challenges", "why": "Risk synthesis requires consistent treatment of validated findings, mitigations and uncertainty across the assessment. The lead judges materiality, resolves red-team challenges and owns the final rPTS position."}, {"id": "a_ops", "layer": "L4", "label": "Operational readiness agent", "kind": "agent", "zone": "amber", "tier": "recommend", "pair": "lead", "owns": "Builds the operational readiness view and identifies transfer-gating gaps", "inputs": "Transfer scope, obligations, seller data, authority records, contracts, inspection plans and knowledge maps", "outputs": "Readiness heatmap, dependency list, incomplete-item log, integration handoff", "control": "Red or amber without evidence, owner or due date is incomplete", "traits": ["Organizes checks by risk category and guiding question", "Filters checks by phase and transfer type", "Requires evidence, named ownership and due dates", "Tracks every open application, commitment and report to a post-transfer owner", "Checks data, sequencing, knowledge, inspection and contractual dependencies"], "basis": "", "desc": "Builds a phased readiness view covering obligations, transfer data, clinical supply, safety systems, knowledge, inspections, quality systems and contracts", "why": "Readiness checks repeat across phases and transfer types, with evidence, ownership and timing to reconcile. The lead judges readiness, and the integration team owns execution."}, {"id": "a_red", "layer": "L4", "label": "Red-team agent", "kind": "agent", "zone": "amber", "tier": "recommend", "pair": "lead", "owns": "Records independent challenges to findings, the risk register and Phase III rPTS drivers", "inputs": "Draft findings, risk register, Phase III rPTS drivers, specialist record", "outputs": "Challenge log, dissent record, missing-view requests", "control": "Cannot change findings; the lead resolves or records each challenge", "traits": ["Works in a separate context from synthesis", "Argues against the draft findings and risk register", "Tests claims for contradictions and evidentiary support", "Seeks missing specialist views and opposite recommendations", "Records challenges and dissent without editing findings"], "basis": "", "desc": "Independently challenges draft findings, the risk register and Phase III rPTS drivers, then records contradictions, unsupported claims, dissent and missing specialist views", "why": "Independent challenge benefits from a separate context that is not invested in the draft conclusion. The lead decides whether each challenge changes the assessment."}, {"id": "port", "layer": "L5", "label": "Portfolio DD team", "kind": "external", "owns": "Deal coordination, data-room operations, timeline, and its own coordinator agent and program management", "inputs": "Requests from every workstream", "outputs": "Data-room access, schedule, consolidated status", "control": "Outside the regulatory team; the data room manager agent works through it", "desc": "Coordinates the full diligence portfolio, including data-room operations, timeline, program management and its coordinator agent"}, {"id": "other", "layer": "L5", "label": "Other diligence workstreams", "kind": "external", "owns": "Legal, safety and pharmacovigilance, quality, commercial and finance diligence", "inputs": "Shared data room, regulatory findings where relevant", "outputs": "Their own findings to the deal sponsor", "control": "Outside the regulatory team; findings shared where they overlap", "desc": "Conduct legal, safety, quality, commercial and financial diligence and share findings that overlap with regulatory review"}, {"id": "integ", "layer": "L5", "label": "Integration team", "kind": "external", "owns": "Post-signing transfer of applications, registrations and commitments", "inputs": "Regulatory transfer-gating items", "outputs": "Integration plan", "control": "Outside the regulatory team; receives the regulatory handoff", "desc": "Plans post-signing transfer of regulatory applications, registrations and commitments using the regulatory team’s handoff"}, {"id": "t1", "layer": "T", "label": "Intake and triage rules", "kind": "tool", "owns": "Classifies asset stage, modality and question set; applies deal-breaker screen; activates agents and specialists", "inputs": "Deal request and asset profile", "outputs": "Triage card", "control": "Deterministic rules; the regulatory DD lead confirms", "why_not": "Rules are predictable and auditable; nothing here needs judgment an agent would add", "desc": "Classifies the asset and activates the required regulatory questions, agents and specialists after applying the deal-breaker screen"}, {"id": "t2", "layer": "T", "label": "Trap library and evidence-pack checklists", "kind": "tool", "owns": "Expert-written red-flag traps and minimum evidence packs by stage", "inputs": "Specialist authorship and review corrections", "outputs": "Versioned checklists the agents apply", "control": "Owned by specialists; change-controlled", "why_not": "This is expert knowledge; experts write it and agents apply it", "desc": "Provides specialist-authored red-flag traps and minimum evidence packs that agents apply by asset stage"}, {"id": "t3", "layer": "T", "label": "Report template and traceability matrix", "kind": "tool", "owns": "Assembles the validated assessment: issue, implication, action, owner, status, with claim-to-source links and a stated evidence limit", "inputs": "Validated findings, lead's position", "outputs": "Draft assessment for sign-off", "control": "Lead edits and signs", "why_not": "Assembly is templated; an agent adds risk without adding value", "desc": "Assembles validated findings and source links into the assessment format for lead review and sign-off"}, {"id": "t4", "layer": "T", "label": "Shared glossary", "kind": "tool", "owns": "Plain definitions of roles and terms used across organizations", "inputs": "Specialist input", "outputs": "Glossary the agents resolve terms against", "control": "Versioned", "why_not": "Ambiguous terms produce confident wrong answers; fixing the vocabulary is cheaper than fixing the model", "desc": "Defines shared regulatory terms so agents and reviewers use the same meaning across organizations"}], "extraEdges": [["deal", "sponsor"], ["sponsor", "lead"], ["crd", "lead"], ["cmc", "lead"], ["ri", "lead"], ["md", "lead"], ["lab", "lead"], ["rc", "lead"], ["cr", "lead"], ["drm", "port"], ["lead", "other"], ["lead", "integ"], ["a_ops", "integ"]], "lanes": [{"step": "Scope", "agent": "Data room manager maps the data room to the regulatory evidence pack", "human": "Lead confirms asset stage, regions in scope and which specialists engage", "zone": "green"}, {"step": "Evidence inventory", "agent": "Data room manager scores coverage and raises regulatory requests through the portfolio DD team", "human": "Lead accepts coverage or escalates gaps", "zone": "green"}, {"step": "Clinical regulatory documentation", "agent": "Agent extracts the clinical regulatory record and checks it against agency advice", "human": "Specialist validates and rates materiality", "zone": "amber"}, {"step": "CMC regulatory", "agent": "Agent drafts the CMC gap list, open commitments and inspection exposure", "human": "Specialist validates and rates materiality", "zone": "amber"}, {"step": "Regulatory intelligence", "agent": "Agent builds the agency chronology and retrieves dated precedent", "human": "Specialist judges what the agency meant and what applies", "zone": "green"}, {"step": "Medical device and labeling", "agent": "Agents map device evidence and labeling claims to their support", "human": "Specialists judge classification and claim strength", "zone": "amber"}, {"step": "Regional / country", "agent": "Agent builds the region-by-region status table", "human": "Specialist judges regional filing strategy", "zone": "amber"}, {"step": "Commercial regulatory", "agent": "Agent lists post-approval obligations, promotional exposure and pending changes", "human": "Specialist judges commercial regulatory risk", "zone": "amber"}, {"step": "Operational readiness", "agent": "Agent builds the phased readiness view and flags incomplete obligations, ownership gaps and transfer dependencies", "human": "Lead validates readiness and hands the view to the integration team", "zone": "amber"}, {"step": "Risk assessment", "agent": "Risk agent drafts the register and, for Phase III, the rPTS drivers; red-team challenges remain visible for lead resolution", "human": "Lead sets materiality and, for Phase III, the rPTS position", "zone": "red"}, {"step": "Red-team challenge", "agent": "Agent challenges the draft findings, risk register and Phase III rPTS drivers, then records dissent", "human": "Lead resolves each challenge and retains judgment over any change", "zone": "amber"}, {"step": "Recommendation", "agent": "None; the template assembles the validated record", "human": "Lead signs; the deal sponsor and committee decide", "zone": "red"}], "alwaysHuman": ["Domain conclusions and materiality", "The rPTS position (Phase III assets)", "The signed regulatory recommendation", "Regional filing strategy", "Judgment on labeling claim strength", "Resolution of specialist disagreement", "Acceptance of incomplete evidence", "Deal go/no-go and risk acceptance"], "tech": [{"tier": "People", "items": ["Executive deal sponsor", "Regulatory DD lead", "Regulatory specialists (7)"], "kind": "human"}, {"tier": "Workspace", "items": ["Isolated deal workspace", "Review and sign-off queue", "Regulatory issues list"], "kind": "control"}, {"tier": "Regulatory agents", "items": ["Data room manager", "Clinical regulatory documentation", "CMC regulatory", "Regulatory intelligence", "Medical device", "Labeling", "Regional / country", "Commercial regulatory", "Operational readiness", "Risk assessment", "Red team"], "kind": "agent"}, {"tier": "Tools", "items": ["Document index and search", "Citation enforcer", "Regulatory evidence packs and trap lists", "Glossary", "Report template"], "kind": "tool"}, {"tier": "Data", "items": ["Deal data room (read-only)", "Approved regulatory sources", "Buyer's own regulatory history (where permitted)"], "kind": "control"}, {"tier": "Interfaces", "items": ["Portfolio DD team and its coordinator agent", "Other diligence workstreams", "Integration team"], "kind": "external"}], "guardrails": ["Cite or stay silent", "Read-only on deal data", "No cross-deal or cross-client memory", "Every action logged", "Human sign-off on every agent draft before it informs a conclusion"], "raci": {"head": ["Activity", "Deal committee", "Deal sponsor", "Reg DD lead", "Reg specialists", "Reg agents", "Portfolio DD team"], "rows": [["Set deal scope and timeline", "C", "A/R", "C", "I", "I", "R"], ["Provide data-room access", "I", "I", "C", "I", "S", "A/R"], ["Set regulatory scope: stage, regions, specialists", "I", "C", "A/R", "C", "S", "I"], ["Gather and index regulatory evidence", "I", "I", "A", "C", "S", "C"], ["Validate domain findings", "I", "I", "A", "R", "S", "I"], ["Assess regulatory risks and mitigations", "I", "I", "A/R", "R", "S", "I"], ["Set the rPTS position (Phase III assets)", "I", "C", "A/R", "C", "S", "I"], ["Sign the regulatory recommendation", "I", "I", "A/R", "C", "S", "I"], ["Decide go/no-go and accept risk", "A", "R", "C", "I", "I", "C"]]}, "pilot": [{"phase": "0", "name": "Set up", "what": "Name the lead and specialists, write regulatory evidence packs and trap lists, agree the data boundary with the portfolio DD team, build a known-trap test set, capture the baseline", "prove": "Accountable people, approved inputs, a measurable starting point"}, {"phase": "1", "name": "Retrospective replay", "what": "Run the regulatory agents on 2-3 closed diligence packages with known outcomes", "prove": "Evidence coverage, citation accuracy, known-risk recall, visible misses"}, {"phase": "2", "name": "Shadow run", "what": "Run alongside the standard regulatory review on 1-2 live assessments; the standard review still decides", "prove": "Works inside a live deadline without steering the recommendation"}, {"phase": "3", "name": "Assisted use", "what": "Use the hybrid team on live assessments with full specialist validation and lead sign-off", "prove": "Measured effect on elapsed time and specialist effort"}, {"phase": "Gate", "name": "Scale decision", "what": "Regulatory leadership and the deal sponsor review the scorecard", "prove": "Quality, adoption and efficiency thresholds met"}], "measures": [{"name": "Material-risk recall on known cases", "tier": "primary"}, {"name": "Claim-level citation accuracy", "tier": "primary"}, {"name": "Evidence coverage vs minimum pack", "tier": "primary"}, {"name": "Elapsed time to signed assessment", "tier": "primary"}, {"name": "Specialist hours on search/assembly vs judgment", "tier": "primary"}, {"name": "Reviewer rework rate", "tier": "secondary"}, {"name": "Lead and committee confidence", "tier": "secondary"}, {"name": "Assessments completed per quarter", "tier": "secondary"}], "hypothesis": "A bounded hybrid workflow can reduce elapsed time and specialist search and assembly effort while maintaining material-risk detection and evidence traceability.", "gate": "Expand only if predefined quality, adoption and efficiency thresholds are met. Throughput stays secondary.", "decisions": [{"decision": "Specialist roster by asset stage", "options": "Which of the seven specialists engage by default", "who": "Regulatory DD lead"}, {"decision": "Regions in scope by default", "options": "", "who": "Regulatory DD lead with the regional specialist"}, {"decision": "When commercial regulatory engages", "options": "Marketed assets only, or near-launch too", "who": "Regulatory DD lead"}, {"decision": "rPTS method for Phase III assets", "options": "", "who": "Regulatory DD lead with regulatory intelligence"}, {"decision": "Experiment cases", "options": "2-3 closed packages, 1-2 live assessments", "who": "Regulatory DD lead with the deal sponsor"}, {"decision": "Data boundary and request route", "options": "", "who": "Regulatory DD lead with the portfolio DD team"}, {"decision": "Funding and priority", "options": "Fund, revise or stop", "who": "Executive deal sponsor"}, {"decision": "Scale decision", "options": "Scale, extend, redesign or stop", "who": "Regulatory leadership"}], "subtitle": "Proposed architecture for a regulatory due-diligence team, from the Moab Digital Accelerator Digital Mindset Canvas, October 7, 2026. Regulatory agents gather, organize and check evidence. Regulatory specialists validate it, and the regulatory lead sets materiality, owns the rPTS position for Phase III assets and signs the recommendation.", "footer": "Sources: the six-person Digital Mindset Canvas, the red-team pressure test, with no client, product or deal details. Everything here is a proposal for the group to agree, revise or reject. Canvas © Reichart Effectiveness Solutions 2024."};
+const KIND = {human:["Human","var(--human)"],agent:["Agent","var(--agent)"],tool:["Tool or rule","var(--tool)"],control:["Data and control","var(--control)"],external:["Outside the team","var(--external)"]};
+const ZN = {green:"Green",amber:"Amber",red:"Red"};
+const HINT = `<div class="hint">Select any role, agent or tool to see what it owns, why it exists, its traits and the human it answers to. Hover to trace its connections.</div>`;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const node = id => DATA.nodes.find(n => n.id === id);
+const zone = z => "";
+document.addEventListener("pointermove", e => { document.body.style.setProperty("--mx", e.clientX + "px"); document.body.style.setProperty("--my", e.clientY + "px"); });
+$("#sub").textContent = DATA.subtitle || "";
+$("#detail").innerHTML = HINT;
+
+const agents = DATA.nodes.filter(n => n.kind === "agent"), humans = DATA.nodes.filter(n => n.kind === "human"), tools = DATA.nodes.filter(n => n.kind === "tool");
+$("#kpis").innerHTML = [[agents.length,"regulatory agents"],[DATA.nodes.filter(n => n.layer === "L3").length,"regulatory specialists"],[(DATA.alwaysHuman||[]).length,"decisions that stay human"],[tools.length,"deliberately not agents"]]
+  .map(([n,l]) => `<div class="glass kpi"><b>${n}</b><span>${l}</span></div>`).join("");
+
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + b.dataset.v));
+  if (b.dataset.v === "arch") requestAnimationFrame(drawEdges);
+  try { localStorage.setItem("hdd-tab2", b.dataset.v); } catch(e) {}
+});
+
+const hidden = new Set();
+$("#legend").innerHTML = Object.entries(KIND).filter(([k]) => DATA.nodes.some(n => n.kind === k && DATA.layers.some(l => l.id === n.layer))).map(([k,[n,c]]) => `<label><input type="checkbox" checked data-k="${k}"><i class="dot" style="background:${c}"></i>${n}</label>`).join("");
+$("#legend").querySelectorAll("input").forEach(i => i.onchange = () => { i.checked ? hidden.delete(i.dataset.k) : hidden.add(i.dataset.k); applyDim(); });
+
+const EDGES = [];
+DATA.nodes.forEach(n => { if (n.pair) EDGES.push([n.id, n.pair]); });
+(DATA.extraEdges || []).forEach(e => EDGES.push(e));
+
+const stage = $("#stage");
+DATA.layers.forEach((L, li) => {
+  const row = document.createElement("div"); row.className = "layer" + (L.who === "agent" ? " agentband" : L.who === "external" ? " externalband" : "");
+  row.innerHTML = `<div class="lname"><b>${li+1}</b>${esc(L.name)}</div><div class="nodes"></div>`;
+  DATA.nodes.filter(n => n.layer === L.id).forEach(n => {
+    const el = document.createElement("div"); el.className = "node " + n.kind; el.id = "n-" + n.id; el.dataset.kind = n.kind;
+    el.innerHTML = `<div class="k"><i class="dot" style="background:${KIND[n.kind][1]}"></i>${KIND[n.kind][0]}${n.zone ? `<span class="zd">${zone(n.zone)}</span>` : ""}</div><div class="t">${esc(n.label)}</div>${n.kind === "agent" ? `<div class="pulse"><i></i><i></i><i></i></div>` : ""}`;
+    el.onclick = () => select(n.id); el.onmouseenter = () => hot(n.id); el.onmouseleave = () => hot(null);
+    row.querySelector(".nodes").appendChild(el);
+  });
+  stage.appendChild(row);
+});
+function center(id){ const e = document.getElementById("n-"+id), s = stage.getBoundingClientRect(), r = e.getBoundingClientRect(); return [r.left - s.left + r.width/2, r.top - s.top + r.height/2]; }
+function drawEdges(){ const svg = $("#edges"); if (!svg.getBoundingClientRect().width) return;
+  svg.innerHTML = EDGES.map(([a,b]) => { const [x1,y1] = center(a), [x2,y2] = center(b), my = (y1+y2)/2; return `<path data-a="${a}" data-b="${b}" d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}"/>`; }).join(""); }
+let selected = null;
+const neighbors = id => new Set(EDGES.filter(e => e.includes(id)).flat());
+function hot(id){ const f = id || selected; document.querySelectorAll("#edges path").forEach(p => p.classList.toggle("hot", !!f && (p.dataset.a === f || p.dataset.b === f))); applyDim(f); }
+function applyDim(f = selected){ const nb = f ? neighbors(f) : null;
+  document.querySelectorAll(".node").forEach(el => { const id = el.id.slice(2); el.classList.toggle("dim", hidden.has(el.dataset.kind) || (nb && !nb.has(id) && id !== f)); }); }
+function detailHTML(n){
+  const L = DATA.layers.find(l => l.id === n.layer);
+  const fedBy = DATA.nodes.filter(x => x.pair === n.id).map(x => x.label);
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)"><i class="dot" style="background:${KIND[n.kind][1]}"></i>${KIND[n.kind][0]} &middot; ${esc(L.name)} ${zone(n.zone)} ${n.tier ? `<span class="tier">${n.tier}</span>` : ""}</div>
+    <h2>${esc(n.label)}</h2><div class="desc">${esc(n.desc || n.owns)}</div>
+    ${n.why ? `<div class="kv"><span>Why an agent</span><div>${esc(n.why)}</div></div>` : ""}
+    ${n.why_not ? `<div class="kv"><span>Why not an agent</span><div>${esc(n.why_not)}</div></div>` : ""}
+    ${n.traits ? `<div class="kv"><span>Traits</span><ul>${n.traits.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>` : ""}
+    ${n.pair ? `<div class="kv"><span>Answers to</span><div>${esc(node(n.pair).label)}</div></div>` : ""}
+    ${fedBy.length ? `<div class="kv"><span>Supported by</span><div>${fedBy.map(esc).join(" &middot; ")}</div></div>` : ""}
+    <div class="kv"><span>Owns</span><div>${esc(n.owns)}</div></div>
+    ${n.inputs && n.inputs !== "-" ? `<div class="kv"><span>Inputs</span><div>${esc(n.inputs)}</div></div>` : ""}
+    <div class="kv"><span>Outputs</span><div>${esc(n.outputs)}</div></div>
+    <div class="kv"><span>Control</span><div>${esc(n.control)}</div></div>`;
+}
+function select(id){ selected = selected === id ? null : id;
+  document.querySelectorAll(".node").forEach(el => el.classList.toggle("sel", el.id === "n-" + selected)); hot(null);
+  const n = node(selected); $("#detail").innerHTML = n ? detailHTML(n) : HINT; }
+window.addEventListener("resize", drawEdges); document.fonts && document.fonts.ready.then(drawEdges); setTimeout(drawEdges, 80);
+
+$("#roster").innerHTML = agents.map(n => `<div class="glass card"><div class="meta">${zone(n.zone)}<span class="tier">${n.tier}</span></div>
+  <h3>${esc(n.label)}</h3><div class="why"><b style="color:var(--lorange)">Why an agent.</b> ${esc(n.why)}</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)">Traits</div>
+  <ul class="traits">${n.traits.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+  <div class="pair">Answers to: <b>${esc(node(n.pair).label)}</b></div>${n.basis ? `<div class="src">Basis: ${esc(n.basis)}</div>` : ""}</div>`).join("");
+$("#shared").innerHTML = DATA.guardrails.map(g => `<span class="pill">${esc(g)}</span>`).join("");
+$("#tools").innerHTML = tools.map(n => `<div class="glass card tool"><h3>${esc(n.label)}</h3><div class="why"><b style="color:var(--light)">Why not an agent.</b> ${esc(n.why_not)}</div><div class="hint">${esc(n.owns)}</div></div>`).join("");
+
+$("#lanes").innerHTML = `<div class="h">Step</div><div class="h">Agent does</div><div class="h">Human keeps</div>` +
+  DATA.lanes.map(l => `<div class="st">${esc(l.step)}</div><div class="ag">${esc(l.agent)}</div><div class="hu">${esc(l.human)}</div>`).join("");
+
+$("#always").innerHTML = (DATA.alwaysHuman||[]).map(a => `<div class="pill" style="border-radius:10px;padding:9px 12px;background:rgba(224,122,106,.12);border-color:rgba(224,122,106,.35)">${esc(a)}</div>`).join("");
+$("#tiers").innerHTML = DATA.tech.map((t,i) => `${i ? '<div class="arrowdown">&#8645;</div>' : ""}<div class="trow"><div class="tn">${esc(t.tier)}</div><div class="ti">${t.items.map(x => `<span class="tb ${t.kind}">${esc(x)}</span>`).join("")}</div></div>`).join("");
+$("#rail").insertAdjacentHTML("beforeend", DATA.guardrails.map(g => `<div>${esc(g)}</div>`).join(""));
+$("#tiersdef").innerHTML = Object.entries(DATA.tiers).map(([k,v]) => `<div class="meas"><div style="min-width:110px"><span class="tier">${k}</span></div><div style="flex:1">${esc(v)}</div></div>`).join("");
+
+const R = DATA.raci;
+if (R) $("#raci").innerHTML = `<thead><tr>${R.head.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>` +
+  R.rows.map(r => `<tr><td>${esc(r[0])}</td>${r.slice(1).map(v => `<td class="c"><span class="r-${v.replace("/","")}" style="padding:3px 8px">${esc(v)}</span></td>`).join("")}</tr>`).join("") + "</tbody>";
+
+$("#phases").innerHTML = DATA.pilot.map(p => `<div class="phase ${p.phase === "Gate" ? "gate" : ""}"><div class="n">${p.phase === "Gate" ? "GATE" : "PHASE " + p.phase}</div><h3>${esc(p.name)}</h3><p>${esc(p.what)}</p>${p.prove ? `<div class="prove"><b>Proves:</b> ${esc(p.prove)}</div>` : ""}<div class="tbd">Duration: decision needed</div></div>`).join("");
+$("#meas").innerHTML = DATA.measures.map(m => `<div class="meas"><div>${esc(m.name)}</div><em class="${m.tier === "primary" ? "p" : "s"}">${m.tier}</em></div>`).join("");
+$("#hyp").textContent = DATA.hypothesis || ""; $("#gate").textContent = DATA.gate || "";
+if ($("#decs")) $("#decs").innerHTML = `<h3>Decisions needed before the experiments start</h3>` + (DATA.decisions || []).map(d => `<div class="dec"><b>${esc(d.decision)}</b><span>${esc(d.who)}${d.options && !/^TBD/.test(d.options) ? " &middot; " + esc(d.options) : ""}</span></div>`).join("");
+$("#foot").textContent = DATA.footer || "";
+{ let t = location.hash.replace(/^#(view-)?/, ""); if (!t) { try { t = localStorage.getItem("hdd-tab2"); } catch(e) {} } if (t) document.querySelector(`#tabs button[data-v="${t}"]`)?.click(); }
+
+// ---------- Sticky notes ----------
+// Where notes live:
+//  - Published on claude.ai: the page's shared database (collection "notes"), readable by Claude.
+//  - Opened from disk: a Markdown notes file in the same folder, chosen once ("Create notes file" / "Open notes file"),
+//    then written automatically on every change. Browser storage is only a backup.
+(() => {
+  const TYPES = ["Change", "Add", "Remove", "Question"];
+  const LSKEY = "hdd-notes-v3";
+  const PAGE = "Hybrid Regulatory Due-Diligence Team (architecture page)";
+  const FILENAME = "Hybrid DD Team Architecture - Notes.md";
+  const wrap = document.querySelector(".wrap"), layer = $("#notelayer");
+  document.body.insertAdjacentHTML("beforeend",
+    `<div class="modebar">Click anywhere to place a note &middot; Esc to cancel</div>
+     <div class="glass npanel" id="npanel"><h3>Notes for Claude</h3><div class="src" id="nsrc">Saving in this browser only</div><div id="nlist"></div>
+       <div class="acts" id="nacts"></div></div>
+     <div class="fab"><button class="list" id="nlistbtn" type="button">Notes (0)</button><button class="add" id="naddbtn" type="button">+ Note</button></div>`);
+  let notes = [], store = null, mode = "local";
+  let me = "local", userCap = null, names = {}, justMade = null;
+  let fileHandle = null, fileState = "none";   // none | linked | needs-permission | unsupported
+  let downloads = null;
+  const curTab = () => document.querySelector("#tabs button.on")?.dataset.v || "arch";
+  const uid = () => "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const flash = msg => { $("#nsrc").textContent = msg; };
+
+  // ---- Markdown notes file: readable by people and Claude, reloadable by the page ----
+  const tabName = v => document.querySelector(`#tabs button[data-v="${v}"]`)?.textContent || v;
+  function toMarkdown() {
+    const fmt = d => d ? new Date(d).toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+    const line = n => {
+      const who = n.authorName || names[n.author] || "";
+      let s = `- **${n.type}** · ${tabName(n.tab)} › ${n.target}\n  - ${(n.text || "(empty)").replace(/\n+/g, " ")}\n  - _${[who, fmt(n.created)].filter(Boolean).join(", ")}_`;
+      if (n.reply) s += `\n  - Claude: ${n.reply.replace(/\n+/g, " ")}`;
+      return s;
+    };
+    const sorted = [...notes].sort((a, b) => (a.created > b.created ? 1 : -1));
+    const open = sorted.filter(n => n.status !== "done"), done = sorted.filter(n => n.status === "done");
+    const data = JSON.stringify(sorted.map(n => ({ ...n, authorName: n.authorName || names[n.author] || "" })), null, 1).replace(/--/g, "-\\u002d");
+    return `# Notes on: ${PAGE}\n\nUpdated: ${fmt(new Date())}. ${sorted.length} note(s): ${open.length} open, ${done.length} considered.\n\n` +
+      `## Open\n\n${open.map(line).join("\n") || "_None_"}\n\n## Considered\n\n${done.map(line).join("\n") || "_None_"}\n\n` +
+      `<!-- notes-data (the page reloads notes from this block; edit replies here or above)\n${data}\n-->\n`;
+  }
+  function fromMarkdown(md) {
+    const m = md.match(/<!-- notes-data[^\n]*\n([\s\S]*?)\n-->/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch (e) { return null; }
+  }
+
+  // file handle persistence (IndexedDB) so the page finds its notes file next time
+  const idb = (() => {
+    const open = () => new Promise((res, rej) => { const r = indexedDB.open("hdd-notes", 1); r.onupgradeneeded = () => r.result.createObjectStore("h"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    return {
+      async get(k) { try { const d = await open(); return await new Promise(r => { const q = d.transaction("h").objectStore("h").get(k); q.onsuccess = () => r(q.result); q.onerror = () => r(null); }); } catch (e) { return null; } },
+      async set(k, v) { try { const d = await open(); d.transaction("h", "readwrite").objectStore("h").put(v, k); } catch (e) {} }
+    };
+  })();
+  let writeTimer = null;
+  function scheduleWrite() {
+    if (mode !== "local" || fileState !== "linked") return;
+    clearTimeout(writeTimer);
+    writeTimer = setTimeout(async () => {
+      try { const w = await fileHandle.createWritable(); await w.write(toMarkdown()); await w.close(); flash(`Saved to ${fileHandle.name}`); }
+      catch (e) { fileState = "needs-permission"; flash("Lost access to the notes file. Click Reconnect."); renderActs(); }
+    }, 600);
+  }
+  async function readFile() {
+    const text = await (await fileHandle.getFile()).text();
+    const loaded = fromMarkdown(text);
+    notes = mergeIn(loaded || []);
+    fileState = "linked"; await idb.set("file", fileHandle);
+    flash(`Saving to ${fileHandle.name}`); render(); scheduleWrite();
+  }
+  // notes in the file win; notes only in this browser are kept and added to the file
+  // the notes file is the source of truth; browser copies are only a backup and are replaced by it
+  function mergeIn(fromFile) { try { localStorage.setItem(LSKEY, JSON.stringify(fromFile)); } catch (e) {} return fromFile; }
+  async function createFile() {
+    try {
+      fileHandle = await window.showSaveFilePicker({ suggestedName: FILENAME, types: [{ description: "Markdown notes", accept: { "text/markdown": [".md"] } }] });
+      fileState = "linked"; await idb.set("file", fileHandle); renderActs(); scheduleWrite(); flash(`Saving to ${fileHandle.name}`);
+    } catch (e) { if (e.name !== "AbortError") flash("Could not create the file: " + e.message); }
+  }
+  async function openFile() {
+    try { [fileHandle] = await window.showOpenFilePicker({ types: [{ description: "Markdown notes", accept: { "text/markdown": [".md"] } }] }); await readFile(); renderActs(); }
+    catch (e) { if (e.name !== "AbortError") flash("Could not open the file: " + e.message); }
+  }
+  async function reconnect() {
+    try { if ((await fileHandle.requestPermission({ mode: "readwrite" })) === "granted") { await readFile(); renderActs(); } }
+    catch (e) { flash("Could not reconnect: " + e.message); }
+  }
+  async function downloadMd() {
+    const md = toMarkdown();
+    if (downloads) { try { await downloads.save({ filename: FILENAME, data: md }); } catch (e) { if (e.code !== "declined") flash("Download unavailable here"); } return; }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([md], { type: "text/markdown" })); a.download = FILENAME; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  function renderActs() {
+    const b = (id, label) => `<button id="${id}" type="button">${label}</button>`;
+    let html = "";
+    if (mode === "db") html = b("ndl", "Download notes (.md)");
+    else if (fileState === "unsupported") html = b("ndl", "Download notes (.md)");
+    else if (fileState === "linked") html = b("ndl", "Download a copy");
+    else if (fileState === "needs-permission") html = b("nrec", "Reconnect notes file") + b("nopen", "Open another");
+    else html = b("ncreate", "Create notes file") + b("nopen", "Open notes file");
+    $("#nacts").innerHTML = html;
+    const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+    on("ndl", downloadMd); on("ncreate", createFile); on("nopen", openFile); on("nrec", reconnect);
+  }
+
+  // ---- storage backends ----
+  const local = {
+    load() { try { return JSON.parse(localStorage.getItem(LSKEY) || "[]"); } catch (e) { return []; } },
+    persist() { try { localStorage.setItem(LSKEY, JSON.stringify(notes)); } catch (e) {} scheduleWrite(); },
+    save(id, data) { const i = notes.findIndex(n => n.id === id); if (i < 0) notes.push({ id, ...data }); else notes[i] = { ...notes[i], ...data }; this.persist(); render(); },
+    remove(id) { notes = notes.filter(n => n.id !== id); this.persist(); render(); }
+  };
+  store = local; notes = local.load();
+
+  async function initLocalFile() {
+    if (!window.showSaveFilePicker) { fileState = "unsupported"; flash("This browser can't write files; use Download notes"); renderActs(); return; }
+    const h = await idb.get("file");
+    if (h) {
+      fileHandle = h;
+      try {
+        if ((await h.queryPermission({ mode: "readwrite" })) === "granted") { await readFile(); }
+        else { fileState = "needs-permission"; flash(`Notes file: ${h.name}. Click Reconnect to keep saving there.`); }
+      } catch (e) { fileState = "none"; }
+    } else { flash("Saving in this browser only. Create a notes file to keep them in the folder."); }
+    renderActs();
+  }
+
+  (async () => {
+    if (window.claude?.use) {
+      const db = await window.claude.use("db");
+      if (db) {
+        mode = "db";
+        userCap = await window.claude.use("user");
+        downloads = await window.claude.use("downloads");
+        try { me = (await userCap?.id()) || "anon"; } catch (e) { me = "anon"; }
+        const col = db.collection("notes");
+        store = {
+          save(id, data) { const ref = col.doc(id); return (notes.some(n => n.id === id) ? ref.update(data) : ref.set(data)).catch(e => flash("Could not save: " + e.code)); },
+          remove(id) { return col.doc(id).delete().catch(e => flash("Could not delete: " + e.code)); }
+        };
+        flash("Saved automatically and shared with Claude");
+        renderActs();
+        col.onSnapshot(snap => { notes = snap.docs.map(d => ({ id: d.id, ...d.data() })); resolveNames(); render(); },
+          e => flash("Notes unavailable: " + e.code));
+        return;
+      }
+    }
+    await initLocalFile();
+  })();
+
+  async function resolveNames() {
+    if (!userCap?.profiles) return;
+    const ids = [...new Set(notes.map(n => n.author).filter(a => a && a !== "local" && a !== "anon"))];
+    if (!ids.length) return;
+    try { const ps = await userCap.profiles(ids); ids.forEach(i => names[i] = ps[i]?.name || ""); render(); } catch (e) {}
+  }
+
+  // ---- placing a note ----
+  let placing = false;
+  const setMode = on => { placing = on; document.body.classList.toggle("notemode", on); };
+  $("#naddbtn").onclick = e => { e.stopPropagation(); setMode(!placing); };
+  document.addEventListener("keydown", e => { if (e.key === "Escape") setMode(false); });
+  const TARGETS = ".node,.card,.trow,.tb,.phase,.dec,tr,.lanes > div,.kpi,.pill,.rail div,.meas,.panel,.detail,.layer,section.view";
+  function describe(el) {
+    const t = el?.closest(TARGETS); if (!t) return "Page";
+    if (t.classList.contains("node")) return "Node: " + t.querySelector(".t")?.textContent;
+    const txt = (t.querySelector("h2,h3,.t,.st,td")?.textContent || t.textContent || "").trim().replace(/\s+/g, " ");
+    return txt.slice(0, 90);
+  }
+  document.addEventListener("click", e => {
+    if (!placing || e.target.closest(".fab,.npanel,.sticky,#tabs")) return;
+    e.preventDefault(); e.stopPropagation();
+    const r = wrap.getBoundingClientRect();
+    const id = uid();
+    const data = { tab: curTab(), x: Math.max(0, Math.min(0.92, (e.clientX - r.left) / r.width)), y: Math.round(e.clientY - r.top),
+      target: describe(e.target), type: "Change", text: "", author: me, created: new Date().toISOString(), status: "open" };
+    setMode(false); justMade = id; store.save(id, data);
+  }, true);
+
+  // ---- rendering ----
+  function render() {
+    $("#nlistbtn").textContent = `Notes (${notes.length})`;
+    const tab = curTab(), keep = new Set();
+    notes.filter(n => n.tab === tab).forEach(n => { keep.add(n.id); drawNote(n); });
+    layer.querySelectorAll(".sticky").forEach(el => { if (!keep.has(el.dataset.id)) el.remove(); });
+    $("#nlist").innerHTML = notes.length ? [...notes].sort((a, b) => (a.created > b.created ? 1 : -1)).map(n =>
+      `<div class="nitem" data-id="${n.id}"><b>${esc(n.type)}</b> &middot; ${esc((n.text || "(empty)").slice(0, 80))}<small>${esc(tabName(n.tab))} &middot; ${esc(n.target)}${n.status === "done" ? " &middot; considered" : ""}${n.reply ? " &middot; Claude replied" : ""}</small></div>`).join("")
+      : `<div class="hint">No notes yet. Click "+ Note", then click where the change applies.</div>`;
+    $("#nlist").querySelectorAll(".nitem").forEach(el => el.onclick = () => jump(el.dataset.id));
+  }
+  const cur = id => notes.find(n => n.id === id);
+  function drawNote(n) {
+    let el = layer.querySelector(`.sticky[data-id="${n.id}"]`);
+    if (!el) {
+      el = document.createElement("div"); el.className = "sticky"; el.dataset.id = n.id;
+      el.innerHTML = `<div class="shead"><select>${TYPES.map(t => `<option>${t}</option>`).join("")}</select><span class="sp"></span>
+        <button type="button" title="Mark considered" data-a="done">&#10003;</button><button type="button" title="Minimize" data-a="min">&#8211;</button><button type="button" title="Delete" data-a="del">&#215;</button></div>
+        <div class="sbody"><div class="on"></div><textarea placeholder="What should change here?"></textarea><div class="meta"></div><div class="replyslot"></div></div>`;
+      const ta = el.querySelector("textarea"), sel = el.querySelector("select");
+      let timer = null;
+      const commit = () => { clearTimeout(timer); if (ta.value !== (cur(n.id)?.text || "")) store.save(n.id, { text: ta.value, edited: new Date().toISOString() }); };
+      ta.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(commit, 700); });
+      ta.addEventListener("blur", commit);
+      sel.onchange = () => store.save(n.id, { type: sel.value });
+      el.querySelector('[data-a="del"]').onclick = () => { if (!ta.value || confirmDelete(el)) store.remove(n.id); };
+      el.querySelector('[data-a="min"]').onclick = () => el.classList.toggle("min");
+      el.querySelector('[data-a="done"]').onclick = () => store.save(n.id, { status: cur(n.id)?.status === "done" ? "open" : "done" });
+      drag(el, n.id);
+      if (n.status === "done") el.classList.add("min");
+      layer.appendChild(el);
+    }
+    el.style.left = (n.x * 100) + "%"; el.style.top = n.y + "px";
+    el.classList.toggle("done", n.status === "done");
+    const sel = el.querySelector("select"); if (sel.value !== n.type) sel.value = n.type;
+    const ta = el.querySelector("textarea"); if (document.activeElement !== ta && ta.value !== (n.text || "")) ta.value = n.text || "";
+    el.querySelector(".on").textContent = "On: " + n.target;
+    const who = n.authorName || (n.author && n.author !== "local" && n.author !== "anon" ? (names[n.author] || "Someone") : "");
+    el.querySelector(".meta").textContent = [who, new Date(n.created).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })].filter(Boolean).join(" · ");
+    el.querySelector(".replyslot").innerHTML = n.reply ? `<div class="reply"><b>Claude</b>${esc(n.reply)}</div>` : "";
+    if (justMade === n.id) { justMade = null; ta.focus(); }
+  }
+  function confirmDelete(el) {
+    const b = el.querySelector('[data-a="del"]');
+    if (b.dataset.arm) return true;
+    b.dataset.arm = 1; b.textContent = "?"; b.title = "Click again to delete";
+    setTimeout(() => { delete b.dataset.arm; b.innerHTML = "&#215;"; b.title = "Delete"; }, 2500);
+    return false;
+  }
+  function drag(el, id) {
+    const h = el.querySelector(".shead");
+    h.addEventListener("pointerdown", e => {
+      if (e.target.closest("select,button")) return;
+      const r = wrap.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, ox = el.offsetLeft, oy = el.offsetTop;
+      h.setPointerCapture(e.pointerId);
+      const move = ev => { el.style.left = (ox + ev.clientX - sx) + "px"; el.style.top = (oy + ev.clientY - sy) + "px"; };
+      const up = () => { h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up);
+        const x = Math.max(0, Math.min(0.95, el.offsetLeft / r.width)), y = Math.max(0, el.offsetTop);
+        const n = cur(id); if (n && (Math.abs(n.x - x) > 0.002 || n.y !== y)) store.save(id, { x, y }); };
+      h.addEventListener("pointermove", move); h.addEventListener("pointerup", up);
+    });
+  }
+  function jump(id) {
+    const n = cur(id); if (!n) return;
+    document.querySelector(`#tabs button[data-v="${n.tab}"]`)?.click();
+    setTimeout(() => { const el = layer.querySelector(`.sticky[data-id="${id}"]`); if (!el) return;
+      el.classList.remove("min"); el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("hot"); setTimeout(() => el.classList.remove("hot"), 1600); }, 60);
+  }
+  $("#nlistbtn").onclick = () => $("#npanel").classList.toggle("open");
+  document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => setTimeout(render, 0)));
+  window.__hddNotes = { toMarkdown, fromMarkdown };
+  renderActs();
+  render();
+})();
+</script>
+</body>
+</html>

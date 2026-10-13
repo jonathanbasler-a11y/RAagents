@@ -1,0 +1,20 @@
+entry,date,agency,type,direction,subject,summary,document_ref
+1,2022-02-15,FDA,Pre-IND meeting,Meeting,Pre-IND for OST-4417,Written responses; nonclinical package and starting dose agreed,DR-06 not included
+2,2022-06-10,FDA,IND,Submission,IND opened,IND in effect after 30-day review; no clinical hold,DR-07
+3,2023-02-21,FDA,Orphan designation,Grant,Orphan Drug designation for cholangiocarcinoma,Granted,DR-07
+4,2023-05-12,EU CTA,CTA,Submission,CTA under EU CTR for study 101,Approved in 4 countries by 2023-09,DR-07
+5,2023-09-12,FDA,Fast Track,Grant,Fast Track designation,Granted,DR-07
+6,2023-11-08,EMA,Orphan designation,Grant,EU orphan designation (COMP),Positive opinion adopted,DR-07
+7,2024-03-14,FDA,Type B (end-of-Phase 2),Meeting,Pivotal design; accelerated approval; CDx; hepatic monitoring,Minutes received 2024-04-12,DR-06 (excerpt A)
+8,2024-06-10,FDA,Protocol,Submission,Protocol v3.0 for study 301 (OS primary) submitted to IND,Acknowledged,none
+9,2024-09-19,EMA,Scientific Advice,Meeting,Pivotal design; conditional MA; paediatric requirements,Final advice 2024-10-04,DR-06 (excerpt B)
+10,2024-11-20,FDA,CDRH Pre-Sub,Meeting,CDx pre-submission with Lumenar,Written feedback; PMA pathway confirmed,not provided
+11,2025-02-11,FDA,Type C (written response only),Submission,Request for FDA feedback on proposed protocol v4.0 (PFS primary),Question submitted,not provided
+12,2025-02-24,FDA,Protocol,Submission,Protocol v4.0 for study 301 submitted to IND,Acknowledged,none
+13,2025-03-20,FDA,Type C written response,Receipt,FDA written response to the 2025-02-11 request,Received; company summary only: "feedback received",see DR-16
+14,2025-08-05,FDA,Breakthrough Therapy designation request,Submission,BTD request based on cohort B,Submitted,DR-07
+15,2025-11-03,FDA,BTD response,Receipt,BTD request denied,"Preliminary clinical evidence not sufficient to indicate substantial improvement; may resubmit with more mature data",DR-06 (excerpt C)
+16,2026-03-09,FDA OPDP,Untitled letter,Receipt,Corporate website and investor materials,"OPDP untitled letter: statements presenting an investigational drug as safe and effective and implying breakthrough status",not provided
+17,2026-04-22,FDA,IND safety report,Submission,Potential Hy's law case in cohort B,Submitted within reporting timeline,DR-12
+18,2026-06-24,FDA ORA,Form 483,Receipt,Inspection of drug substance site (Halvern),Five observations; see DR-09,DR-09
+19,2026-07-10,FDA ORA,483 response,Submission,Response to Form 483 by Halvern and sponsor,Submitted; FDA classification pending,not provided

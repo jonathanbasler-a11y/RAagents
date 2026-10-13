@@ -1,0 +1,14 @@
+{
+  // Why "extends": Next.js rewrites a tsconfig.json that has no "extends" on every
+  // build, adding "<distDir>/types/**/*.ts" for each NEXT_DIST_DIR. Parallel builders
+  // would then race on this file. With "extends", Next leaves it alone.
+  //
+  // Generated files stay out of the type check on purpose: next-env.d.ts and
+  // .next*/types are git-ignored and rewritten per build, so a fresh clone could not
+  // type-check against them. src/types/next.d.ts carries the ambient Next.js types.
+  // Do not use the generated global route helpers (PageProps, LayoutProps,
+  // RouteContext); type page and route params explicitly.
+  "extends": "./tsconfig.base.json",
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts"],
+  "exclude": ["node_modules", "next-env.d.ts"]
+}

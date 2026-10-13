@@ -1,0 +1,2133 @@
+{
+  "meta": {
+    "banner": "FICTIONAL - for demonstration. All companies, products, people, sites and data are invented.",
+    "title": "Mock regulatory due-diligence test case: Ostravane Therapeutics / OST-4417",
+    "scenarioDate": "2026-10-08",
+    "initiative": "Moab Digital Accelerator",
+    "teamDesignSource": "arch_spec3.json (Hybrid Regulatory DD Team Plan v3)",
+    "acquirer": "Tarnwell Pharma (fictional)",
+    "acquirerQuestion": "Should Tarnwell continue to valuation of Ostravane, given the regulatory risk to OST-4417 reaching approval?",
+    "rPTSBaselineNote": "The 80% baseline is an illustrative scenario assumption set by the test case author. It is not derived from real-world data.",
+    "terminalStates": {
+      "END_VALUATION": "Continue to valuation with regulatory conditions",
+      "END_PAUSED": "Process paused",
+      "END_REQUEST": "Information requests outstanding; step to be re-run on receipt",
+      "END_STOP": "Regulatory workstream recommends stopping"
+    }
+  },
+  "company": {
+    "name": "Ostravane Therapeutics, Inc.",
+    "fictional": true,
+    "hq": "Cambridge, MA",
+    "founded": 2015,
+    "employees": 468,
+    "marketCapUSDm": 1900,
+    "cashUSDm": 412,
+    "runway": "into Q3 2027",
+    "pipeline": [
+      {
+        "program": "OST-4417",
+        "stage": "Phase III (lead)",
+        "indication": "TRX-7-high intrahepatic cholangiocarcinoma, previously treated"
+      },
+      {
+        "program": "OST-5102",
+        "stage": "Phase 1",
+        "indication": "Advanced solid tumors"
+      },
+      {
+        "program": "OST-2230",
+        "stage": "IND-enabling",
+        "indication": "Undisclosed solid tumor (ADC)"
+      }
+    ],
+    "dealContext": "Strategic review since 2026-06; Tarnwell data room access 2026-10-05; bid exclusivity to 2026-11-20."
+  },
+  "asset": {
+    "code": "OST-4417",
+    "inn": "not yet assigned",
+    "mechanism": "Oral selective inhibitor of the TRX-7 transcriptional cofactor",
+    "dose": "150 mg tablet once daily",
+    "therapeuticArea": "Oncology, previously treated intrahepatic cholangiocarcinoma",
+    "phase": "III",
+    "biomarker": "TRX-7 IHC, H-score 150 or higher (Lumenar TRX-7 IHC Assay)",
+    "designations": [
+      "FDA Orphan (2023-02-21)",
+      "FDA Fast Track (2023-09-12)",
+      "EMA Orphan (2023-11-08)"
+    ],
+    "designationsDenied": [
+      "FDA Breakthrough Therapy (denied 2025-11-03)"
+    ],
+    "pathway": "US accelerated approval request on Phase 2 cohort B ORR and DoR with Phase III as confirmatory; EU MAA H2 2027; Japan 2028 (company guidance)",
+    "keyDates": {
+      "preNDA": "2027-Q1",
+      "NDAAccelerated": "2027-H1",
+      "interimPFS301": "2027-Q2",
+      "MAA": "2027-H2",
+      "Japan": "2028"
+    }
+  },
+  "trials": [
+    {
+      "id": "OST-4417-101",
+      "phase": "1/2",
+      "n": 142,
+      "cohortB": {
+        "n": 68,
+        "cutoff": "2026-03-31",
+        "confirmedORR_BICR": "40% (27/68)",
+        "medianDoR": "8.4 months",
+        "medianPFS": "5.9 months"
+      },
+      "deckVersion": {
+        "cutoff": "2025-09-30",
+        "n": 61,
+        "ORR": "46% (28/61), investigator, includes unconfirmed",
+        "medianDoR": "9.8 months"
+      }
+    },
+    {
+      "id": "OST-4417-301",
+      "phase": "3",
+      "design": "Randomized open-label 1:1 vs investigator's choice chemotherapy",
+      "nPlanned": 420,
+      "nEnrolled": 388,
+      "primaryEndpoint_v4_0": "PFS by BICR",
+      "primaryEndpoint_v3_0": "OS",
+      "keySecondary": [
+        "OS",
+        "ORR",
+        "DoR"
+      ],
+      "regions": [
+        "US",
+        "EU (6)",
+        "South Korea"
+      ],
+      "interim": "2027-Q2"
+    }
+  ],
+  "regulatoryEvents": [
+    {
+      "date": "2022-02-15",
+      "agency": "FDA",
+      "event": "Pre-IND meeting"
+    },
+    {
+      "date": "2022-06-10",
+      "agency": "FDA",
+      "event": "IND opened"
+    },
+    {
+      "date": "2023-02-21",
+      "agency": "FDA",
+      "event": "Orphan Drug designation"
+    },
+    {
+      "date": "2023-09-12",
+      "agency": "FDA",
+      "event": "Fast Track designation"
+    },
+    {
+      "date": "2023-11-08",
+      "agency": "EMA",
+      "event": "EU orphan designation"
+    },
+    {
+      "date": "2024-03-14",
+      "agency": "FDA",
+      "event": "Type B end-of-Phase 2 meeting; minutes 2024-04-12 recommend OS primary, no advance agreement on accelerated approval"
+    },
+    {
+      "date": "2024-06-10",
+      "agency": "FDA",
+      "event": "Protocol v3.0 (OS primary) submitted"
+    },
+    {
+      "date": "2024-09-19",
+      "agency": "EMA",
+      "event": "Scientific Advice; PIP reminder; OS preferred"
+    },
+    {
+      "date": "2024-11-20",
+      "agency": "FDA CDRH",
+      "event": "CDx Pre-Sub; feedback not provided"
+    },
+    {
+      "date": "2025-02-11",
+      "agency": "FDA",
+      "event": "Type C written-response request on protocol v4.0 (PFS primary)"
+    },
+    {
+      "date": "2025-02-24",
+      "agency": "FDA",
+      "event": "Protocol v4.0 submitted"
+    },
+    {
+      "date": "2025-03-20",
+      "agency": "FDA",
+      "event": "Type C written response received; content not in data room (DR-16)"
+    },
+    {
+      "date": "2025-08-05",
+      "agency": "FDA",
+      "event": "BTD request submitted"
+    },
+    {
+      "date": "2025-11-03",
+      "agency": "FDA",
+      "event": "BTD request denied"
+    },
+    {
+      "date": "2026-03-09",
+      "agency": "FDA OPDP",
+      "event": "Untitled letter on website and investor materials"
+    },
+    {
+      "date": "2026-04-22",
+      "agency": "FDA",
+      "event": "IND safety report: potential Hy's law case"
+    },
+    {
+      "date": "2026-06-24",
+      "agency": "FDA ORA",
+      "event": "Form 483, five observations, drug substance site"
+    },
+    {
+      "date": "2026-07-10",
+      "agency": "FDA ORA",
+      "event": "483 response submitted; classification pending"
+    }
+  ],
+  "cmcSites": [
+    {
+      "id": "S1",
+      "name": "Halvern Fine Synthesis",
+      "location": "Cork, Ireland",
+      "role": "Drug substance (sole site)",
+      "lastInspection": "2026-06-24 FDA",
+      "outcome": "Form 483, 5 observations, classification pending"
+    },
+    {
+      "id": "S2",
+      "name": "Corvane Pharma Services",
+      "location": "Durham, NC",
+      "role": "Drug product",
+      "lastInspection": "2025-03-18 FDA",
+      "outcome": "NAI"
+    },
+    {
+      "id": "S3",
+      "name": "Brightline Packaging",
+      "location": "Dayton, OH",
+      "role": "Packaging and labeling",
+      "lastInspection": "Customer audit 2025-08",
+      "outcome": "2 minor findings, closed"
+    },
+    {
+      "id": "S4",
+      "name": "Lumenar Diagnostics Reference Lab",
+      "location": "Boulder, CO",
+      "role": "Central CDx testing",
+      "lastInspection": "CAP 2026-02",
+      "outcome": "Accredited"
+    }
+  ],
+  "competitors": [
+    {
+      "name": "NVB-210",
+      "sponsor": "Norvane Bio (fictional)",
+      "stage": "Phase III",
+      "note": "Accelerated filing planned 2027; could become available therapy"
+    },
+    {
+      "name": "CLD-88",
+      "sponsor": "Caldera Oncology (fictional)",
+      "stage": "Phase II",
+      "note": "Not biomarker selected"
+    },
+    {
+      "name": "MRT-302",
+      "sponsor": "Meridian Therapeutics (fictional)",
+      "stage": "Phase II",
+      "note": "Related biomarker; shared CDx considerations"
+    }
+  ],
+  "dataRoomIndex": [
+    {
+      "doc_id": "DR-01",
+      "title": "Company Overview",
+      "category": "Corporate",
+      "status": "Provided",
+      "date": "2026-10-05",
+      "notes": ""
+    },
+    {
+      "doc_id": "DR-02",
+      "title": "Investor Deck Summary (September 2026)",
+      "category": "Corporate",
+      "status": "Provided",
+      "date": "2026-09",
+      "notes": "Company presentation; not a regulatory record"
+    },
+    {
+      "doc_id": "DR-03",
+      "title": "Asset Profile and TPP",
+      "category": "Asset",
+      "status": "Provided",
+      "date": "2026-08",
+      "notes": ""
+    },
+    {
+      "doc_id": "DR-04",
+      "title": "Clinical Development Summary",
+      "category": "Clinical",
+      "status": "Provided",
+      "date": "2026-09",
+      "notes": "CSR synopsis only for study 101"
+    },
+    {
+      "doc_id": "DR-05",
+      "title": "Regulatory Correspondence Log",
+      "category": "Regulatory",
+      "status": "Provided",
+      "date": "2026-10",
+      "notes": "Company-maintained log"
+    },
+    {
+      "doc_id": "DR-06",
+      "title": "Agency Meeting Minutes (excerpts)",
+      "category": "Regulatory",
+      "status": "Provided",
+      "date": "2026-10",
+      "notes": "Excerpts only (A FDA 2024-03",
+      "null": [
+        " B EMA 2024-09",
+        " C FDA 2025-11)"
+      ]
+    },
+    {
+      "doc_id": "DR-07",
+      "title": "Designations and IND/CTA History",
+      "category": "Regulatory",
+      "status": "Provided",
+      "date": "2026-10",
+      "notes": ""
+    },
+    {
+      "doc_id": "DR-08",
+      "title": "CMC Summary",
+      "category": "CMC",
+      "status": "Provided",
+      "date": "2026-09",
+      "notes": "Summary only; no Module 3"
+    },
+    {
+      "doc_id": "DR-09",
+      "title": "Manufacturing Sites and Inspections",
+      "category": "CMC",
+      "status": "Provided",
+      "date": "2026-10",
+      "notes": ""
+    },
+    {
+      "doc_id": "DR-10",
+      "title": "Draft Labeling and Claims v0.3",
+      "category": "Labeling",
+      "status": "Provided",
+      "date": "2026-08",
+      "notes": "US draft only"
+    },
+    {
+      "doc_id": "DR-11",
+      "title": "Competitive Landscape",
+      "category": "Commercial",
+      "status": "Provided",
+      "date": "2026-09",
+      "notes": ""
+    },
+    {
+      "doc_id": "DR-12",
+      "title": "Safety Summary",
+      "category": "Safety",
+      "status": "Provided",
+      "date": "2026-09",
+      "notes": "High level"
+    },
+    {
+      "doc_id": "DR-13",
+      "title": "Patent and Exclusivity Summary",
+      "category": "Legal",
+      "status": "Provided",
+      "date": "2026-09",
+      "notes": "High level"
+    },
+    {
+      "doc_id": "DR-14",
+      "title": "Companion Diagnostic Summary",
+      "category": "Device",
+      "status": "Provided",
+      "date": "2026-09",
+      "notes": ""
+    },
+    {
+      "doc_id": "DR-15",
+      "title": "Interim Topline Table",
+      "category": "Clinical",
+      "status": "Provided",
+      "date": "2026-09",
+      "notes": ""
+    },
+    {
+      "doc_id": "DR-16",
+      "title": "FDA written response to Type C request (2025-03-20)",
+      "category": "Regulatory",
+      "status": "Not provided",
+      "date": "",
+      "notes": "Referenced in DR-05 entry 13"
+    },
+    {
+      "doc_id": "DR-17",
+      "title": "EMA PIP decision or waiver",
+      "category": "Regulatory",
+      "status": "Not provided",
+      "date": "",
+      "notes": "No record in data room"
+    },
+    {
+      "doc_id": "DR-18",
+      "title": "CDx analytical and clinical bridging study report (CTA v2 to kit v3)",
+      "category": "Device",
+      "status": "Not provided",
+      "date": "",
+      "notes": "Referenced in DR-14"
+    },
+    {
+      "doc_id": "DR-19",
+      "title": "Drug substance comparability report (route A to B)",
+      "category": "CMC",
+      "status": "Not provided",
+      "date": "",
+      "notes": "Referenced in DR-08 and DR-06 Excerpt A Q6"
+    },
+    {
+      "doc_id": "DR-20",
+      "title": "Study 101 full CSR and cohort B BICR charter",
+      "category": "Clinical",
+      "status": "Not provided",
+      "date": "",
+      "notes": "Synopsis only"
+    },
+    {
+      "doc_id": "DR-21",
+      "title": "FDA OPDP untitled letter (2026-03-09) and company response",
+      "category": "Regulatory",
+      "status": "Not provided",
+      "date": "",
+      "notes": "Referenced in DR-05 entry 16"
+    },
+    {
+      "doc_id": "DR-22",
+      "title": "Form 483 and company response (Halvern)",
+      "category": "CMC",
+      "status": "Not provided",
+      "date": "",
+      "notes": "Referenced in DR-05 entries 18 and 19"
+    },
+    {
+      "doc_id": "DR-23",
+      "title": "CDRH Pre-Sub feedback (2024-11-20)",
+      "category": "Device",
+      "status": "Not provided",
+      "date": "",
+      "notes": "Referenced in DR-05 entry 10"
+    }
+  ],
+  "team": {
+    "humans": [
+      {
+        "id": "lead",
+        "label": "Regulatory due-diligence lead"
+      },
+      {
+        "id": "crd",
+        "label": "Clinical regulatory documentation specialist"
+      },
+      {
+        "id": "cmc",
+        "label": "CMC regulatory specialist"
+      },
+      {
+        "id": "ri",
+        "label": "Regulatory intelligence specialist"
+      },
+      {
+        "id": "md",
+        "label": "Medical device specialist (as needed)"
+      },
+      {
+        "id": "lab",
+        "label": "Labeling specialist"
+      },
+      {
+        "id": "rc",
+        "label": "Regional / country specialist"
+      },
+      {
+        "id": "cr",
+        "label": "Commercial regulatory specialist"
+      },
+      {
+        "id": "sponsor",
+        "label": "Executive deal sponsor"
+      },
+      {
+        "id": "deal",
+        "label": "Deal governance committee"
+      }
+    ],
+    "agents": [
+      {
+        "id": "drm",
+        "label": "Data room manager agent"
+      },
+      {
+        "id": "a_crd",
+        "label": "Clinical regulatory documentation agent"
+      },
+      {
+        "id": "a_cmc",
+        "label": "CMC regulatory agent"
+      },
+      {
+        "id": "a_ri",
+        "label": "Regulatory intelligence agent"
+      },
+      {
+        "id": "a_md",
+        "label": "Medical device agent (conditional)"
+      },
+      {
+        "id": "a_lab",
+        "label": "Labeling agent"
+      },
+      {
+        "id": "a_rc",
+        "label": "Regional / country agent"
+      },
+      {
+        "id": "a_cr",
+        "label": "Commercial regulatory agent"
+      },
+      {
+        "id": "a_risk",
+        "label": "Regulatory risk assessment agent"
+      },
+      {
+        "id": "a_ops",
+        "label": "Operational readiness agent"
+      },
+      {
+        "id": "a_red",
+        "label": "Red-team agent"
+      }
+    ],
+    "tools": [
+      "Intake and triage rules",
+      "Trap library and evidence-pack checklists",
+      "Report template and traceability matrix",
+      "Shared glossary"
+    ],
+    "externalTeams": [
+      "Portfolio DD team",
+      "Other diligence workstreams (legal, safety and PV, quality, commercial, finance)",
+      "Integration team"
+    ],
+    "source": "arch_spec3.json"
+  },
+  "risks": [
+    {
+      "id": "R-01",
+      "title": "Primary endpoint not aligned with FDA and EMA advice (PFS vs OS)",
+      "domain": "Clinical regulatory",
+      "severity": "High",
+      "likelihood": "Medium-High",
+      "sources": [
+        "DR-02 slide 8",
+        "DR-06 A Q1",
+        "DR-06 B",
+        "DR-04",
+        "DR-05 entries 11-13"
+      ],
+      "mitigation": "Obtain DR-16; model OS-primary scenario; check OS maturity plan in statistical analysis plan",
+      "owner": "crd"
+    },
+    {
+      "id": "R-02",
+      "title": "Accelerated approval not agreed in advance; available therapy may change before filing",
+      "domain": "Regulatory pathway",
+      "severity": "High",
+      "likelihood": "Medium",
+      "sources": [
+        "DR-06 A Q3",
+        "DR-11"
+      ],
+      "mitigation": "Track NVB-210 and MRT-302; plan for full-approval path on Phase III",
+      "owner": "ri"
+    },
+    {
+      "id": "R-03",
+      "title": "Sole drug substance site with open Form 483 and pending classification",
+      "domain": "CMC",
+      "severity": "High",
+      "likelihood": "Medium",
+      "sources": [
+        "DR-09 S1",
+        "DR-02 slide 12",
+        "DR-08"
+      ],
+      "mitigation": "Obtain 483 response (DR-22); assess pre-approval inspection exposure; second-site plan",
+      "owner": "cmc"
+    },
+    {
+      "id": "R-04",
+      "title": "CDx: trial assay differs from market kit, no bridging report, PMA status unverified, change-of-control termination right",
+      "domain": "Device / CDx",
+      "severity": "High",
+      "likelihood": "Medium-High",
+      "sources": [
+        "DR-14",
+        "DR-06 A Q4",
+        "DR-00"
+      ],
+      "mitigation": "Obtain DR-18 and DR-23; refer termination clause to legal workstream; PMA module status",
+      "owner": "md"
+    },
+    {
+      "id": "R-05",
+      "title": "DS route A to B comparability not evidenced",
+      "domain": "CMC",
+      "severity": "Medium-High",
+      "likelihood": "Medium",
+      "sources": [
+        "DR-08",
+        "DR-06 A Q6",
+        "DR-00"
+      ],
+      "mitigation": "Obtain DR-19",
+      "owner": "cmc"
+    },
+    {
+      "id": "R-06",
+      "title": "Hepatic safety: potential Hy's law case reported while company states none; REMS possible",
+      "domain": "Clinical regulatory / safety",
+      "severity": "Medium-High",
+      "likelihood": "Medium",
+      "sources": [
+        "DR-12",
+        "DR-02 slide 9",
+        "DR-06 A Q5"
+      ],
+      "mitigation": "Refer to safety and PV workstream; request adjudication; draft risk management scenario",
+      "owner": "crd"
+    },
+    {
+      "id": "R-07",
+      "title": "No EU Paediatric Investigation Plan or waiver on file",
+      "domain": "Regional",
+      "severity": "Medium",
+      "likelihood": "High (as a gap)",
+      "sources": [
+        "DR-06 B",
+        "DR-07",
+        "DR-00"
+      ],
+      "mitigation": "Confirm status; waiver or PIP application is a procedural fix but gates MAA validation",
+      "owner": "rc"
+    },
+    {
+      "id": "R-08",
+      "title": "No Japan plan: no PMDA consultation, no Japanese data, no local IVD plan",
+      "domain": "Regional",
+      "severity": "Low-Medium",
+      "likelihood": "High (as a gap)",
+      "sources": [
+        "DR-07",
+        "DR-02 slide 10",
+        "DR-14"
+      ],
+      "mitigation": "Value Japan separately; plan PMDA consultation",
+      "owner": "rc"
+    },
+    {
+      "id": "R-09",
+      "title": "Draft label claims not supported by evidence (OS claim, DoR value, hepatic monitoring, tumor scope)",
+      "domain": "Labeling",
+      "severity": "Medium",
+      "likelihood": "High",
+      "sources": [
+        "DR-10"
+      ],
+      "mitigation": "Rebuild claim set from supported evidence",
+      "owner": "lab"
+    },
+    {
+      "id": "R-10",
+      "title": "OPDP untitled letter and promotional posture of the company",
+      "domain": "Commercial regulatory",
+      "severity": "Medium-Low",
+      "likelihood": "Medium",
+      "sources": [
+        "DR-05 entry 16",
+        "DR-02 slide 3"
+      ],
+      "mitigation": "Obtain DR-21; review corrective action; integration communications control",
+      "owner": "cr"
+    },
+    {
+      "id": "R-11",
+      "title": "Company materials diverge from regulatory record (credibility of seller statements)",
+      "domain": "Cross-cutting",
+      "severity": "Medium",
+      "likelihood": "Observed",
+      "sources": [
+        "DR-02",
+        "DR-04",
+        "DR-15"
+      ],
+      "mitigation": "Treat DR-02 as non-authoritative; rely on agency documents",
+      "owner": "lead"
+    },
+    {
+      "id": "R-12",
+      "title": "Stability extrapolation and provisional impurity specifications",
+      "domain": "CMC",
+      "severity": "Medium",
+      "likelihood": "Medium",
+      "sources": [
+        "DR-08"
+      ],
+      "mitigation": "Request 24-month data plan; impurity qualification",
+      "owner": "cmc"
+    },
+    {
+      "id": "R-13",
+      "title": "Evidence limits: eight requested documents not provided",
+      "domain": "Process",
+      "severity": "Medium",
+      "likelihood": "Observed",
+      "sources": [
+        "DR-00"
+      ],
+      "mitigation": "Batched request via portfolio DD team",
+      "owner": "lead"
+    }
+  ],
+  "rPTS": {
+    "baselinePct": 80,
+    "draftRangePct": [
+      53,
+      76
+    ],
+    "challengedRangePct": [
+      47,
+      72
+    ],
+    "leadPositionIllustrativePct": [
+      50,
+      65
+    ],
+    "leadPositionNote": "Set live by the Regulatory DD lead. The illustrative position is for scripting only; it sits inside the challenged range and is conditional on DR-16, DR-22 and DR-18.",
+    "drivers": [
+      {
+        "id": "D1",
+        "driver": "Primary endpoint alignment with agency advice",
+        "draftLow": -9,
+        "draftHigh": -4,
+        "challengedLow": -12,
+        "challengedHigh": -6,
+        "draftRationale": "FDA recommended OS primary; PFS acceptable only with justification. Draft credits the company statement that FDA aligned on PFS.",
+        "challengeNote": "Draft relied on DR-02. DR-06 does not support alignment; DR-16 is missing. Widened and shifted down."
+      },
+      {
+        "id": "D2",
+        "driver": "Effect size and data maturity (cohort B to Phase III)",
+        "draftLow": -3,
+        "draftHigh": 1,
+        "challengedLow": -3,
+        "challengedHigh": 1,
+        "draftRationale": "BICR-confirmed ORR 40% and median DoR 8.4 months, PFS 5.9 months; OS immature. Use BICR version, not deck.",
+        "challengeNote": "Unchanged; confirmed the draft used DR-04 and DR-15 BICR values."
+      },
+      {
+        "id": "D3",
+        "driver": "CMC readiness and inspection exposure",
+        "draftLow": -7,
+        "draftHigh": -3,
+        "challengedLow": -7,
+        "challengedHigh": -3,
+        "draftRationale": "Sole DS site with open 483; comparability and PPQ outstanding.",
+        "challengeNote": "Unchanged. R-05 not double counted; comparability is in this driver only."
+      },
+      {
+        "id": "D4",
+        "driver": "Companion diagnostic readiness",
+        "draftLow": -6,
+        "draftHigh": -3,
+        "challengedLow": -6,
+        "challengedHigh": -3,
+        "draftRationale": "No bridging report; PMA status unverified; partner termination right on change of control.",
+        "challengeNote": "Unchanged; note termination risk sits with legal workstream and is excluded from the number."
+      },
+      {
+        "id": "D5",
+        "driver": "Hepatic safety and risk management",
+        "draftLow": -2,
+        "draftHigh": 0,
+        "challengedLow": -3,
+        "challengedHigh": -1,
+        "draftRationale": "Draft cited the possibility of a REMS only; the Hy's law discrepancy was not yet reflected.",
+        "challengeNote": "Draft first omitted the Hy's law discrepancy; added after challenge. Safety workstream view requested."
+      },
+      {
+        "id": "D6",
+        "driver": "Accelerated approval pathway and precedent",
+        "draftLow": 1,
+        "draftHigh": 3,
+        "challengedLow": -1,
+        "challengedHigh": 2,
+        "draftRationale": "Draft credited FDA support for accelerated approval.",
+        "challengeNote": "FDA declined to agree in advance (DR-06 A Q3). Positive credit reduced; low bound now negative because available therapy may change."
+      },
+      {
+        "id": "D7",
+        "driver": "Regional procedural requirements (PIP, Japan)",
+        "draftLow": -1,
+        "draftHigh": 0,
+        "challengedLow": -1,
+        "challengedHigh": 0,
+        "draftRationale": "Procedural; fixable before MAA.",
+        "challengeNote": "Unchanged."
+      },
+      {
+        "id": "D8",
+        "driver": "Designations and unmet need",
+        "draftLow": 0,
+        "draftHigh": 2,
+        "challengedLow": 0,
+        "challengedHigh": 2,
+        "draftRationale": "Orphan and Fast Track only; BTD denied.",
+        "challengeNote": "Unchanged."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "id": "intake",
+      "title": "Deal intake and triage",
+      "narration": "The seller opened the data room on 2026-10-05. The data room manager agent maps what arrived to the minimum regulatory evidence pack and the triage rules set the scope.",
+      "agents": [
+        "Data room manager agent"
+      ],
+      "agentIds": [
+        "drm"
+      ],
+      "tools": [
+        "Intake and triage rules"
+      ],
+      "humanReviewer": "Regulatory due-diligence lead",
+      "outputs": [
+        {
+          "agent": "Data room manager agent",
+          "agentId": "drm",
+          "heading": "Evidence inventory and coverage report",
+          "body": "**Data room: Ostravane Therapeutics (access 2026-10-05).** Index lists 23 documents. 15 were provided; 8 were *not found in the data room*.\n\nCoverage against the Phase III oncology minimum evidence pack (28 required items):\n\n| Status | Items | Share |\n|---|---|---|\n| Full document provided | 11 | 39% |\n| Summary only (underlying document not provided) | 9 | 32% |\n| Not found in the data room | 8 | 29% |\n\nCount reconciliation (like-for-like): the seller cover note says \"15 documents\"; the index shows 15 provided plus 8 listed as not provided. These are consistent.\n\nSummary-only items: CMC (no Module 3), study 101 CSR (synopsis only), meeting minutes (excerpts only), draft label (US only), CDx (summary only), correspondence log (company-maintained), safety, patents, investor deck.\n\nNot found: DR-16 FDA written response (Type C, 2025-03-20); DR-17 EMA PIP decision or waiver; DR-18 CDx bridging report; DR-19 DS comparability report; DR-20 study 101 full CSR; DR-21 OPDP untitled letter; DR-22 Form 483 and response; DR-23 CDRH Pre-Sub feedback. Sources: DR-00."
+        },
+        {
+          "agent": "Data room manager agent",
+          "agentId": "drm",
+          "heading": "Triage card (deterministic rules)",
+          "body": "| Field | Value |\n|---|---|\n| Asset stage | Phase III (rPTS driver analysis applies) |\n| Modality | Oral small molecule with in vitro companion diagnostic |\n| Pathway question set | Accelerated approval on Phase 2 data with Phase III as confirmatory; biomarker-selected; orphan |\n| Deal-breaker screen | No clinical hold on record; no known REMS prohibition; no debarment flag. No deal-breaker triggered |\n| Regions in scope | US, EU; Japan (company guidance 2028) |\n| Specialists activated | Clinical regulatory documentation, CMC, regulatory intelligence, labeling, regional / country, commercial regulatory (near launch: filing within 12 months), medical device (CDx involved) |\n| Agents activated | All nine, including the conditional medical device agent and the commercial regulatory agent |\n\nLead confirmation required before research starts."
+        }
+      ],
+      "risksRaised": [
+        "R-13"
+      ],
+      "challengesSurfaced": [
+        "PI-02"
+      ],
+      "gate": {
+        "id": "G1",
+        "question": "Confirm the scope and activate the team as triaged?",
+        "decider": "Regulatory due-diligence lead",
+        "recommended": "Proceed",
+        "evidenceThatWouldChangeIt": "A deal-breaker found in the seller's disclosures (for example a clinical hold) would move this to Stop. A change in regions in scope would change which specialists engage.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "Research starts with US and EU scope and all nine agents active.",
+            "nextStageId": "ta-research"
+          },
+          {
+            "label": "Pause",
+            "consequence": "Regulatory work waits for the deal sponsor to confirm timing and bid exclusivity (to 2026-11-20).",
+            "nextStageId": "END_PAUSED"
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "Ask the seller to confirm regions and Japan intentions; proceed with US and EU scope provisionally.",
+            "nextStageId": "ta-research"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ta-research",
+      "title": "Therapeutic area research",
+      "narration": "Research is being done on the cholangiocarcinoma landscape: standard of care, competitor programs and regulatory precedent in the setting. Retrieval only; the specialist judges what applies.",
+      "agents": [
+        "Regulatory intelligence agent",
+        "Clinical regulatory documentation agent"
+      ],
+      "agentIds": [
+        "a_ri",
+        "a_crd"
+      ],
+      "tools": [],
+      "humanReviewer": "Regulatory intelligence specialist",
+      "outputs": [
+        {
+          "agent": "Regulatory intelligence agent",
+          "agentId": "a_ri",
+          "heading": "Landscape and standard of care (retrieval, date-stamped 2026-10-08)",
+          "body": "**Previously treated intrahepatic cholangiocarcinoma, US and EU.**\n- Standard of care after first-line therapy: second-line cytotoxic chemotherapy for patients without an actionable alteration; targeted therapies exist for other molecular subsets. No TRX-7-directed therapy is approved (company statement, DR-03; external source check to be confirmed by the specialist).\n- Study 301's comparator (investigator's choice chemotherapy) is consistent with this standard of care.\n\n**Competitor programs (DR-11).** NVB-210 (Phase III, accelerated filing planned 2027) could become *available therapy* before OST-4417 is reviewed. MRT-302 (Phase II) shares a related biomarker, so CDx considerations may overlap. CLD-88 is not biomarker selected.\n\n**Approved external sources used (versions stamped):** FDA guidance, Expedited Programs for Serious Conditions (2014); FDA draft guidance, Clinical Trial Considerations to Support Accelerated Approval of Oncology Therapeutics (2023, draft: *not final*); FDORA 2022 provisions that a confirmatory trial be underway; EMA conditional marketing authorization framework. All flagged for specialist verification of current status."
+        },
+        {
+          "agent": "Regulatory intelligence agent",
+          "agentId": "a_ri",
+          "heading": "Regulatory precedent set (FICTIONAL stand-in for retrieved precedent)",
+          "body": "| Precedent | Setting | Basis | Confirmatory status at approval | Relevance |\n|---|---|---|---|---|\n| P1 (fictional) | Biomarker-selected oral agent, rare GI cancer, US | Accelerated approval on confirmed ORR and DoR | Randomized trial underway | High: same structure as OST-4417 request |\n| P2 (fictional) | Biomarker-selected agent, rare GI cancer, EU | Conditional MA | Specific obligations set | Medium: EMA wanted OS maturity plan |\n| P3 (fictional) | Response-based accelerated request, US | Not granted; FDA asked for randomized evidence | n/a | High as a counterexample |\n\nApplicability of each precedent is for the regulatory intelligence specialist to judge. The agent only retrieves."
+        },
+        {
+          "agent": "Clinical regulatory documentation agent",
+          "agentId": "a_crd",
+          "heading": "Endpoint conventions in the setting",
+          "body": "Randomized trials in previously treated biliary cancers commonly use OS or PFS; agency preference depends on the biomarker-defined population and availability of effective salvage therapy. For this asset, the relevant agency positions are in DR-06 and are addressed in the asset profile stage."
+        }
+      ],
+      "risksRaised": [
+        "R-02"
+      ],
+      "challengesSurfaced": [],
+      "gate": null
+    },
+    {
+      "id": "asset-profile",
+      "title": "Asset profile",
+      "narration": "What came back about OST-4417: mechanism, pivotal design, endpoints, data to date, regulatory history, CMC status and the label target. The first contradictions appear.",
+      "agents": [
+        "Clinical regulatory documentation agent",
+        "Regulatory intelligence agent",
+        "CMC regulatory agent",
+        "Labeling agent",
+        "Data room manager agent"
+      ],
+      "agentIds": [
+        "a_crd",
+        "a_ri",
+        "a_cmc",
+        "a_lab",
+        "drm"
+      ],
+      "tools": [],
+      "humanReviewer": "Regulatory due-diligence lead",
+      "outputs": [
+        {
+          "agent": "Clinical regulatory documentation agent",
+          "agentId": "a_crd",
+          "heading": "Cited asset fact table",
+          "body": "| Element | Fact | Source |\n|---|---|---|\n| Mechanism | Oral TRX-7 cofactor inhibitor, 150 mg QD | DR-03 |\n| Indication target | TRX-7-high (IHC H-score 150 or higher) previously treated intrahepatic cholangiocarcinoma | DR-03 |\n| Pivotal study | OST-4417-301, randomized 1:1 vs investigator's choice chemotherapy, N=420 planned, 388 enrolled (2026-09-15) | DR-04 |\n| Primary endpoint | PFS by BICR per protocol v4.0 (2025-02-24); OS primary in v3.0 (2024-06-10) | DR-04 |\n| Data to date | Cohort B (N=68, cutoff 2026-03-31): confirmed ORR 40% (27/68) by BICR, median DoR 8.4 mo, median PFS 5.9 mo | DR-04, DR-15 |\n| Designations | Orphan (US, EU), Fast Track; Breakthrough denied 2025-11-03 | DR-07, DR-06 C |\n| CMC | DS route B; sole DS site Halvern; DP Corvane; 18-month DP stability | DR-08, DR-09 |\n| Label target | Biomarker-selected, accelerated approval then full | DR-03, DR-10 |\n| Planned filings | NDA H1 2027, MAA H2 2027, Japan 2028 (company guidance) | DR-02 |\n\nInference (labeled): the Phase III interim PFS analysis (Q2 2027) comes after the planned NDA submission (H1 2027), so the confirmatory trial will be underway but not read out at filing."
+        },
+        {
+          "agent": "Clinical regulatory documentation agent",
+          "agentId": "a_crd",
+          "heading": "Advice-alignment check: pivotal endpoint (FLAG)",
+          "body": "**Conflict found between the company's statement and the agency record.**\n\n| Source | Statement |\n|---|---|\n| DR-02 slide 8 | \"FDA aligned on PFS as primary endpoint for the Phase III\" |\n| DR-06 Excerpt A, Q1 (FDA, 2024-03-14) | \"FDA recommends overall survival as the primary endpoint. PFS may be a key secondary... this should not be interpreted as agreement.\" |\n| DR-06 Excerpt B (EMA, 2024-09-19) | \"OS is the preferred primary endpoint. A PFS primary endpoint requires justification and a plan for OS maturity.\" |\n| DR-04 | Protocol v3.0 OS primary (2024-06); v4.0 PFS primary (2025-02) |\n| DR-05 entries 11 to 13 | Type C request 2025-02-11; FDA written response received 2025-03-20; log says only \"feedback received\" |\n\nThe response that would show whether FDA accepted the v4.0 change (DR-16) is *not found in the data room*. Not resolved by this agent. Referred to the clinical regulatory documentation specialist."
+        },
+        {
+          "agent": "Clinical regulatory documentation agent",
+          "agentId": "a_crd",
+          "heading": "Data version check: efficacy and IB (FLAG)",
+          "body": "| Item | Version A (DR-02, deck) | Version B (DR-04, DR-15) |\n|---|---|---|\n| Cutoff | 2025-09-30 | 2026-03-31 |\n| Evaluable patients | 61 | 68 |\n| ORR | 46% (28/61), investigator, includes unconfirmed | 40% (27/68), BICR, confirmed |\n| Median DoR | 9.8 months | 8.4 months |\n\nVersion B is later and BICR-confirmed; the deck uses an earlier, less conservative basis. Also: protocol v4.0 and the 2026 DSURs cite IB v5.0; IB v6.0 (2026-04) is current. Alignment is not documented in the data room."
+        },
+        {
+          "agent": "Regulatory intelligence agent",
+          "agentId": "a_ri",
+          "heading": "Agency chronology and commitment ledger",
+          "body": "| Commitment or event | Source | Status |\n|---|---|---|\n| DS route change comparability before pivotal use | DR-06 A Q6 | Open: comparability report *not found* (DR-19) |\n| Confirmatory trial underway at accelerated approval submission | DR-06 A Q3 | On track (301 enrolling); depends on filing date |\n| DILI monitoring and stopping rules | DR-06 A Q5 | Plan referenced; not provided |\n| CDx pre-submission and contemporaneous approval | DR-06 A Q4 | Pre-Sub held 2024-11-20; feedback not found (DR-23) |\n| EMA PIP agreement or waiver before MAA validation | DR-06 B | Open: *no PIP application as of 2024-09; no later record found* |\n| FDA response to protocol v4.0 request | DR-05 #13 | Open: content not found (DR-16) |\n| OPDP untitled letter response | DR-05 #16 | Content not found (DR-21) |\n\nQuoted agency language is verbatim from DR-06. New agency actions will be watched during the deal."
+        },
+        {
+          "agent": "CMC regulatory agent",
+          "agentId": "a_cmc",
+          "heading": "CMC status snapshot",
+          "body": "- DS: sole site Halvern (Cork). FDA Form 483 dated 2026-06-24 with five observations; response submitted 2026-07-10; classification pending (DR-09). The investor deck says \"clean inspection history\" (DR-02 slide 12): inconsistent with DR-09.\n- DP: Corvane NAI (2025-03). Packaging: customer audit only.\n- Stability: DP 18 months (proposed 24-month shelf life by ICH Q1E extrapolation); DS 12 months.\n- No Module 3 provided; summary only. Treated as a risk, not as neutral.\nReferred to the CMC specialist as a red flag."
+        },
+        {
+          "agent": "Labeling agent",
+          "agentId": "a_lab",
+          "heading": "TPP and label target snapshot",
+          "body": "Draft label v0.3 (US only) carries seven claims (L1 to L7). Detailed claim-to-evidence mapping runs in the labeling deep dive. No EU or Japan label drafts provided."
+        },
+        {
+          "agent": "Data room manager agent",
+          "agentId": "drm",
+          "heading": "Request batch (de-duplicated)",
+          "body": "Eight items *not found in the data room* turned into six requests through the portfolio DD team:\n\n| Request | Documents | Why it matters |\n|---|---|---|\n| RQ-1 | DR-16 FDA Type C written response, 2025-03-20 | Resolves the primary endpoint contradiction |\n| RQ-2 | DR-22 Form 483 and company response (with DR-19 comparability report) | CMC inspection exposure and FDA comparability request |\n| RQ-3 | DR-18 CDx bridging report and DR-23 CDRH Pre-Sub feedback | CDx readiness |\n| RQ-4 | DR-17 EMA PIP decision, waiver or application status | MAA validation |\n| RQ-5 | DR-21 OPDP letter and response | Promotional history |\n| RQ-6 | DR-20 Study 101 full CSR and BICR charter | Verify cohort B figures; Hy's law case narrative |\n\nBatched to avoid swamping the seller. Review log: all 15 provided documents logged with reviewer and time."
+        }
+      ],
+      "risksRaised": [
+        "R-01",
+        "R-03",
+        "R-11",
+        "R-13"
+      ],
+      "challengesSurfaced": [
+        "PI-01",
+        "PI-02",
+        "PI-03",
+        "PI-07"
+      ],
+      "gate": {
+        "id": "G2",
+        "question": "Is the evidence sufficient to proceed to specialist deep dives?",
+        "decider": "Regulatory due-diligence lead",
+        "recommended": "Seek more information",
+        "evidenceThatWouldChangeIt": "Receipt of DR-16 showing FDA accepted PFS as primary would change the endpoint risk. A 483 classified Official Action Indicated would raise the CMC risk. Seller refusing RQ-1 would move toward Pause.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "Deep dives start; gaps carried as provisional in every finding.",
+            "nextStageId": "dd-clinical"
+          },
+          {
+            "label": "Pause",
+            "consequence": "Stop all specialist work until the six requests are answered. Costs time against bid exclusivity (2026-11-20).",
+            "nextStageId": "END_PAUSED"
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "Issue the six requests now and start deep dives in parallel on available evidence; every dependent finding is marked provisional.",
+            "nextStageId": "dd-clinical"
+          }
+        ]
+      }
+    },
+    {
+      "id": "dd-clinical",
+      "title": "Specialist deep dive: clinical regulatory documentation",
+      "narration": "The clinical regulatory documentation agent drafts its finding. Watch the first draft: a human catches an overstatement before it travels downstream.",
+      "agents": [
+        "Clinical regulatory documentation agent"
+      ],
+      "agentIds": [
+        "a_crd"
+      ],
+      "tools": [],
+      "humanReviewer": "Clinical regulatory documentation specialist",
+      "outputs": [
+        {
+          "agent": "Clinical regulatory documentation agent",
+          "agentId": "a_crd",
+          "heading": "Pathway finding (draft v1, as first produced)",
+          "body": "**Accelerated approval.** FDA agreed in the 2024 Type B meeting that ORR and DoR from cohort B can support accelerated approval, and the company is on track to file in H1 2027 with Phase III as the confirmatory study. The pathway is therefore low risk. (Source: DR-02 slide 8; DR-06 Excerpt A Q3)",
+          "reviewerNote": "FLAGGED BY SPECIALIST. Overstated. DR-06 Excerpt A Q3 reads: 'The Agency cannot agree in advance that ORR and DoR will support accelerated approval.' The claim also leans on the deck (DR-02), which is not an agency record. 'Low risk' is a materiality call reserved for the lead."
+        },
+        {
+          "agent": "Clinical regulatory documentation agent",
+          "agentId": "a_crd",
+          "heading": "Pathway finding (corrected, specialist-validated)",
+          "body": "**Accelerated approval.** FDA *declined to agree in advance* that ORR and DoR from cohort B would support accelerated approval (DR-06 A Q3). The review will depend on response magnitude and durability and on available therapy at submission. A randomized confirmatory trial must be underway (301 is enrolling). BICR-confirmed ORR is 40% with median DoR 8.4 months (DR-04); the deck's 46% and 9.8 months are not the basis to use. Risk: NVB-210 may become available therapy first (DR-11).\nInference, labeled: PFS-primary may be accepted for confirmation only if DR-16 shows FDA acceptance; not found in the data room.",
+          "reviewerNote": "Corrected by the clinical regulatory documentation specialist. Time-boxed, risk-tiered review: 22 minutes."
+        },
+        {
+          "agent": "Clinical regulatory documentation agent",
+          "agentId": "a_crd",
+          "heading": "Endpoint, safety and registry findings",
+          "body": "- **Endpoint:** see asset-profile flag. Both OS-primary and PFS-primary scenarios carried into the risk drivers.\n- **Hepatic safety:** DR-12 states \"No cases meeting Hy's law criteria\"; the IND safety report of 2026-04-22 (same document) reports a *potential Hy's law case* in cohort B (ALT above 3x ULN, bilirubin above 2x ULN, no alternative cause identified at the time). Both statements shown side by side; adjudication is for the safety workstream. FDA said it will evaluate REMS at review (DR-06 A Q5).\n- **Document versions:** protocol v4.0 and DSURs cite IB v5.0; IB v6.0 is current. Registry entry for study 301 not provided; not checked."
+        }
+      ],
+      "risksRaised": [
+        "R-01",
+        "R-02",
+        "R-06",
+        "R-11"
+      ],
+      "challengesSurfaced": [
+        "PI-01",
+        "PI-06",
+        "PI-07",
+        "PI-10"
+      ],
+      "gate": null,
+      "specialtyGate": {
+        "id": "S-CLIN",
+        "specialty": "Clinical regulatory documentation",
+        "question": "Can the clinical regulatory workstream proceed to risk synthesis?",
+        "decider": "Clinical regulatory documentation specialist",
+        "statusSummary": "The corrected pathway finding is specialist-validated: FDA declined to agree in advance that ORR and DoR support accelerated approval (DR-06 A Q3), and PFS as primary endpoint is unresolved without DR-16. The potential Hy's law case (DR-12) is referred to the safety and PV workstream.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "Clinical findings go to risk synthesis with the endpoint and accelerated approval items marked provisional.",
+            "conditions": "Endpoint alignment (R-01) carried as provisional until DR-16 arrives; hepatic case (R-06) carried as referred to safety and PV."
+          },
+          {
+            "label": "Pause",
+            "consequence": "Clinical work waits and risk synthesis starts without clinical input.",
+            "conditions": "Costs time against bid exclusivity (2026-11-20); no new evidence is expected without a request."
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "Clinical work continues on available evidence, with the endpoint and pathway findings kept wide until DR-16 and DR-20 are received.",
+            "request": "Request DR-16 (FDA written response to the 2025-03-20 Type C request) and DR-20 (study 101 full CSR and cohort B BICR charter) from the seller via the portfolio DD team."
+          }
+        ],
+        "recommended": "Seek more information",
+        "evidenceThatWouldChangeIt": "DR-16 showing FDA accepted PFS as primary would move this to Proceed; DR-16 showing FDA rejected PFS would raise the endpoint risk toward Pause.",
+        "feedsRisks": [
+          "R-01",
+          "R-02",
+          "R-06",
+          "R-11"
+        ]
+      }
+    },
+    {
+      "id": "dd-cmc",
+      "title": "Specialist deep dive: CMC regulatory",
+      "narration": "The CMC agent assesses readiness against the next milestone (NDA H1 2027) and treats missing evidence as risk. Every CMC red flag goes to the specialist.",
+      "agents": [
+        "CMC regulatory agent"
+      ],
+      "agentIds": [
+        "a_cmc"
+      ],
+      "tools": [],
+      "humanReviewer": "CMC regulatory specialist",
+      "outputs": [
+        {
+          "agent": "CMC regulatory agent",
+          "agentId": "a_cmc",
+          "heading": "CMC readiness against NDA H1 2027",
+          "body": "| Area | Finding | Source | Flag |\n|---|---|---|---|\n| Sole DS site inspection | Form 483, five observations: HPLC audit trail not reviewed pre-release; OOS investigation closed without root cause; shared analyst logins; cleaning validation gap; change control for a route B raw material supplier | DR-09 S1 | RED |\n| Company statement | \"Clean inspection history\" is inconsistent with the above | DR-02 slide 12 | RED |\n| Response status | Response submitted 2026-07-10; FDA classification pending; response document not provided | DR-05 #19, DR-00 | Request RQ-2 |\n| DS route change | FDA asked for comparability before pivotal use of route B; report not found | DR-06 A Q6, DR-08 | RED |\n| PPQ | Commercial scale (100 kg) PPQ planned Q1 2027; not started. Tight against H1 2027 filing | DR-08 | AMBER |\n| Stability | DP 18 months for 24-month claim by extrapolation; DS 12 months for 24-month retest | DR-08 | AMBER |\n| Specifications | Two route B impurity limits provisional, not qualified against exposure | DR-08 | AMBER |\n| Second DS site | None | DR-08 | AMBER (single-source) |\n\nOpen commitments: comparability report; 483 response closure. The agent notes procedures as written, not as proof of practice; observation themes are data integrity related, which can recur across systems.",
+          "reviewerNote": "CMC specialist reviews all three RED flags before anything goes to the risk agent."
+        },
+        {
+          "agent": "CMC regulatory agent",
+          "agentId": "a_cmc",
+          "heading": "Specialist validation note (for the record)",
+          "body": "Specialist view to be entered live. Suggested for scripting: the data-integrity themes in the 483 matter more than the count; classification pending is the key unknown; a pre-approval inspection of the sole DS site is likely. Materiality is rated by the lead, not here."
+        }
+      ],
+      "risksRaised": [
+        "R-03",
+        "R-05",
+        "R-12"
+      ],
+      "challengesSurfaced": [
+        "PI-03"
+      ],
+      "gate": null,
+      "specialtyGate": {
+        "id": "S-CMC",
+        "specialty": "CMC regulatory",
+        "question": "Can the CMC workstream proceed to risk synthesis?",
+        "decider": "CMC regulatory specialist",
+        "statusSummary": "The sole drug substance site has an open Form 483 with five observations and FDA classification pending; the response document (DR-22) and the route A to B comparability report (DR-19) were not provided (DR-09 S1, DR-08). Three RED flags await the specialist's review.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "CMC findings go to risk synthesis with the 483 and comparability items marked provisional and ranges kept wide.",
+            "conditions": "Site classification (R-03) and comparability (R-05) carried as provisional; stability and impurity specifications (R-12) carried as AMBER."
+          },
+          {
+            "label": "Pause",
+            "consequence": "CMC work waits for the 483 classification and the response document.",
+            "conditions": "Risk synthesis proceeds without CMC input, or waits; both cost time against bid exclusivity (2026-11-20)."
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "CMC findings stay RED and provisional until DR-22 and DR-19 are reviewed; pre-approval inspection exposure is assessed on receipt.",
+            "request": "Request DR-22 (Form 483 and company response for the Halvern site) and DR-19 (drug substance comparability report, route A to B) from the seller via the portfolio DD team."
+          }
+        ],
+        "recommended": "Seek more information",
+        "evidenceThatWouldChangeIt": "A 483 response (DR-22) showing root-cause closure would move this toward Proceed; an Official Action Indicated classification with no alternative site would move it toward Pause or Stop.",
+        "feedsRisks": [
+          "R-03",
+          "R-05",
+          "R-12"
+        ]
+      }
+    },
+    {
+      "id": "dd-device",
+      "title": "Specialist deep dive: medical device and companion diagnostic",
+      "narration": "The conditional device agent wakes up because the asset needs a companion diagnostic. It maps each CDx question to evidence and raises requests where evidence is missing.",
+      "agents": [
+        "Medical device agent (conditional)"
+      ],
+      "agentIds": [
+        "a_md"
+      ],
+      "tools": [],
+      "humanReviewer": "Medical device specialist (as needed)",
+      "outputs": [
+        {
+          "agent": "Medical device agent (conditional)",
+          "agentId": "a_md",
+          "heading": "CDx evidence map",
+          "body": "| Question | Evidence | Status |\n|---|---|---|\n| Is a contemporaneously approved CDx expected? | FDA: yes (DR-06 A Q4) | Confirmed |\n| Is the trial assay the final assay? | Trial: CTA v2. Market: kit v3 with new antibody lot and automated stainer platform | NO; bridging needed |\n| Bridging study done? | \"Planned; protocol drafted\"; report not found (DR-18) | Missing |\n| PMA status? | \"On track\" (DR-02), no module status provided; Pre-Sub feedback not found (DR-23) | Unverified |\n| Kit manufacturing site named? | Not yet named (DR-09 S4) | Gap |\n| EU IVDR conformity assessment? | Not started | Gap |\n| Japan IVD plan? | None | Gap |\n| Partner dependency | Lumenar may terminate on change of control with 90 days' notice (DR-14) | Flag to legal workstream |\n\nThe agent classifies none of this; classification and PMA risk are for the specialist. Requests RQ-3 raised.",
+          "reviewerNote": "Medical device specialist judges PMA risk. Change-of-control termination is referred to the legal workstream (outside the regulatory team)."
+        }
+      ],
+      "risksRaised": [
+        "R-04"
+      ],
+      "challengesSurfaced": [
+        "PI-04"
+      ],
+      "gate": null,
+      "specialtyGate": {
+        "id": "S-DEV",
+        "specialty": "Medical device (companion diagnostic)",
+        "question": "Can the companion diagnostic workstream proceed to risk synthesis?",
+        "decider": "Medical device specialist (as needed)",
+        "statusSummary": "The trial assay (CTA v2) differs from the market kit v3, the bridging report (DR-18) and CDRH Pre-Sub feedback (DR-23) were not provided, and PMA status is unverified (DR-14, DR-06 A Q4). Lumenar's change-of-control termination right is referred to the legal workstream.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "CDx findings go to risk synthesis with PMA status and bridging marked provisional.",
+            "conditions": "Bridging (R-04) carried as an open condition; the termination clause carried as referred to the legal workstream."
+          },
+          {
+            "label": "Pause",
+            "consequence": "CDx work waits until the bridging evidence and Pre-Sub feedback are available.",
+            "conditions": "Because FDA expects a contemporaneously approved CDx (DR-06 A Q4), the gap stays open and the cost is time."
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "CDx findings stay provisional; PMA risk is judged by the device specialist once DR-18 and DR-23 are reviewed.",
+            "request": "Request DR-18 (CDx bridging study report, CTA v2 to kit v3) and DR-23 (CDRH Pre-Sub feedback, 2024-11-20), plus PMA module status, from the seller via the portfolio DD team."
+          }
+        ],
+        "recommended": "Seek more information",
+        "evidenceThatWouldChangeIt": "DR-18 showing a completed bridging study with PMA modules on track would move this to Proceed; a Lumenar termination notice would move it toward Pause.",
+        "feedsRisks": [
+          "R-04"
+        ]
+      }
+    },
+    {
+      "id": "dd-labeling",
+      "title": "Specialist deep dive: labeling",
+      "narration": "The labeling agent maps every draft claim to its evidence. It flags unsupported claims; it never rewrites label language.",
+      "agents": [
+        "Labeling agent"
+      ],
+      "agentIds": [
+        "a_lab"
+      ],
+      "tools": [],
+      "humanReviewer": "Labeling specialist",
+      "outputs": [
+        {
+          "agent": "Labeling agent",
+          "agentId": "a_lab",
+          "heading": "Claim-to-evidence map (draft label v0.3)",
+          "body": "| Claim | Evidence | Assessment |\n|---|---|---|\n| L1 Cholangiocarcinoma, intrahepatic and extrahepatic | Cohort B enrolled intrahepatic only | AT RISK: scope exceeds evidence |\n| L2 \"Improves overall survival\" | No Phase III OS data; cohort B OS immature | UNSUPPORTED |\n| L3 \"Median DoR 9.8 months\" | Deck value; BICR-confirmed is 8.4 months | CONFLICTS with DR-04 |\n| L4 \"No Hy's law cases observed\" | IND safety report 2026-04-22 reports a potential case | CONFLICTS with DR-12 |\n| L5 \"First-in-class\" | Not a label element | Out of scope |\n| L6 \"No routine hepatic monitoring required\" | Study monitoring plan: liver tests every 2 weeks for 12 weeks | CONFLICTS with study 101 plan |\n| L7 Accelerated approval statement and confirmatory trial | Not agreed in advance by FDA | CONDITIONAL |\n\nRegion comparison: no EU SmPC or Japan label draft provided; only US-style draft. No claim rewritten by the agent.",
+          "reviewerNote": "Labeling specialist owns any judgment on claim strength."
+        }
+      ],
+      "risksRaised": [
+        "R-09"
+      ],
+      "challengesSurfaced": [
+        "PI-08"
+      ],
+      "gate": null,
+      "specialtyGate": {
+        "id": "S-LAB",
+        "specialty": "Labeling",
+        "question": "Can the labeling workstream proceed to risk synthesis?",
+        "decider": "Labeling specialist",
+        "statusSummary": "The claim-to-evidence map is complete: the overall survival claim is unsupported and the DoR value, hepatic monitoring and Hy's law statements conflict with the record (DR-10, DR-04, DR-12). The finding is a claim set to rebuild, not a missing document.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "Labeling findings go to risk synthesis as a claim set to rebuild from supported evidence.",
+            "conditions": "Claims L1 to L4 and L6 carried as unsupported or conflicting; L7 carried as conditional on the FDA accelerated approval position."
+          },
+          {
+            "label": "Pause",
+            "consequence": "Labeling work waits for the clinical and safety findings to settle.",
+            "conditions": "Risk synthesis proceeds without the labeling view, which is already evidence-complete."
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "Labeling keeps the US assessment and marks regional comparison as not assessed.",
+            "request": "Request any EU SmPC or Japan label draft from the seller via the portfolio DD team; DR-10 is a US draft only."
+          }
+        ],
+        "recommended": "Proceed",
+        "evidenceThatWouldChangeIt": "A regional label draft or a safety adjudication changing the hepatic statements would change the claim set but not the call.",
+        "feedsRisks": [
+          "R-09",
+          "R-01",
+          "R-06"
+        ]
+      }
+    },
+    {
+      "id": "dd-regional",
+      "title": "Specialist deep dive: regional and country requirements",
+      "narration": "The regional agent builds one row per region in scope and surfaces country-specific requirements the plan may have missed.",
+      "agents": [
+        "Regional / country agent"
+      ],
+      "agentIds": [
+        "a_rc"
+      ],
+      "tools": [],
+      "humanReviewer": "Regional / country specialist",
+      "outputs": [
+        {
+          "agent": "Regional / country agent",
+          "agentId": "a_rc",
+          "heading": "Region-by-region status (dated 2026-10-08)",
+          "body": "| Region | Status | Requirement or commitment | Gap |\n|---|---|---|---|\n| US | IND active; Orphan, Fast Track; NDA planned H1 2027 | Confirmatory trial underway; CDx PMA contemporaneous | See clinical and CDx findings |\n| EU | CTAs active in 6 states; orphan designation (maintenance report due 2026-11); MAA planned H2 2027 | PIP agreement or waiver required before MAA validation (DR-06 B). *No PIP application as of 2024-09; no later record found* | PIP missing (DR-17 requested) |\n| Japan | No PMDA consultation; no Japanese data; no sites in study 301; no local IVD plan | Deck says filing 2028 (DR-02) | No pathway documented |\n| South Korea | CT approval for study 301 (2025-01) | None identified | Out of filing scope |\n\nDivergent agency positions: FDA and EMA both prefer OS primary; sponsor changed to PFS primary (DR-04). Local commitments: EU orphan maintenance report due 2026-11.",
+          "reviewerNote": "Regional specialist judges filing strategy: PIP or waiver is procedural but gates MAA validation; Japan is a timing and value question."
+        }
+      ],
+      "risksRaised": [
+        "R-07",
+        "R-08"
+      ],
+      "challengesSurfaced": [
+        "PI-05"
+      ],
+      "gate": null,
+      "specialtyGate": {
+        "id": "S-REG",
+        "specialty": "Regional / country",
+        "question": "Can the regional workstream proceed to risk synthesis?",
+        "decider": "Regional / country specialist",
+        "statusSummary": "No EU Paediatric Investigation Plan or waiver is on file (DR-17 not provided) and Japan has no PMDA consultation, no Japanese data and no local IVD plan (DR-06 B, DR-07, DR-02 slide 10). Both are gaps rather than conflicts; the PIP or waiver is procedural but gates MAA validation.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "Regional findings go to risk synthesis with the PIP status provisional and Japan valued separately.",
+            "conditions": "PIP or waiver (R-07) carried as an open condition before MAA validation; Japan (R-08) carried as a separate valuation question; EU orphan maintenance report due 2026-11."
+          },
+          {
+            "label": "Pause",
+            "consequence": "Regional work waits for confirmation of the PIP status.",
+            "conditions": "Pausing delays a finding that is procedural and unlikely to change the filing view."
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "Regional findings stay provisional on the EU PIP point until DR-17 is received.",
+            "request": "Request DR-17 (EMA PIP decision or waiver) from the seller via the portfolio DD team and confirm the seller's Japan intentions."
+          }
+        ],
+        "recommended": "Proceed",
+        "evidenceThatWouldChangeIt": "DR-17 showing a PIP rejected or no waiver path would raise the EU filing risk; a confirmed waiver would close R-07.",
+        "feedsRisks": [
+          "R-07",
+          "R-08"
+        ]
+      }
+    },
+    {
+      "id": "dd-commercial",
+      "title": "Specialist deep dive: commercial regulatory",
+      "narration": "OST-4417 is not marketed, but it is near launch, so the commercial regulatory agent runs. It reviews promotional history and pending obligations.",
+      "agents": [
+        "Commercial regulatory agent",
+        "Regulatory intelligence agent"
+      ],
+      "agentIds": [
+        "a_cr",
+        "a_ri"
+      ],
+      "tools": [],
+      "humanReviewer": "Commercial regulatory specialist",
+      "outputs": [
+        {
+          "agent": "Commercial regulatory agent",
+          "agentId": "a_cr",
+          "heading": "Promotional exposure and obligations",
+          "body": "- **Promotional history:** FDA OPDP untitled letter dated 2026-03-09 concerning website and investor materials presenting an investigational drug as safe and effective and implying breakthrough status (DR-05 #16). The letter and the company's response are *not found in the data room* (DR-21, RQ-5).\n- **Deck language:** \"Breakthrough-level activity\" (DR-02 slide 3) after FDA denied the Breakthrough request on 2025-11-03 (DR-06 C). Consistent with the pattern in the untitled letter.\n- **Post-approval obligations (anticipated):** accelerated approval confirmatory commitments; CDx post-market; possible REMS (DR-06 A Q5).\n- **Pending lifecycle changes:** none yet; none can exist before approval.",
+          "reviewerNote": "Commercial regulatory specialist: promotional posture matters for integration; low impact on approval probability."
+        },
+        {
+          "agent": "Regulatory intelligence agent",
+          "agentId": "a_ri",
+          "heading": "Watch notice",
+          "body": "Continuous monitoring is on. No new agency actions found since 2026-10-05."
+        }
+      ],
+      "risksRaised": [
+        "R-10"
+      ],
+      "challengesSurfaced": [
+        "PI-09"
+      ],
+      "gate": {
+        "id": "G3",
+        "question": "Are the specialty findings validated enough to move to risk synthesis?",
+        "decider": "Regulatory due-diligence lead",
+        "recommended": "Proceed",
+        "evidenceThatWouldChangeIt": "A specialist finding that is itself a deal-breaker (for example OAI classification of the sole DS site with no alternative) would move this to Stop.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "Validated findings go to the risk assessment agent. Findings marked provisional keep wide ranges.",
+            "nextStageId": "risk-draft"
+          },
+          {
+            "label": "Pause",
+            "consequence": "Hold until the six requests are answered; risk drafting waits.",
+            "nextStageId": "END_PAUSED"
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "Proceed to risk drafting but widen ranges on items awaiting RQ-1 to RQ-6.",
+            "nextStageId": "risk-draft"
+          },
+          {
+            "label": "Stop",
+            "consequence": "Recommend the deal team stops on regulatory grounds. No stop condition is met on current evidence.",
+            "nextStageId": "END_STOP"
+          }
+        ],
+        "hubGate": true
+      },
+      "specialtyGate": {
+        "id": "S-COM",
+        "specialty": "Commercial regulatory",
+        "question": "Can the commercial regulatory workstream proceed to risk synthesis?",
+        "decider": "Commercial regulatory specialist",
+        "statusSummary": "The OPDP untitled letter (2026-03-09) and the deck's \"breakthrough-level\" language after FDA denied the Breakthrough request show a promotional pattern (DR-05 #16, DR-02 slide 3, DR-06 C). The letter and response (DR-21) were not provided; impact on approval probability is low. Regulatory intelligence reports no new agency actions since 2026-10-05.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "Commercial findings go to risk synthesis as an integration communications item with low approval impact.",
+            "conditions": "Promotional posture (R-10) carried with DR-21 outstanding; the watch notice stays on."
+          },
+          {
+            "label": "Pause",
+            "consequence": "Commercial work waits for DR-21.",
+            "conditions": "Low value: the item does not drive approval probability, so pausing delays risk synthesis for little gain."
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "Commercial findings stay provisional on the corrective action until DR-21 is reviewed.",
+            "request": "Request DR-21 (FDA OPDP untitled letter and company response) from the seller via the portfolio DD team."
+          }
+        ],
+        "recommended": "Proceed",
+        "evidenceThatWouldChangeIt": "DR-21 showing repeated or unresolved promotional violations would raise R-10 and the integration controls needed.",
+        "feedsRisks": [
+          "R-10",
+          "R-02"
+        ]
+      }
+    },
+    {
+      "id": "risk-draft",
+      "title": "Risk register and rPTS drivers (draft)",
+      "narration": "The risk assessment agent drafts the register and, because OST-4417 is Phase III, the rPTS drivers. It gives ranges and drivers, never a lone number, and never a go or no-go.",
+      "agents": [
+        "Regulatory risk assessment agent"
+      ],
+      "agentIds": [
+        "a_risk"
+      ],
+      "tools": [],
+      "humanReviewer": "Regulatory due-diligence lead",
+      "outputs": [
+        {
+          "agent": "Regulatory risk assessment agent",
+          "agentId": "a_risk",
+          "heading": "Draft regulatory risk register",
+          "body": "| ID | Risk | Severity (draft) | Mitigation |\n|---|---|---|---|\n| R-01 | Primary endpoint not aligned with FDA and EMA advice | High | Obtain DR-16; model OS-primary scenario |\n| R-02 | Accelerated approval not agreed in advance; available therapy may change | High | Track NVB-210 and MRT-302 |\n| R-03 | Sole DS site with open Form 483 | High | Obtain DR-22; second-site plan |\n| R-04 | CDx not bridged; PMA unverified; partner termination right | High | Obtain DR-18, DR-23; refer clause to legal |\n| R-05 | Route A to B comparability not evidenced | Medium-High | Obtain DR-19 |\n| R-06 | Hepatic safety, potential Hy's law case, REMS | Medium-High | Safety workstream adjudication |\n| R-07 | No EU PIP or waiver on file | Medium | Confirm status; procedural |\n| R-08 | No Japan plan | Low-Medium | Value separately |\n| R-09 | Draft label claims unsupported | Medium | Rebuild claim set |\n| R-10 | OPDP untitled letter | Medium-Low | Obtain DR-21 |\n| R-11 | Company materials diverge from record | Medium | Rely on agency documents |\n| R-12 | Stability and impurity specifications | Medium | Request data plan |\n| R-13 | Eight documents not provided | Medium | Batched requests |\n\nFact, inference and recommendation are separated in the full register; severity is a draft for the lead."
+        },
+        {
+          "agent": "Regulatory risk assessment agent",
+          "agentId": "a_risk",
+          "heading": "Draft rPTS driver table (Phase III only)",
+          "body": "Scenario baseline 80% (illustrative assumption, not real-world data). Adjustments in percentage points; ranges, not points.\n\n| Driver | Draft range (pp) | Rationale |\n|---|---|---|\n| D1 Primary endpoint alignment | -9 to -4 | FDA recommended OS; draft credits the company statement of PFS alignment |\n| D2 Effect size and data maturity | -3 to +1 | BICR ORR 40%, DoR 8.4 mo, PFS 5.9 mo; OS immature |\n| D3 CMC readiness and inspection exposure | -7 to -3 | Sole DS site with 483; comparability and PPQ open |\n| D4 CDx readiness | -6 to -3 | No bridging report; PMA unverified |\n| D5 Hepatic safety and risk management | -2 to 0 | REMS possible |\n| D6 Accelerated approval pathway and precedent | +1 to +3 | Precedent P1; FDA support for pathway (as stated in the draft) |\n| D7 Regional procedural | -1 to 0 | PIP, Japan |\n| D8 Designations and unmet need | 0 to +2 | Orphan, Fast Track; BTD denied |\n| **Draft rPTS range** | **53% to 76%** | Computed from baseline plus drivers |\n\nThe agent outputs no go or no-go and does not set the rPTS position."
+        }
+      ],
+      "risksRaised": [
+        "R-01",
+        "R-02",
+        "R-03",
+        "R-04",
+        "R-05",
+        "R-06",
+        "R-07",
+        "R-08",
+        "R-09",
+        "R-10",
+        "R-11",
+        "R-12",
+        "R-13"
+      ],
+      "challengesSurfaced": [],
+      "gate": null
+    },
+    {
+      "id": "challenge-pass",
+      "title": "Challenge pass and the lead's rPTS position",
+      "narration": "A separate-context challenge pass attacks the draft: contradictions, unsupported claims, missing specialist views. Then the lead sets the rPTS position. The machine's range is an input, not a rationale.",
+      "agents": [
+        "Red-team agent",
+        "Regulatory risk assessment agent"
+      ],
+      "agentIds": [
+        "a_red",
+        "a_risk"
+      ],
+      "tools": [],
+      "humanReviewer": "Regulatory due-diligence lead",
+      "outputs": [
+        {
+          "agent": "Red-team agent",
+          "agentId": "a_red",
+          "heading": "Challenge pass (separate context): findings",
+          "body": "| # | Challenge | Evidence | Effect |\n|---|---|---|---|\n| C1 | D1 relies on the company statement of FDA alignment; agency record says otherwise and DR-16 is missing | DR-06 A Q1, B; DR-02 slide 8 | D1 widened and lowered to -12 to -6 |\n| C2 | D6 credits FDA support for accelerated approval; FDA declined to agree in advance | DR-06 A Q3 | D6 reduced to -1 to +2 |\n| C3 | Hepatic discrepancy was not reflected in D5 | DR-12 vs IND safety report | D5 to -3 to -1; safety workstream view requested |\n| C4 | Missing specialist view: safety and PV is outside the regulatory team | Other workstreams | Flagged as a missing view; not substituted |\n| C5 | Check for double counting: comparability sits in D3 only; CDx contract risk excluded from D4 | R-04, R-05 | No change |\n| C6 | Labeling claim conflicts feed no driver; they are a remediation item | R-09 | No change |\n\nContradictions with unresolved sources: 3 (endpoint, inspection claim, hepatic statement). Unsupported claims found in earlier outputs: 1 (draft pathway finding, already corrected by the specialist)."
+        },
+        {
+          "agent": "Regulatory risk assessment agent",
+          "agentId": "a_risk",
+          "heading": "Challenged rPTS range",
+          "body": "| Driver | Draft (pp) | Challenged (pp) |\n|---|---|---|\n| D1 | -9 to -4 | -12 to -6 |\n| D2 | -3 to +1 | -3 to +1 |\n| D3 | -7 to -3 | -7 to -3 |\n| D4 | -6 to -3 | -6 to -3 |\n| D5 | -2 to 0 | -3 to -1 |\n| D6 | +1 to +3 | -1 to +2 |\n| D7 | -1 to 0 | -1 to 0 |\n| D8 | 0 to +2 | 0 to +2 |\n| **rPTS range** | **53% to 76%** | **47% to 72%** |\n\nRange remains wide because DR-16, DR-22 and DR-18 are outstanding. If DR-16 confirms FDA accepted PFS, D1 would move toward -4 to -1."
+        }
+      ],
+      "risksRaised": [
+        "R-01",
+        "R-06"
+      ],
+      "challengesSurfaced": [
+        "PI-06",
+        "PI-10"
+      ],
+      "gate": {
+        "id": "G4",
+        "question": "What rPTS position and materiality does the regulatory DD lead sign?",
+        "decider": "Regulatory due-diligence lead",
+        "recommended": "Proceed",
+        "evidenceThatWouldChangeIt": "DR-16 showing FDA accepted PFS (would raise the range). A 483 classified OAI or a Lumenar termination notice (would lower it). Interim PFS from study 301 is after the NDA date and cannot inform this decision.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "Lead signs a range (illustrative for scripting: 50% to 65%) conditional on RQ-1, RQ-2 and RQ-3. Recommendation assembled.",
+            "nextStageId": "recommendation"
+          },
+          {
+            "label": "Pause",
+            "consequence": "Position held until the outstanding documents arrive; risk steps re-run.",
+            "nextStageId": "END_PAUSED"
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "No position signed. Priority requests RQ-1, RQ-2 and RQ-3; re-run risk drafting and challenge on receipt.",
+            "nextStageId": "END_REQUEST"
+          }
+        ]
+      }
+    },
+    {
+      "id": "recommendation",
+      "title": "Recommendation and the decision to continue to valuation",
+      "narration": "The template assembles the validated record; the lead signs; the deal sponsor recommends; the deal governance committee decides. The question: continue to valuation or not.",
+      "agents": [],
+      "agentIds": [],
+      "tools": [
+        "Report template and traceability matrix"
+      ],
+      "humanReviewer": "Regulatory due-diligence lead",
+      "outputs": [
+        {
+          "agent": "None; the template assembles the validated record",
+          "agentId": "None; the template assembles the validated record",
+          "heading": "Draft signed regulatory recommendation (for the lead to edit and sign)",
+          "body": "**Regulatory assessment, OST-4417 (Phase III, TRX-7-high cholangiocarcinoma).** Evidence limit: eight documents not provided; findings dependent on them are provisional.\n\n| Issue | Implication | Action | Owner | Status |\n|---|---|---|---|---|\n| Endpoint alignment (R-01) | FDA and EMA prefer OS; PFS primary unconfirmed | Obtain DR-16; model both scenarios | Clinical reg specialist | Open |\n| Pathway (R-02) | Accelerated approval not agreed in advance; available therapy risk | Track NVB-210; plan full-approval path | Reg intelligence specialist | Open |\n| Sole DS site (R-03, R-05) | Open 483 and no comparability evidence | Obtain DR-22, DR-19; second-site plan | CMC specialist | Open |\n| CDx (R-04) | No bridging; partner termination right | Obtain DR-18; legal to review clause | Device specialist, legal workstream | Open |\n| Hepatic safety (R-06) | Possible REMS and label implications | Safety workstream adjudication | Safety and PV workstream | Open |\n| EU PIP (R-07) | Gates MAA validation | Confirm status, file waiver or PIP | Regional specialist | Open |\n\n**rPTS (Phase III):** challenged range 47% to 72%; lead's position: to be signed live (illustrative 50% to 65%).\n\n**Regulatory recommendation (for the lead to sign):** continue to valuation with regulatory conditions. The regulatory view hands valuation the rPTS range, the scenario split (PFS accepted vs OS required), and the open items. Structure and price protections are for the deal team.",
+          "reviewerNote": "Lead edits and signs. 'The machine said so' is not a rationale."
+        }
+      ],
+      "risksRaised": [],
+      "challengesSurfaced": [],
+      "gate": {
+        "id": "G5",
+        "question": "Continue to valuation, or not?",
+        "decider": "Deal governance committee (on the Executive deal sponsor's recommendation, after the Regulatory DD lead signs)",
+        "recommended": "Proceed",
+        "evidenceThatWouldChangeIt": "A 483 classified OAI, DR-16 showing FDA rejected PFS, a Lumenar termination notice, or the safety workstream adjudicating the hepatic case as Hy's law would each move the call toward Pause or Stop. DR-16 confirming PFS acceptance would strengthen Proceed.",
+        "options": [
+          {
+            "label": "Proceed",
+            "consequence": "Continue to valuation with the regulatory conditions and the rPTS range passed to the valuation team.",
+            "nextStageId": "END_VALUATION"
+          },
+          {
+            "label": "Pause",
+            "consequence": "Hold valuation until RQ-1, RQ-2 and RQ-3 are answered.",
+            "nextStageId": "END_PAUSED"
+          },
+          {
+            "label": "Seek more information",
+            "consequence": "Valuation waits; priority requests escalated through the sponsor to the seller.",
+            "nextStageId": "END_REQUEST"
+          },
+          {
+            "label": "Stop",
+            "consequence": "Regulatory risk is judged unacceptable at any plausible price. Not recommended on current evidence.",
+            "nextStageId": "END_STOP"
+          }
+        ]
+      }
+    }
+  ],
+  "gates": [
+    {
+      "id": "G1",
+      "question": "Confirm the scope and activate the team as triaged?",
+      "decider": "Regulatory due-diligence lead",
+      "recommended": "Proceed",
+      "evidenceThatWouldChangeIt": "A deal-breaker found in the seller's disclosures (for example a clinical hold) would move this to Stop. A change in regions in scope would change which specialists engage.",
+      "options": [
+        {
+          "label": "Proceed",
+          "consequence": "Research starts with US and EU scope and all nine agents active.",
+          "nextStageId": "ta-research"
+        },
+        {
+          "label": "Pause",
+          "consequence": "Regulatory work waits for the deal sponsor to confirm timing and bid exclusivity (to 2026-11-20).",
+          "nextStageId": "END_PAUSED"
+        },
+        {
+          "label": "Seek more information",
+          "consequence": "Ask the seller to confirm regions and Japan intentions; proceed with US and EU scope provisionally.",
+          "nextStageId": "ta-research"
+        }
+      ],
+      "stageId": "intake"
+    },
+    {
+      "id": "G2",
+      "question": "Is the evidence sufficient to proceed to specialist deep dives?",
+      "decider": "Regulatory due-diligence lead",
+      "recommended": "Seek more information",
+      "evidenceThatWouldChangeIt": "Receipt of DR-16 showing FDA accepted PFS as primary would change the endpoint risk. A 483 classified Official Action Indicated would raise the CMC risk. Seller refusing RQ-1 would move toward Pause.",
+      "options": [
+        {
+          "label": "Proceed",
+          "consequence": "Deep dives start; gaps carried as provisional in every finding.",
+          "nextStageId": "dd-clinical"
+        },
+        {
+          "label": "Pause",
+          "consequence": "Stop all specialist work until the six requests are answered. Costs time against bid exclusivity (2026-11-20).",
+          "nextStageId": "END_PAUSED"
+        },
+        {
+          "label": "Seek more information",
+          "consequence": "Issue the six requests now and start deep dives in parallel on available evidence; every dependent finding is marked provisional.",
+          "nextStageId": "dd-clinical"
+        }
+      ],
+      "stageId": "asset-profile"
+    },
+    {
+      "id": "G3",
+      "question": "Are the specialty findings validated enough to move to risk synthesis?",
+      "decider": "Regulatory due-diligence lead",
+      "recommended": "Proceed",
+      "evidenceThatWouldChangeIt": "A specialist finding that is itself a deal-breaker (for example OAI classification of the sole DS site with no alternative) would move this to Stop.",
+      "options": [
+        {
+          "label": "Proceed",
+          "consequence": "Validated findings go to the risk assessment agent. Findings marked provisional keep wide ranges.",
+          "nextStageId": "risk-draft"
+        },
+        {
+          "label": "Pause",
+          "consequence": "Hold until the six requests are answered; risk drafting waits.",
+          "nextStageId": "END_PAUSED"
+        },
+        {
+          "label": "Seek more information",
+          "consequence": "Proceed to risk drafting but widen ranges on items awaiting RQ-1 to RQ-6.",
+          "nextStageId": "risk-draft"
+        },
+        {
+          "label": "Stop",
+          "consequence": "Recommend the deal team stops on regulatory grounds. No stop condition is met on current evidence.",
+          "nextStageId": "END_STOP"
+        }
+      ],
+      "stageId": "dd-commercial",
+      "hubGate": true
+    },
+    {
+      "id": "G4",
+      "question": "What rPTS position and materiality does the regulatory DD lead sign?",
+      "decider": "Regulatory due-diligence lead",
+      "recommended": "Proceed",
+      "evidenceThatWouldChangeIt": "DR-16 showing FDA accepted PFS (would raise the range). A 483 classified OAI or a Lumenar termination notice (would lower it). Interim PFS from study 301 is after the NDA date and cannot inform this decision.",
+      "options": [
+        {
+          "label": "Proceed",
+          "consequence": "Lead signs a range (illustrative for scripting: 50% to 65%) conditional on RQ-1, RQ-2 and RQ-3. Recommendation assembled.",
+          "nextStageId": "recommendation"
+        },
+        {
+          "label": "Pause",
+          "consequence": "Position held until the outstanding documents arrive; risk steps re-run.",
+          "nextStageId": "END_PAUSED"
+        },
+        {
+          "label": "Seek more information",
+          "consequence": "No position signed. Priority requests RQ-1, RQ-2 and RQ-3; re-run risk drafting and challenge on receipt.",
+          "nextStageId": "END_REQUEST"
+        }
+      ],
+      "stageId": "challenge-pass"
+    },
+    {
+      "id": "G5",
+      "question": "Continue to valuation, or not?",
+      "decider": "Deal governance committee (on the Executive deal sponsor's recommendation, after the Regulatory DD lead signs)",
+      "recommended": "Proceed",
+      "evidenceThatWouldChangeIt": "A 483 classified OAI, DR-16 showing FDA rejected PFS, a Lumenar termination notice, or the safety workstream adjudicating the hepatic case as Hy's law would each move the call toward Pause or Stop. DR-16 confirming PFS acceptance would strengthen Proceed.",
+      "options": [
+        {
+          "label": "Proceed",
+          "consequence": "Continue to valuation with the regulatory conditions and the rPTS range passed to the valuation team.",
+          "nextStageId": "END_VALUATION"
+        },
+        {
+          "label": "Pause",
+          "consequence": "Hold valuation until RQ-1, RQ-2 and RQ-3 are answered.",
+          "nextStageId": "END_PAUSED"
+        },
+        {
+          "label": "Seek more information",
+          "consequence": "Valuation waits; priority requests escalated through the sponsor to the seller.",
+          "nextStageId": "END_REQUEST"
+        },
+        {
+          "label": "Stop",
+          "consequence": "Regulatory risk is judged unacceptable at any plausible price. Not recommended on current evidence.",
+          "nextStageId": "END_STOP"
+        }
+      ],
+      "stageId": "recommendation"
+    }
+  ],
+  "plannedIssues": [
+    {
+      "id": "PI-01",
+      "title": "Primary endpoint: investor deck says FDA aligned on PFS; FDA minutes recommend OS",
+      "severity": "High",
+      "plantedIn": [
+        {
+          "file": "DR-02 Investor Deck Summary.md",
+          "section": "Slide 8"
+        },
+        {
+          "file": "DR-06 Agency Meeting Minutes Excerpts.md",
+          "section": "Excerpt A, Question 1"
+        },
+        {
+          "file": "DR-04 Clinical Development Summary.md",
+          "section": "OST-4417-301 pivotal design (protocol v3.0 vs v4.0)"
+        },
+        {
+          "file": "DR-05 Regulatory Correspondence Log.csv",
+          "section": "Entries 11 to 13"
+        }
+      ],
+      "surfacesAt": [
+        "asset-profile",
+        "dd-clinical"
+      ],
+      "caughtBy": {
+        "agent": "a_crd",
+        "human": "crd"
+      },
+      "rightResponse": "Report as a contradiction with citations, do not choose a side. State that FDA's written response of 2025-03-20 is not in the data room (PI-02). Carry both scenarios into D1 of the rPTS drivers. Lead requests DR-16 and the statistical plan.",
+      "wrongResponse": "Accepting the deck statement, or concluding FDA rejected PFS without DR-16."
+    },
+    {
+      "id": "PI-02",
+      "title": "Missing document: FDA written response to the Type C request, plus seven other referenced documents",
+      "severity": "High",
+      "plantedIn": [
+        {
+          "file": "DR-00 Data Room Index.csv",
+          "section": "Rows DR-16 to DR-23 (status Not provided)"
+        },
+        {
+          "file": "DR-05 Regulatory Correspondence Log.csv",
+          "section": "Entry 13 (summary only: 'feedback received')"
+        }
+      ],
+      "surfacesAt": [
+        "intake",
+        "asset-profile"
+      ],
+      "caughtBy": {
+        "agent": "drm",
+        "human": "lead"
+      },
+      "rightResponse": "Say 'not found in the data room', never 'does not exist'. Batch and de-duplicate into requests through the portfolio DD team. Lead accepts coverage or escalates; findings that depend on missing items are marked provisional.",
+      "wrongResponse": "Inferring the content of DR-16 from the deck or from the protocol amendment."
+    },
+    {
+      "id": "PI-03",
+      "title": "CMC: deck claims clean inspection history; sole DS site has an open Form 483",
+      "severity": "High",
+      "plantedIn": [
+        {
+          "file": "DR-02 Investor Deck Summary.md",
+          "section": "Slide 12"
+        },
+        {
+          "file": "DR-09 Manufacturing Sites and Inspections.csv",
+          "section": "Row S1 (Halvern)"
+        },
+        {
+          "file": "DR-05 Regulatory Correspondence Log.csv",
+          "section": "Entries 18 and 19"
+        }
+      ],
+      "surfacesAt": [
+        "asset-profile",
+        "dd-cmc"
+      ],
+      "caughtBy": {
+        "agent": "a_cmc",
+        "human": "cmc"
+      },
+      "rightResponse": "CMC agent flags it as a red flag; the CMC specialist reviews every red flag. Assess the observation themes (data integrity, OOS closure) against the pre-approval inspection exposure. Request DR-22. Do not rate materiality in the agent output.",
+      "wrongResponse": "Averaging the deck claim with the 483; treating the response as resolution."
+    },
+    {
+      "id": "PI-04",
+      "title": "CDx partner dependency: no bridging report, kit differs from trial assay, change-of-control termination right",
+      "severity": "High",
+      "plantedIn": [
+        {
+          "file": "DR-14 Companion Diagnostic Summary.md",
+          "section": "Final market assay; Bridging study; Agreement terms"
+        },
+        {
+          "file": "DR-06 Agency Meeting Minutes Excerpts.md",
+          "section": "Excerpt A, Question 4"
+        },
+        {
+          "file": "DR-02 Investor Deck Summary.md",
+          "section": "Slide 10 (CDx PMA 'on track')"
+        }
+      ],
+      "surfacesAt": [
+        "dd-device"
+      ],
+      "caughtBy": {
+        "agent": "a_md",
+        "human": "md"
+      },
+      "rightResponse": "Device agent runs because a CDx is involved, maps each question to evidence, and flags missing documentation as requests. Specialist judges classification and PMA risk. The termination clause is referred to the legal workstream, not decided by the regulatory team.",
+      "wrongResponse": "Treating the CDx as someone else's problem, or deciding the contract question."
+    },
+    {
+      "id": "PI-05",
+      "title": "Regional requirement missed: no EU PIP or waiver, and no Japan pathway",
+      "severity": "Medium",
+      "plantedIn": [
+        {
+          "file": "DR-06 Agency Meeting Minutes Excerpts.md",
+          "section": "Excerpt B (PIP reminder)"
+        },
+        {
+          "file": "DR-07 Designations and IND-CTA History.md",
+          "section": "Rows 'Paediatric Investigation Plan or waiver' and 'Japan consultation'"
+        },
+        {
+          "file": "DR-02 Investor Deck Summary.md",
+          "section": "Slide 10 (MAA H2 2027, Japan 2028)"
+        }
+      ],
+      "surfacesAt": [
+        "dd-regional"
+      ],
+      "caughtBy": {
+        "agent": "a_rc",
+        "human": "rc"
+      },
+      "rightResponse": "Regional agent builds one row per region and flags country-specific requirements. Specialist judges filing strategy: PIP or waiver is a procedural fix that gates MAA validation; Japan is a timing and value question.",
+      "wrongResponse": "Listing the EU timeline without checking the PIP requirement."
+    },
+    {
+      "id": "PI-06",
+      "title": "Agent overstatement: clinical documentation agent first draft says FDA agreed accelerated approval",
+      "severity": "High",
+      "plantedIn": [
+        {
+          "file": "01 Decision Workflow Spec.md",
+          "section": "Stage dd-clinical, first agent output (draft v1)"
+        },
+        {
+          "file": "DR-06 Agency Meeting Minutes Excerpts.md",
+          "section": "Excerpt A, Question 3 (actual FDA language)"
+        }
+      ],
+      "surfacesAt": [
+        "dd-clinical",
+        "challenge-pass"
+      ],
+      "caughtBy": {
+        "agent": "a_risk (challenge pass)",
+        "human": "crd"
+      },
+      "rightResponse": "The specialist corrects 'FDA agreed' to 'FDA declined to agree in advance'. The challenge pass independently flags the unsupported claim. The correction is logged and D6 is reduced. This is the demonstration of 'no citation, no claim' and the human check.",
+      "wrongResponse": "Passing the agent text through to the risk agent."
+    },
+    {
+      "id": "PI-07",
+      "title": "Conflicting data versions: ORR 46% vs 40%, DoR 9.8 vs 8.4 months, IB v5.0 vs v6.0",
+      "severity": "Medium",
+      "plantedIn": [
+        {
+          "file": "DR-02 Investor Deck Summary.md",
+          "section": "Slide 6"
+        },
+        {
+          "file": "DR-04 Clinical Development Summary.md",
+          "section": "Phase 2 cohort B efficacy: data versions; Investigator's Brochure"
+        },
+        {
+          "file": "DR-15 Interim Topline Table.csv",
+          "section": "Rows 1 to 5"
+        }
+      ],
+      "surfacesAt": [
+        "asset-profile",
+        "dd-clinical"
+      ],
+      "caughtBy": {
+        "agent": "a_crd",
+        "human": "crd"
+      },
+      "rightResponse": "Separate what the data show (BICR-confirmed, later cutoff) from what the sponsor claims. Use the later BICR version in all analysis, note the deck figure as non-authoritative, and document IB version alignment as a request.",
+      "wrongResponse": "Quoting 46% as the response rate."
+    },
+    {
+      "id": "PI-08",
+      "title": "Draft labeling claims without support",
+      "severity": "Medium",
+      "plantedIn": [
+        {
+          "file": "DR-10 Draft Labeling and TPP Claims.md",
+          "section": "Claims L1, L2, L3, L4, L6"
+        }
+      ],
+      "surfacesAt": [
+        "dd-labeling"
+      ],
+      "caughtBy": {
+        "agent": "a_lab",
+        "human": "lab"
+      },
+      "rightResponse": "Claim-to-evidence map shows L2 (OS) has no data, L3 uses the deck DoR, L4 conflicts with the IND safety report, L6 conflicts with the study monitoring plan, L1 extends beyond the enrolled tumor type. Agent does not rewrite label text; specialist judges claim strength.",
+      "wrongResponse": "Agent rewriting the claims."
+    },
+    {
+      "id": "PI-09",
+      "title": "Promotional history: OPDP untitled letter not mentioned in the deck",
+      "severity": "Medium-Low",
+      "plantedIn": [
+        {
+          "file": "DR-05 Regulatory Correspondence Log.csv",
+          "section": "Entry 16"
+        },
+        {
+          "file": "DR-02 Investor Deck Summary.md",
+          "section": "Slide 3 ('Breakthrough-level activity')"
+        },
+        {
+          "file": "DR-07 Designations and IND-CTA History.md",
+          "section": "BTD denied"
+        }
+      ],
+      "surfacesAt": [
+        "dd-commercial"
+      ],
+      "caughtBy": {
+        "agent": "a_cr",
+        "human": "cr"
+      },
+      "rightResponse": "Commercial agent activates because the asset is near launch. It lists the untitled letter, notes the BTD denial against the deck language, and requests DR-21 for the letter and the company's response.",
+      "wrongResponse": "Skipping the commercial regulatory step because the asset is not marketed."
+    },
+    {
+      "id": "PI-10",
+      "title": "Hepatic safety: company says no Hy's law cases; IND safety report describes a potential case",
+      "severity": "Medium-High",
+      "plantedIn": [
+        {
+          "file": "DR-12 Safety Summary.md",
+          "section": "Hepatic safety statement vs IND safety report"
+        },
+        {
+          "file": "DR-02 Investor Deck Summary.md",
+          "section": "Slide 9"
+        },
+        {
+          "file": "DR-04 Clinical Development Summary.md",
+          "section": "Interim and exploratory notes"
+        }
+      ],
+      "surfacesAt": [
+        "dd-clinical",
+        "challenge-pass"
+      ],
+      "caughtBy": {
+        "agent": "a_crd; challenge pass if missed",
+        "human": "crd"
+      },
+      "rightResponse": "Report both statements side by side with citations. Refer clinical safety adjudication to the safety and PV workstream. The regulatory view covers REMS and label implications only.",
+      "wrongResponse": "Resolving the discrepancy by clinical judgment inside the regulatory team."
+    }
+  ],
+  "documents": [
+    {
+      "id": "DR-00",
+      "title": "Data Room Index",
+      "path": "data-room/DR-00 Data Room Index.csv",
+      "format": "csv",
+      "content": "doc_id,title,category,status,date,notes\nDR-01,Company Overview,Corporate,Provided,2026-10-05,\nDR-02,Investor Deck Summary (September 2026),Corporate,Provided,2026-09,Company presentation; not a regulatory record\nDR-03,Asset Profile and TPP,Asset,Provided,2026-08,\nDR-04,Clinical Development Summary,Clinical,Provided,2026-09,CSR synopsis only for study 101\nDR-05,Regulatory Correspondence Log,Regulatory,Provided,2026-10,Company-maintained log\nDR-06,Agency Meeting Minutes (excerpts),Regulatory,Provided,2026-10,Excerpts only (A FDA 2024-03, B EMA 2024-09, C FDA 2025-11)\nDR-07,Designations and IND/CTA History,Regulatory,Provided,2026-10,\nDR-08,CMC Summary,CMC,Provided,2026-09,Summary only; no Module 3\nDR-09,Manufacturing Sites and Inspections,CMC,Provided,2026-10,\nDR-10,Draft Labeling and Claims v0.3,Labeling,Provided,2026-08,US draft only\nDR-11,Competitive Landscape,Commercial,Provided,2026-09,\nDR-12,Safety Summary,Safety,Provided,2026-09,High level\nDR-13,Patent and Exclusivity Summary,Legal,Provided,2026-09,High level\nDR-14,Companion Diagnostic Summary,Device,Provided,2026-09,\nDR-15,Interim Topline Table,Clinical,Provided,2026-09,\nDR-16,FDA written response to Type C request (2025-03-20),Regulatory,Not provided,,Referenced in DR-05 entry 13\nDR-17,EMA PIP decision or waiver,Regulatory,Not provided,,No record in data room\nDR-18,CDx analytical and clinical bridging study report (CTA v2 to kit v3),Device,Not provided,,Referenced in DR-14\nDR-19,Drug substance comparability report (route A to B),CMC,Not provided,,Referenced in DR-08 and DR-06 Excerpt A Q6\nDR-20,Study 101 full CSR and cohort B BICR charter,Clinical,Not provided,,Synopsis only\nDR-21,FDA OPDP untitled letter (2026-03-09) and company response,Regulatory,Not provided,,Referenced in DR-05 entry 16\nDR-22,Form 483 and company response (Halvern),CMC,Not provided,,Referenced in DR-05 entries 18 and 19\nDR-23,CDRH Pre-Sub feedback (2024-11-20),Device,Not provided,,Referenced in DR-05 entry 10\n"
+    },
+    {
+      "id": "DR-01",
+      "title": "Company Overview",
+      "path": "data-room/DR-01 Company Overview.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration. Ostravane Therapeutics is an invented company.\n\n# DR-01 Company Overview: Ostravane Therapeutics, Inc.\n\n| Item | Detail |\n|---|---|\n| Listing | Nasdaq-listed (fictional), headquartered in Cambridge, MA |\n| Founded | 2015 |\n| Employees | 468 (as of 2026-09-30); 41 in Regulatory, Quality and CMC |\n| Market capitalization | about $1.9B (61.0M shares at $31.20, 2026-10-02) |\n| Cash and investments | $412M (2026-06-30); runway into Q3 2027 |\n| Strategic position | Board authorized a strategic review in 2026-06; process led by an outside adviser |\n\n## Pipeline\n\n| Program | Modality | Indication | Stage |\n|---|---|---|---|\n| OST-4417 (lead) | Oral small molecule, TRX-7 cofactor inhibitor | TRX-7-high intrahepatic cholangiocarcinoma, previously treated | Phase III (OST-4417-301) plus Phase 1/2 cohort supporting planned accelerated approval filing |\n| OST-5102 | Oral small molecule, different target | Advanced solid tumors | Phase 1 dose escalation |\n| OST-2230 | Antibody-drug conjugate | Undisclosed solid tumor | IND-enabling |\n\n## Regulatory organization\n\n- VP Regulatory Affairs (US lead); Director, EU Regulatory (based in Dublin); no Japan regulatory lead on staff.\n- CMC is outsourced: drug substance and drug product at contract manufacturers (see DR-08, DR-09).\n- Companion diagnostic developed with Lumenar Diagnostics (see DR-14).\n\n## Deal context\n\nTarnwell Pharma (fictional large-cap acquirer) has signed a mutual NDA and been granted data room access on 2026-10-05. Exclusivity period for bids runs to 2026-11-20.\n"
+    },
+    {
+      "id": "DR-02",
+      "title": "Investor Deck Summary",
+      "path": "data-room/DR-02 Investor Deck Summary.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration.\n\n# DR-02 Investor Deck Summary (September 2026 corporate presentation, 14 slides, condensed)\n\n## Slide 3: OST-4417 at a glance\n- First-in-class oral TRX-7 cofactor inhibitor for previously treated TRX-7-high intrahepatic cholangiocarcinoma.\n- Orphan Drug (FDA, EU) and Fast Track designations.\n- \"Breakthrough-level activity\" in Phase 2 cohort B.\n\n## Slide 6: Phase 2 cohort B efficacy (data cutoff 2025-09-30)\n| Measure | Value |\n|---|---|\n| Efficacy-evaluable patients | 61 |\n| Objective response rate (ORR) | 46% (28/61) |\n| Median duration of response | 9.8 months |\n| Assessment | Investigator-assessed, includes unconfirmed responses |\n\n## Slide 8: Regulatory alignment\n- \"FDA aligned on PFS as primary endpoint for the Phase III (OST-4417-301)\" (Type B meeting, March 2024).\n- \"Accelerated approval pathway supported by FDA based on cohort B ORR and DoR.\"\n- \"Phase III fully enrolled by year-end 2026; PFS interim analysis in Q2 2027.\"\n\n## Slide 9: Safety\n- \"Well tolerated; no Hy's law cases.\"\n- Grade 3 or higher treatment-related adverse events: 29%.\n\n## Slide 10: Timeline\n| Milestone | Company guidance |\n|---|---|\n| Pre-NDA meeting | Q1 2027 |\n| NDA submission (accelerated approval) | H1 2027 |\n| EU MAA submission | H2 2027 |\n| Japan filing | 2028 |\n| CDx PMA | \"On track with partner\" |\n\n## Slide 12: CMC\n- \"Commercial-ready supply chain with two qualified sites; clean inspection history.\"\n"
+    },
+    {
+      "id": "DR-03",
+      "title": "Asset Profile and TPP",
+      "path": "data-room/DR-03 Asset Profile and TPP.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration.\n\n# DR-03 Asset Profile and Target Product Profile: OST-4417\n\n| Attribute | Detail |\n|---|---|\n| Code name | OST-4417 (nonproprietary name: application pending, not yet assigned) |\n| Mechanism | Oral, selective inhibitor of the TRX-7 transcriptional cofactor; disrupts a lineage-restricted survival program in TRX-7-high tumors |\n| Dose and form | 150 mg tablet, once daily, continuous 28-day cycles |\n| Indication (target) | Adults with locally advanced or metastatic intrahepatic cholangiocarcinoma, TRX-7-high by IHC (H-score 150 or higher), after at least one prior systemic therapy |\n| Biomarker | TRX-7 IHC assay, Lumenar TRX-7 IHC Assay (clinical trial assay, CTA version 2) |\n| Regulatory status | Phase III enrolling; no marketing application filed anywhere |\n| Combination product | None for the drug; the CDx is an in vitro diagnostic (see DR-14) |\n\n## Target product profile (TPP) summary\n\n| Element | Minimum | Target |\n|---|---|---|\n| Efficacy (Phase III) | PFS HR 0.70 or better vs investigator's choice chemotherapy | PFS HR 0.60 and OS trend favorable |\n| Efficacy (Phase 2 cohort B, accelerated approval) | Confirmed ORR 35% or higher, median DoR 6 months or longer | ORR 40% or higher |\n| Safety | Manageable hepatic events with monitoring | No REMS |\n| Label | Biomarker-selected indication; accelerated approval with confirmatory Phase III | Full approval on Phase III PFS and OS |\n| Storage | 24-month shelf life, room temperature | 36 months |\n"
+    },
+    {
+      "id": "DR-04",
+      "title": "Clinical Development Summary",
+      "path": "data-room/DR-04 Clinical Development Summary.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration.\n\n# DR-04 Clinical Development Summary: OST-4417\n\n## Studies\n\n| Study | Phase | Design | N | Status (2026-10) |\n|---|---|---|---|---|\n| OST-4417-101 | 1/2 | Dose escalation, then biomarker-selected expansion cohorts (A, B) | 142 total; cohort B n=68 | Cohort B data cutoff 2026-03-31; CSR synopsis dated 2026-06-18 |\n| OST-4417-301 | 3 | Randomized, open-label, 1:1 OST-4417 150 mg QD vs investigator's choice chemotherapy; TRX-7-high; previously treated | 420 planned; 388 enrolled as of 2026-09-15 | Enrollment completes about Dec 2026 |\n\n## OST-4417-301 pivotal design\n\n| Element | Detail |\n|---|---|\n| Primary endpoint | Progression-free survival (PFS) by blinded independent central review (BICR), per protocol v4.0 (2025-02-24) |\n| Key secondary | Overall survival (OS), ORR, DoR, safety, patient-reported outcomes |\n| Prior protocol | v3.0 (2024-06-10): OS primary, PFS key secondary |\n| Statistical plan | Event-driven; interim PFS analysis at about 60% of events, projected Q2 2027; final PFS and OS later |\n| Crossover | Not permitted in v4.0 |\n| Biomarker testing | Clinical trial assay (CTA) version 2 at central lab |\n| Regions | US, EU (6 countries), South Korea; no Japan sites |\n\n## Phase 2 cohort B efficacy: data versions\n\nThe company's two data versions differ (see DR-15 for the table).\n\n| Version | Cutoff | Evaluable | ORR | Median DoR | Basis |\n|---|---|---|---|---|---|\n| Investor deck (DR-02) | 2025-09-30 | 61 | 46% (28/61) | 9.8 mo | Investigator-assessed, includes unconfirmed |\n| CSR synopsis (this document) | 2026-03-31 | 68 | 40% (27/68) | 8.4 mo (95% CI 5.6 to 11.2) | BICR-assessed, confirmed responses only |\n\nMedian PFS in cohort B: 5.9 months (95% CI 4.7 to 7.3). Median OS not mature (data cutoff 2026-03-31, 41% of patients with an event).\n\n## Investigator's Brochure\n\nIB version 6.0 (2026-04) is current. Protocol v4.0 and the 2026 DSURs cite IB v5.0 for the reference safety information. Version alignment has not been documented.\n\n## Interim and exploratory notes\n- A pre-specified DILI (drug-induced liver injury) monitoring plan applies in both studies.\n- One patient in cohort B had ALT above 3x ULN with total bilirubin above 2x ULN and no alternative cause identified; reported as a potential Hy's law case in the 2026-04 IND safety report (see DR-12).\n"
+    },
+    {
+      "id": "DR-05",
+      "title": "Regulatory Correspondence Log",
+      "path": "data-room/DR-05 Regulatory Correspondence Log.csv",
+      "format": "csv",
+      "content": "entry,date,agency,type,direction,subject,summary,document_ref\n1,2022-02-15,FDA,Pre-IND meeting,Meeting,Pre-IND for OST-4417,Written responses; nonclinical package and starting dose agreed,DR-06 not included\n2,2022-06-10,FDA,IND,Submission,IND opened,IND in effect after 30-day review; no clinical hold,DR-07\n3,2023-02-21,FDA,Orphan designation,Grant,Orphan Drug designation for cholangiocarcinoma,Granted,DR-07\n4,2023-05-12,EU CTA,CTA,Submission,CTA under EU CTR for study 101,Approved in 4 countries by 2023-09,DR-07\n5,2023-09-12,FDA,Fast Track,Grant,Fast Track designation,Granted,DR-07\n6,2023-11-08,EMA,Orphan designation,Grant,EU orphan designation (COMP),Positive opinion adopted,DR-07\n7,2024-03-14,FDA,Type B (end-of-Phase 2),Meeting,Pivotal design; accelerated approval; CDx; hepatic monitoring,Minutes received 2024-04-12,DR-06 (excerpt A)\n8,2024-06-10,FDA,Protocol,Submission,Protocol v3.0 for study 301 (OS primary) submitted to IND,Acknowledged,none\n9,2024-09-19,EMA,Scientific Advice,Meeting,Pivotal design; conditional MA; paediatric requirements,Final advice 2024-10-04,DR-06 (excerpt B)\n10,2024-11-20,FDA,CDRH Pre-Sub,Meeting,CDx pre-submission with Lumenar,Written feedback; PMA pathway confirmed,not provided\n11,2025-02-11,FDA,Type C (written response only),Submission,Request for FDA feedback on proposed protocol v4.0 (PFS primary),Question submitted,not provided\n12,2025-02-24,FDA,Protocol,Submission,Protocol v4.0 for study 301 submitted to IND,Acknowledged,none\n13,2025-03-20,FDA,Type C written response,Receipt,FDA written response to the 2025-02-11 request,Received; company summary only: \"feedback received\",see DR-16\n14,2025-08-05,FDA,Breakthrough Therapy designation request,Submission,BTD request based on cohort B,Submitted,DR-07\n15,2025-11-03,FDA,BTD response,Receipt,BTD request denied,\"Preliminary clinical evidence not sufficient to indicate substantial improvement; may resubmit with more mature data\",DR-06 (excerpt C)\n16,2026-03-09,FDA OPDP,Untitled letter,Receipt,Corporate website and investor materials,\"OPDP untitled letter: statements presenting an investigational drug as safe and effective and implying breakthrough status\",not provided\n17,2026-04-22,FDA,IND safety report,Submission,Potential Hy's law case in cohort B,Submitted within reporting timeline,DR-12\n18,2026-06-24,FDA ORA,Form 483,Receipt,Inspection of drug substance site (Halvern),Five observations; see DR-09,DR-09\n19,2026-07-10,FDA ORA,483 response,Submission,Response to Form 483 by Halvern and sponsor,Submitted; FDA classification pending,not provided\n"
+    },
+    {
+      "id": "DR-06",
+      "title": "Agency Meeting Minutes Excerpts",
+      "path": "data-room/DR-06 Agency Meeting Minutes Excerpts.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration. Excerpts of invented agency minutes.\n\n# DR-06 Agency Meeting Minutes (excerpts)\n\n## Excerpt A: FDA Type B end-of-Phase 2 meeting, 2024-03-14 (minutes issued 2024-04-12)\n\n**Question 1 (pivotal design).** Sponsor proposed a randomized trial of OST-4417 vs investigator's choice chemotherapy in TRX-7-high disease.\n- FDA response: \"FDA recommends overall survival as the primary endpoint. Progression-free survival may be a key secondary endpoint. If the Sponsor intends to propose PFS as the primary endpoint, the Sponsor should submit justification, including data on the expected relationship to OS, and FDA will review the proposal; this should not be interpreted as agreement.\"\n\n**Question 3 (accelerated approval).** Sponsor asked whether ORR and DoR from cohort B of study 101 could support accelerated approval.\n- FDA response: \"The Agency cannot agree in advance that ORR and DoR will support accelerated approval. The review will depend on the magnitude and durability of response in the biomarker-selected population and on available therapy at the time of submission. A randomized confirmatory trial should be underway at the time of submission.\"\n\n**Question 4 (companion diagnostic).**\n- FDA response: \"A contemporaneously approved in vitro companion diagnostic is expected. The Sponsor should engage CDRH through a pre-submission. The assay used to select patients in the trial should be the final assay or bridged to it with adequate clinical evidence.\"\n\n**Question 5 (hepatic safety).**\n- FDA response: \"Provide a DILI monitoring and stopping-rule plan. The Agency will evaluate the need for a REMS or other risk management at the time of review.\"\n\n**Question 6 (CMC).**\n- FDA response: \"Provide a comparability assessment for the change in the drug substance synthetic route (route A to route B) before the pivotal study uses route B material.\"\n\n## Excerpt B: EMA Scientific Advice, 2024-09-19 (final advice 2024-10-04)\n\n- \"The CHMP advises that OS is the preferred primary endpoint. A PFS primary endpoint requires justification and a plan for OS maturity.\"\n- \"A conditional marketing authorization may be considered if the benefit-risk is positive and comprehensive data can be provided later; this is not a commitment.\"\n- \"The Applicant is reminded that a Paediatric Investigation Plan agreement, or a waiver, is required for validation of a marketing authorization application. No PIP application has been submitted as of the date of this meeting.\"\n\n## Excerpt C: FDA response to Breakthrough Therapy designation request, 2025-11-03\n\n- \"The Agency has determined that the preliminary clinical evidence does not indicate that the drug may demonstrate substantial improvement over available therapy on a clinically significant endpoint. The Sponsor may resubmit with additional, more mature data.\"\n"
+    },
+    {
+      "id": "DR-07",
+      "title": "Designations and IND-CTA History",
+      "path": "data-room/DR-07 Designations and IND-CTA History.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration.\n\n# DR-07 Designations and IND/CTA History\n\n| Item | Agency | Date | Status |\n|---|---|---|---|\n| IND (fictional number 1XXXXX) | FDA | 2022-06-10 | Active; no clinical hold history |\n| Orphan Drug designation | FDA | 2023-02-21 | Granted |\n| Fast Track designation | FDA | 2023-09-12 | Granted |\n| Orphan designation | EMA (COMP) | 2023-11-08 | Granted; maintenance report due 2026-11 |\n| Breakthrough Therapy designation | FDA | Requested 2025-08-05 | Denied 2025-11-03; not resubmitted |\n| CTA (EU CTR), study 101 | 4 EU states | 2023-09 | Approved |\n| CTA (EU CTR), study 301 | 6 EU states | 2024-10 | Approved; substantial modification for protocol v4.0 approved 2025-04 |\n| South Korea CT approval, study 301 | MFDS | 2025-01 | Approved |\n| PRIME | EMA | Not requested | n/a |\n| Paediatric Investigation Plan or waiver | EMA PDCO | Not found | See DR-00 (not provided) |\n| Japan consultation | PMDA | None | No contact on record |\n"
+    },
+    {
+      "id": "DR-08",
+      "title": "CMC Summary",
+      "path": "data-room/DR-08 CMC Summary.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration.\n\n# DR-08 CMC Summary: OST-4417 (150 mg tablet)\n\n## Drug substance (DS)\n- Small molecule; synthetic route A used through Phase 2, route B (shortened, higher yield) used for study 301 supply from 2024-09.\n- Route change: FDA asked for a comparability assessment before pivotal use (DR-06 Excerpt A, Q6). Company states \"comparability established.\" Comparability report: not provided (see DR-00).\n- Manufacturer: Halvern Fine Synthesis, Cork, Ireland (fictional CDMO). Sole DS site.\n\n## Drug product (DP)\n- Immediate-release film-coated tablet. Manufacturer: Corvane Pharma Services, Durham, NC (fictional CDMO). Packaging: Brightline Packaging, Dayton, OH (fictional).\n- Phase III clinical supply made at 25 kg scale; planned commercial scale 100 kg. Process performance qualification (PPQ) planned Q1 2027, not started.\n\n## Stability\n| Material | Batches | Longest long-term data (25C/60% RH) | Proposed shelf life |\n|---|---|---|---|\n| DS (route B) | 3 | 12 months | Retest 24 months (extrapolation) |\n| DP | 3 registration batches | 18 months | 24 months (extrapolation per ICH Q1E) |\n\n## Specifications\n- Specifications set for Phase III; impurity limits for two route B process impurities are provisional and not yet qualified against nonclinical exposure (genotoxic impurity assessment per ICH M7 summarized only).\n\n## Open items (company-reported)\n1. FDA Form 483 at Halvern (2026-06-24), five observations; response submitted 2026-07-10; classification pending.\n2. Comparability report for route A to B.\n3. Commercial-scale PPQ and registration of a second DS site (none identified).\n\n## Module 3 readiness\nCompany assessment: \"Module 3 on track for H1 2027 submission.\" No draft Module 3 provided; only this summary.\n"
+    },
+    {
+      "id": "DR-09",
+      "title": "Manufacturing Sites and Inspections",
+      "path": "data-room/DR-09 Manufacturing Sites and Inspections.csv",
+      "format": "csv",
+      "content": "site_id,site,location,role,regulators_inspected_by,last_inspection,outcome,open_items\nS1,Halvern Fine Synthesis,\"Cork, Ireland\",Drug substance (sole site),\"FDA (2024-05, 2026-06); HPRA (2023-11)\",\"2026-06-24 (FDA)\",\"Form 483 with 5 observations; classification pending\",\"Obs 1: HPLC audit trail not reviewed before batch release; Obs 2: OOS investigation for impurity result closed without root cause; Obs 3: shared analyst logins on 2 instruments; Obs 4: cleaning validation gap; Obs 5: change control for route B raw material supplier. Response submitted 2026-07-10; no FDA reply yet.\"\nS2,Corvane Pharma Services,\"Durham, NC, USA\",Drug product manufacture,\"FDA (2025-03)\",\"2025-03-18 (FDA)\",\"No Action Indicated (NAI)\",\"None open\"\nS3,Brightline Packaging,\"Dayton, OH, USA\",Packaging and labeling,\"None by FDA in 5 years\",\"Customer audit 2025-08\",\"Customer audit: 2 minor findings, closed\",\"None open\"\nS4,Lumenar Diagnostics Reference Lab,\"Boulder, CO, USA\",Central CDx testing (clinical trial assay),\"CLIA/CAP\",\"2026-02 (CAP)\",\"Accredited\",\"Final CDx kit manufacturing site not yet named\"\n"
+    },
+    {
+      "id": "DR-10",
+      "title": "Draft Labeling and TPP Claims",
+      "path": "data-room/DR-10 Draft Labeling and TPP Claims.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration.\n\n# DR-10 Draft Labeling and Claims (company working draft v0.3, 2026-08)\n\n## Draft indication\n\"OST-4417 is indicated for the treatment of adult patients with locally advanced or metastatic cholangiocarcinoma whose tumors express TRX-7, as detected by an FDA-approved test, who have received prior systemic therapy.\"\n\n## Draft claims\n\n| # | Claim | Stated support |\n|---|---|---|\n| L1 | \"Indicated for cholangiocarcinoma\" (intrahepatic and extrahepatic) | Study 101 cohort B (intrahepatic only enrolled) |\n| L2 | \"Improves overall survival\" | Study 301; OS data do not exist yet; cohort B OS immature |\n| L3 | \"Durable responses (median DoR 9.8 months)\" | Deck version (DR-02); BICR-confirmed value is 8.4 months (DR-04) |\n| L4 | \"No Hy's law cases observed\" | Safety summary (DR-12) |\n| L5 | \"First-in-class\" | Company statement; not a label element |\n| L6 | \"Once-daily oral, no routine hepatic monitoring required\" | Study 101 monitoring plan required liver tests every 2 weeks for 12 weeks |\n| L7 | Accelerated approval statement and confirmatory trial description | Study 301 (OS key secondary) |\n\n## Version note\nThis draft has no EU SmPC or Japan package insert counterpart. Only a US-style draft was provided.\n"
+    },
+    {
+      "id": "DR-11",
+      "title": "Competitive Landscape",
+      "path": "data-room/DR-11 Competitive Landscape.csv",
+      "format": "csv",
+      "content": "competitor,sponsor,mechanism,stage,biomarker_selected,regulatory_status,key_regulatory_note\nNVB-210,Norvane Bio (fictional),Oral inhibitor of a different pathway,Phase III,Yes (different marker),Fast Track; ORR-based accelerated filing planned 2027,Could become available therapy before OST-4417 reviews\nCLD-88,Caldera Oncology (fictional),Antibody targeting a surface antigen,Phase II,No,Orphan,Randomized Phase III not started\nMRT-302,Meridian Therapeutics (fictional),Oral inhibitor of TRX-7 upstream pathway,Phase II,Yes (TRX-7 related),Orphan,Same biomarker; may share CDx considerations\nStandard chemotherapy regimens,Generic,Cytotoxic combination,Marketed,No,Approved,Comparator in study 301\nApproved targeted agents,Various (fictional class),Targeted therapy for other molecular subsets,Marketed,Yes (other biomarkers),Approved,Different biomarker populations; limited overlap with TRX-7-high\nOST-4417,Ostravane,TRX-7 cofactor inhibitor,Phase III,Yes (TRX-7 IHC),Orphan (US, EU); Fast Track; BTD denied,Accelerated approval request depends on available therapy at filing\n"
+    },
+    {
+      "id": "DR-12",
+      "title": "Safety Summary",
+      "path": "data-room/DR-12 Safety Summary.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration. High-level only.\n\n# DR-12 Safety Summary: OST-4417 (study 101, N=142, cutoff 2026-03-31)\n\n| Measure | Value |\n|---|---|\n| Treatment-related AE, grade 3 or higher | 29% |\n| ALT or AST elevation, any grade | 38% |\n| ALT or AST elevation, grade 3 | 7% |\n| Dose reductions for hepatic events | 11% |\n| Discontinuation for treatment-related AE | 8% |\n| Treatment-related deaths | 0 |\n\n## Hepatic safety statement (company)\n\"No cases meeting Hy's law criteria have been observed.\"\n\n## IND safety report (2026-04-22)\nThe Phase 1/2 data listing shows one patient (cohort B) with ALT above 3x ULN, total bilirubin above 2x ULN, no cholestasis, and no alternative cause identified at the time of reporting; the event resolved after treatment interruption. The report classifies it as a \"potential Hy's law case.\"\n\n## Risk management\nFDA stated it will evaluate the need for a REMS at review (DR-06 Excerpt A, Q5). No REMS proposal has been drafted.\n"
+    },
+    {
+      "id": "DR-13",
+      "title": "Patent and Exclusivity Summary",
+      "path": "data-room/DR-13 Patent and Exclusivity Summary.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration. High-level only; legal workstream owns freedom-to-operate.\n\n# DR-13 Patent and Exclusivity Summary\n\n| Item | Detail |\n|---|---|\n| Composition of matter | Granted US, EP, JP; expiry 2037 before extension |\n| Method of use (TRX-7-high) | Granted US; EP pending; expiry 2041 |\n| Polymorph and route B process | Filed 2024; pending |\n| Patent term extension | Possible for composition patent; US PTE and EU SPC to be filed after approval |\n| Orphan exclusivity | 7 years US on approval; 10 years EU on approval (subject to maintenance) |\n| New chemical entity exclusivity | 5 years US on approval |\n| Pediatric exclusivity | Not applicable until PIP or study plan in place |\n"
+    },
+    {
+      "id": "DR-14",
+      "title": "Companion Diagnostic Summary",
+      "path": "data-room/DR-14 Companion Diagnostic Summary.md",
+      "format": "md",
+      "content": "> FICTIONAL - for demonstration.\n\n# DR-14 Companion Diagnostic Summary\n\n| Item | Detail |\n|---|---|\n| Partner | Lumenar Diagnostics (fictional) |\n| Assay | Lumenar TRX-7 IHC Assay, immunohistochemistry on formalin-fixed tissue; positive = H-score 150 or higher |\n| Used in trials | Clinical trial assay (CTA) version 2 at central lab (Boulder, CO) in study 301 and cohort B |\n| Final market assay | Kit version 3 (new antibody lot and automated stainer platform) |\n| Bridging study | \"Planned; protocol drafted.\" Report not provided (see DR-00) |\n| Regulatory pathway | FDA PMA (Class III); CDRH Pre-Sub held 2024-11-20; EU IVDR conformity assessment not started |\n| PMA timing | Company guidance \"on track\"; module-by-module status not provided |\n| Agreement terms (summary) | Co-development agreement 2023; Lumenar may terminate on change of control of Ostravane with 90 days' notice; assay exclusivity for OST-4417 lasts 3 years from first approval |\n| Final kit manufacturing site | Not yet named |\n| Japan | No local IVD plan |\n"
+    },
+    {
+      "id": "DR-15",
+      "title": "Interim Topline Table",
+      "path": "data-room/DR-15 Interim Topline Table.csv",
+      "format": "csv",
+      "content": "study,population,data_cutoff,n_evaluable,assessment,endpoint,result,ci_or_note\n101 cohort B,TRX-7-high previously treated,2025-09-30,61,Investigator (incl. unconfirmed),ORR,46% (28/61),Used in investor deck\n101 cohort B,TRX-7-high previously treated,2025-09-30,61,Investigator (incl. unconfirmed),Median DoR,9.8 months,Used in investor deck\n101 cohort B,TRX-7-high previously treated,2026-03-31,68,BICR (confirmed),ORR,40% (27/68),95% CI 28% to 52%\n101 cohort B,TRX-7-high previously treated,2026-03-31,68,BICR (confirmed),Median DoR,8.4 months,95% CI 5.6 to 11.2\n101 cohort B,TRX-7-high previously treated,2026-03-31,68,BICR,Median PFS,5.9 months,95% CI 4.7 to 7.3\n101 cohort B,TRX-7-high previously treated,2026-03-31,68,Investigator,OS,Not mature,41% events\n301,TRX-7-high previously treated,none,388 enrolled,n/a,PFS (primary per v4.0),No efficacy data,Interim analysis projected Q2 2027\n"
+    }
+  ]
+}

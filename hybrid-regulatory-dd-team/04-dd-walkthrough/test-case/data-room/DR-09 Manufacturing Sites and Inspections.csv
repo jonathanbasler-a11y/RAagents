@@ -1,0 +1,5 @@
+site_id,site,location,role,regulators_inspected_by,last_inspection,outcome,open_items
+S1,Halvern Fine Synthesis,"Cork, Ireland",Drug substance (sole site),"FDA (2024-05, 2026-06); HPRA (2023-11)","2026-06-24 (FDA)","Form 483 with 5 observations; classification pending","Obs 1: HPLC audit trail not reviewed before batch release; Obs 2: OOS investigation for impurity result closed without root cause; Obs 3: shared analyst logins on 2 instruments; Obs 4: cleaning validation gap; Obs 5: change control for route B raw material supplier. Response submitted 2026-07-10; no FDA reply yet."
+S2,Corvane Pharma Services,"Durham, NC, USA",Drug product manufacture,"FDA (2025-03)","2025-03-18 (FDA)","No Action Indicated (NAI)","None open"
+S3,Brightline Packaging,"Dayton, OH, USA",Packaging and labeling,"None by FDA in 5 years","Customer audit 2025-08","Customer audit: 2 minor findings, closed","None open"
+S4,Lumenar Diagnostics Reference Lab,"Boulder, CO, USA",Central CDx testing (clinical trial assay),"CLIA/CAP","2026-02 (CAP)","Accredited","Final CDx kit manufacturing site not yet named"

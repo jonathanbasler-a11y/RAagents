@@ -1,0 +1,71 @@
+# The offline phase gate for the demo app (docs/BUILD-LEARNINGS.md, Part 11 and Appendix A):
+# typecheck, lint, tests and the production build, on every push and pull request.
+#
+# Fully offline: no secrets and no LLM_* values. The tests also strip model credentials and
+# block fetch themselves (outputs/05_demo/app/tests/setup.ts). The protected-names check skips,
+# with a note in the log, because its git-ignored list never reaches GitHub.
+#
+# Pushing this file needs a GitHub token with the "workflow" scope.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Offline gate (typecheck, lint, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: outputs/05_demo/app
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node from .node-version
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: outputs/05_demo/app/.node-version
+          package-manager-cache: false
+
+      - name: Refuse model credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          leaked=$(compgen -e | grep -E '^(LLM_|ANTHROPIC_|OPENAI_)' || true)
+          if [ -n "$leaked" ]; then
+            echo "These model credential variables are set, but this job must run offline:" >&2
+            echo "$leaked" >&2
+            exit 1
+          fi
+
+      # --ignore-scripts: the only packages with install scripts (esbuild, fsevents,
+      # unrs-resolver) are already denied by "allowScripts" in package.json. The flag keeps
+      # it that way even if the runner's npm predates that policy.
+      - name: Install exact versions from package-lock.json
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Production build
+        run: npm run build

@@ -19,6 +19,16 @@ tasks:
       - manual
 
 services:
+  ux-mockup:
+    name: UX mockup
+    triggeredBy:
+      - manual
+      - postEnvironmentStart
+    commands:
+      start: |
+        ona environment port open 8000 --admission creator_only --name "UX mockup"
+        python3 -m http.server 8000 --bind 0.0.0.0 --directory outputs/05_demo/ux-mockup
+      ready: curl -fsS http://localhost:8000/
   hybrid-team:
     name: Hybrid team chat app
     description: Builds and serves the chat app on port 3000. Start it manually after your secrets are set. Keep the port creator-only.

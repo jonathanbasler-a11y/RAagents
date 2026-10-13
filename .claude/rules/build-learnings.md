@@ -27,4 +27,8 @@ The full lessons, with evidence, are in `docs/BUILD-LEARNINGS.md`. Before you de
 - Every route into an agent goes through the same grants, gates and grounding.
 - Measure on a frozen corpus. Compare runs case by case, against the noise. The judge model is never the agent's model.
 - Tests run offline. Every guard gets a mutation test that proves it can fail.
+- Editing the shared prompt block re-baselines every agent: fix one agent in its own brief. Pin each rule inside its own paragraph.
+- A baseline must describe today's setup, and a persona edit changes the grading too: re-judge the baseline under the new brief. `overall` hides concision and calibration: compare those dimensions directly.
+- A rule for a rare situation (a safety disclosure) goes in a system note on the turn, gated by a deterministic detector, not in a persona: a permanent paragraph colours every answer, and facts in it leak.
+- A promise the agent cannot keep ("this stays between us") needs a deterministic forbidden-claim check, and the run helper refuses a dirty tree or a reused run name before it spends.
 - This repo is public. Never commit credentials, internal hosts, company names (other than regulators), personal names or confidential material.
