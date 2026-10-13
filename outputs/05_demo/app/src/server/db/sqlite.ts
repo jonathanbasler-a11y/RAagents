@@ -62,7 +62,8 @@ export function restrictDatabaseFiles(filePath: string): string[] {
  * - creates the parent folder (mode 0700; an existing folder keeps its mode);
  * - restricts the file to its owner (mode 0600), including the -wal and -shm files;
  * - switches a file database to WAL, and throws if SQLite refuses;
- * - sets the busy timeout and enforces foreign keys.
+ * - sets the busy timeout, enforces foreign keys and turns recursive triggers on (so that a
+ *   delete trigger also fires for the delete inside INSERT OR REPLACE).
  * Pass IN_MEMORY_DATABASE for a throwaway database (no WAL, nothing on disk).
  * The caller owns the connection and closes it.
  */
@@ -82,6 +83,9 @@ export function openDatabase(filePath: string, options: OpenDatabaseOptions = {}
   const db = new DatabaseSync(filePath, { enableForeignKeyConstraints: true });
   try {
     db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
+    // INSERT OR REPLACE deletes the old row first, and SQLite runs a delete trigger for that only
+    // with recursive triggers on. Without it the append-only triggers do not stop a REPLACE.
+    db.exec('PRAGMA recursive_triggers = ON');
     if (!inMemory) {
       const row = db.prepare('PRAGMA journal_mode = WAL').get() as { journal_mode?: unknown } | undefined;
       if (row?.journal_mode !== 'wal') {
