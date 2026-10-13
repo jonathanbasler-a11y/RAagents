@@ -29,6 +29,7 @@ routable: true
 mention_only: false
 locked: false
 default_selected: false
+trigger: filed
 handoffs:
   - label
   - o-ma
