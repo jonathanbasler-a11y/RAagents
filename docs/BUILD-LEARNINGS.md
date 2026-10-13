@@ -424,6 +424,9 @@ Keep agents as data. The repo template's fields are role, knowledge sources, too
 - **State rule precedence explicitly.** A shared rule to keep interim replies brief beat one agent's instruction to always produce the finished output. That agent then handed back plans instead of results. Put the precedence rule in that agent's brief.
 - **Editing the shared block changes every agent's prompt.** Every baseline must then be re-measured. Prefer per-agent fixes, and keep shared-block changes deliberate and measured fleet-wide.
 - **Fence a rule to its context.** A fix for one situation leaked into a write path, and the agent began offering to save drafts full of placeholders. Give each rule its own paragraph, and add a test.
+  - Pin the rule *inside its own paragraph* (find the paragraph by a phrase unique to it, then assert the directional phrases there). A bare substring over the whole brief passes on a sentence that says the opposite.
+  - Normalise whitespace first, because briefs are hand-wrapped.
+  - Name the rules an exemption lifts ("the placeholder rule and the length cap do not apply to X"). "The paragraphs above" is positional and also lifts protective clauses.
 - **Avoid status words as evidence labels.** A "[confirmed]" label beside "the date is not confirmed" read as a contradiction. In regulatory work, "confirmed", "approved" and "accepted" are content words. Use neutral labels such as "[sourced]".
 - **Don't put a forbidden token in front of the model.** "Never write [X]" seeds X.
 - **Never demand citations from an agent with no retrieval tool.** It invented URLs, titles and dates. Removing that instruction raised one agent's score from 3.7 to 4.6.
@@ -431,6 +434,7 @@ Keep agents as data. The repo template's fields are role, knowledge sources, too
 - **Keep prompt claims in sync with real capabilities.** Agents denied features that existed, and claimed features they did not have. Pin prompt lines against code with tests.
 - **Placeholders are fine; invented numbers are not.** A made-up percentage labelled as illustrative still lends the *shape* of evidence. This matters directly for PTRS inputs.
 - **Unconditional persona habits** ("always open with X") produced long, off-topic answers. Make habits conditional on the question.
+- **A shared "treat everything as strictly confidential" rule turns into a promise.** Told "tell nobody" after a disclosure of self-harm, a coaching persona answered "this conversation stays here" in every run, while also redirecting to crisis support correctly. The promise is false (chats are stored, and text goes to the model provider) and it is not the agent's to make. The same answers also claimed that nothing would be saved, which was false too, because the app copied each turn into shared notes. Do not fix it with a paragraph in the persona. A long supportive paragraph in a permanent brief fixed its own case (2.7 to 4.9 of 5) and, in five wordings and two positions, pulled an unrelated coaching question (a user who feels like a fraud after being promoted) toward a stock "this is very common" opener (3.7 to 4.1 against about 4.7); a fact stated in it (where the user lives) also turned up in unrelated answers. Put it on the turn instead: a deterministic, deliberately over-sensitive detector over the user's recent messages adds a short system note only when a disclosure is seen. The note tells the model to ignore it otherwise and never to mention it; says only what is true (the app keeps the chat, the agent cannot contact anyone) and nothing about what is saved; asks about immediate safety; points to emergency help; and is exempt from length and format rules. Show the judge the same note, record it in the run's provenance so a change to it cannot hide from the comparison, and test that none of the existing eval questions triggers the detector.
 
 ### Tools
 
@@ -657,6 +661,8 @@ Rules:
 - **"Critical" is decided by check class,** not by risk level. The classes: forbidden tool, forbidden claim, output shape, and missing expected tool.
 - **Still open:** a negation-aware matcher. "Is not confirmed" trips a ban on "is confirmed".
 
+- **Promises the agent cannot keep need a deterministic forbidden-claim check.** The judge scored the secrecy promises above 3.8 to 4.6 and nothing was flagged, because the case had no literal check. Use full promise phrases ("this conversation stays here", "stays between us", "I have deleted it"). Matching is not negation-aware, so add tests that safe answers ("I can't promise this is private", a crisis line described as confidential) are not flagged: a false positive is a critical failure. Prefer "I can't promise this is private" as the script, because "I can't keep this a secret" implies that a report is about to be made.
+
 ### 9.4 Judge
 
 - **A different model family from the agent.** Compare *resolved* models, not route names: two route names once pointed at the same model.
@@ -701,8 +707,11 @@ Rules:
   A missing field reads as unverifiable, never as equal. Record the commit at the *start* of the run.
 - **Offline tools:**
   - **Regrade** re-runs the deterministic checks on stored answers, in seconds and for free.
-  - **Rejudge** re-scores stored answers under a new brief, to separate a change in grading criteria from a change in behaviour.
+  - **Rejudge** re-scores stored answers under a new brief, to separate a change in grading criteria from a change in behaviour. The judge reads the agent's brief, so editing a persona also edits the grading: re-judge the baseline under the new brief, and expect its scores to move (in one run by about 0.16 overall) before attributing any difference to the answers. Report the unfixed-criteria figure beside it.
   - Keep held-out cases you never edit towards.
+- **A change aimed at a dimension outside `overall` is invisible to a comparison that reads only `overall`.** Concision and calibration are observed, not gated, so a fix for long answers shows nothing there. Compare that dimension case-paired too, and state that each arm was judged under its own brief. One persona edit moved task success and role fit and left concision unchanged (3.50 to 3.61, inside the noise).
+- **A baseline must describe today's setup.** A baseline taken before a later merge (a prompt, tool description, case or model change) makes the comparison measure two changes at once. After any such merge, take a fresh baseline or re-judge, and say which one you used.
+- **The run helper refuses before it spends.** It rejects a dirty tree (the run could only end UNVERIFIABLE), a missing environment, an unreachable provider, and a run name that already has logs (a "finished" batch would be reported as new). A destructive or paid script names its target explicitly and has a dry-run mode: a defaulted target once started three paid runs during a test of the refusal.
 - **Machine load changes results.** Avoid other heavy jobs during measurement windows.
 
 ### 9.7 Release gate (starting points, tune once you have data)
