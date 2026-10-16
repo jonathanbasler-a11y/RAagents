@@ -4,6 +4,10 @@ Fictional practice document. Invented for an exercise; it describes no real comp
 
 Minutes of a pre-submission meeting between the Licensor and the agency, held 2026-03-18. Minutes issued 2026-03-20. Excerpt, three questions.
 
+## Preliminaries
+
+The agency confirmed at the start of the meeting that PRC-204 holds breakthrough therapy designation, granted 2025-04-22, for the adult indication.
+
 ## Question 1: Is one pivotal study enough?
 
 Licensor position: STUDY-301 will be the single pivotal study for approval.

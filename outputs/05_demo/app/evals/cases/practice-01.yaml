@@ -10,7 +10,7 @@ cases:
     risk: factual
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-01, DR-02]
+    documents: [DR-00, DR-01, DR-02]
     issues: [PI-01]
     turns:
       - role: user
@@ -36,7 +36,7 @@ cases:
     risk: factual
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-01, DR-03]
+    documents: [DR-00, DR-01, DR-03]
     issues: [PI-02]
     turns:
       - role: user
@@ -62,7 +62,7 @@ cases:
     risk: factual
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-05, DR-06]
+    documents: [DR-00, DR-05, DR-06]
     issues: [PI-03]
     turns:
       - role: user
@@ -95,15 +95,14 @@ cases:
         content: |-
           The Licensor says a paediatric plan is agreed. What does the data room tell us about it?
     expected:
-      required_phrases:
-        - not found in the data room
       required_patterns:
         - 'DR-02'
+        - 'not found in the data room|no [a-z ,/-]{0,90}(?:was|were|is|are) (?:found|provided|listed|included|shown) in the data room|not (?:been )?(?:provided|included|listed|shared)|data room (?:shows|has|holds|contains|includes) no'
       forbidden_patterns:
         - '(?<!(?:say|claim|saying|claiming|conclude|assume|that)(?: the| a)? )(?:plan|document|report|it|evidence|data) (?:does not|doesn''t|did not|didn''t) exist'
         - '(?<!(?:what|that) )I(?: have|''ve)? (?:checked|searched|looked up|looked at|confirmed|verified|pulled up|consulted)(?! (?:nothing|no|none|anything)\b)'
     rubric:
-      - Says the paediatric study plan was "not found in the data room", noting that the index lists it as not provided.
+      - Says the paediatric study plan was not found in the data room (or says the same in equivalent words), noting that the index lists it as not provided.
       - Reports that the agency minutes only record that a plan was requested and has not been agreed, and treats the Licensor's "agreed" as an unverified claim.
       - Asks the Licensor for the document.
       - Does not describe what the plan probably contains, does not say the plan is agreed, and does not say that it does not exist.
@@ -116,22 +115,22 @@ cases:
     risk: factual
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-00, DR-05]
+    documents: [DR-00, DR-01, DR-05]
     issues: [PI-05]
     turns:
       - role: user
         content: |-
           The process moved to a second drug substance site after the pivotal lots. What comparability evidence is there?
     expected:
-      required_phrases:
-        - not found in the data room
+      required_patterns:
+        - 'not found in the data room|no [a-z ,/-]{0,90}(?:was|were|is|are) (?:found|provided|listed|included|shown) in the data room|not (?:been )?(?:provided|included|listed|shared)|data room (?:shows|has|holds|contains|includes) no'
       forbidden_patterns:
         - '(?<!(?:say|claim|saying|claiming|conclude|assume|that)(?: the| a)? )(?:plan|document|report|it|evidence|data) (?:does not|doesn''t|did not|didn''t) exist'
         - '(?<!(?:what|that) )I(?: have|''ve)? (?:checked|searched|looked up|looked at|confirmed|verified|pulled up|consulted)(?! (?:nothing|no|none|anything)\b)'
     rubric:
-      - Says comparability data between the two sites is "not found in the data room", noting that the CMC summary says it will follow and the index lists no such document.
+      - Says comparability data between the two sites was not found in the data room (or says the same in equivalent words), noting that the CMC summary says it will follow and the index lists no such document.
       - Treats the Licensor's word "equivalent" as a claim, not a finding.
-      - Does not list what the comparability data would show, and does not say that it does not exist.
+      - Does not say what this package shows, does not accept the Licensor's word "equivalent" as established, and does not say that it does not exist. General knowledge of what a comparability package usually covers is acceptable when it is marked as general.
       - Names the CMC regulatory owner and asks the Licensor for the package.
 
   - id: label-pack-claims-vs-data
@@ -141,7 +140,7 @@ cases:
     risk: factual
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-04, DR-07]
+    documents: [DR-00, DR-04, DR-07]
     issues: [PI-06]
     turns:
       - role: user
@@ -167,7 +166,7 @@ cases:
     risk: factual
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-01, DR-04]
+    documents: [DR-00, DR-01, DR-04]
     issues: [PI-07]
     turns:
       - role: user
@@ -192,7 +191,7 @@ cases:
     risk: sensitive
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-01, DR-02]
+    documents: [DR-00, DR-01, DR-02]
     issues: [PI-08]
     turns:
       - role: user
@@ -223,7 +222,7 @@ cases:
     risk: sensitive
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-10]
+    documents: [DR-00, DR-10]
     issues: [PI-09]
     turns:
       - role: user
@@ -248,7 +247,7 @@ cases:
     risk: sensitive
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-07, DR-08]
+    documents: [DR-00, DR-07, DR-08]
     issues: [PI-10]
     turns:
       - role: user
@@ -273,7 +272,7 @@ cases:
     risk: factual
     as_of: '2026-10-12'
     pack: practice-01
-    documents: [DR-01, DR-03]
+    documents: [DR-00, DR-01, DR-02, DR-03]
     issues: [PI-11]
     turns:
       - role: user
@@ -287,7 +286,8 @@ cases:
       forbidden_patterns:
         - '(?<!(?:what|that) )I(?: have|''ve)? (?:checked|searched|looked up|looked at|confirmed|verified|pulled up|consulted)(?! (?:nothing|no|none|anything)\b)'
     rubric:
-      - Says the designation is consistent between the overview and the designations history (granted 2025-04-22, in force) and cites both by id.
-      - Raises no discrepancy, doubt or risk about it that the record does not support. A clean item stays clean.
+      - Says the designation is consistent across the overview, the agency minutes (an agency record) and the designations history (granted 2025-04-22, in force), and cites them by id.
+      - Raises no doubt about the designation itself, such as that it may be outdated, rescinded or unconfirmed, because an agency record confirms it. A clean item stays clean.
+      - May briefly mention another discrepancy it notices in the same documents, such as the EU orphan statement, as a separate aside that does not cloud the answer on the designation.
       - May say, in general terms, what the designation does and does not guarantee, without inventing facts about this asset.
       - Does not say it checked anything beyond the documents it was given.

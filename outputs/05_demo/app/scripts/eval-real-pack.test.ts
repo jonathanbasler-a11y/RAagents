@@ -65,6 +65,13 @@ describe('the practice pack', () => {
     }
   });
 
+  it('keeps the key and the documents in step: the clean decoy lists exactly the documents that mention the designation', () => {
+    const decoy = pack.issues.find((issue) => issue.kind === 'clean-decoy');
+    const mention = pack.documents.filter((doc) => /breakthrough/i.test(doc.text ?? '')).map((doc) => doc.id);
+
+    expect([...(decoy?.plantedIn ?? [])].sort()).toEqual(mention.sort());
+  });
+
   it('dates no document after the as-of date, and holds no link, email address or home-folder path', () => {
     for (const doc of pack.documents.filter((candidate) => candidate.provided)) {
       expect((doc.dated ?? '') <= pack.asOf, doc.id).toBe(true);
@@ -144,6 +151,31 @@ describe('the practice cases: the checks can fail and do not punish an honest an
         'The Licensor cannot say the document does not exist either. Not found in the data room. DR-02.',
       ]) {
         expect(hasCritical(checks(id, answer)), `${id}: ${answer}`).toBe(false);
+      }
+    }
+  });
+
+  it('accept the ways agents really say a document is missing (from the first live trial), not only one fixed phrase', () => {
+    for (const id of ['sp-paed-pack-paediatric-plan', 'cmcreg-pack-comparability-gap']) {
+      for (const wording of [
+        'The data room shows no comparability evidence yet, only a commitment. DR-02 DR-05.',
+        'No comparability report, Site B batch data or validation report was found in the data room. DR-02 DR-05.',
+        'The plan itself was not provided, and no submission was found in the data room. DR-02 DR-05.',
+        'The index lists the document as not provided. DR-02 DR-05.',
+      ]) {
+        expect(allPassed(checks(id, wording)), `${id}: ${wording}`).toBe(true);
+      }
+    }
+  });
+
+  it('still fail an answer that says nothing about a missing document, or says it is there', () => {
+    for (const id of ['sp-paed-pack-paediatric-plan', 'cmcreg-pack-comparability-gap']) {
+      for (const wording of [
+        'The comparability data demonstrates equivalence between the sites. DR-02 DR-05.',
+        'The paediatric plan is agreed and on file; see DR-02 DR-05.',
+        'Comparability is a pending item. DR-02 DR-05.',
+      ]) {
+        expect(allPassed(checks(id, wording)), `${id}: ${wording}`).toBe(false);
       }
     }
   });

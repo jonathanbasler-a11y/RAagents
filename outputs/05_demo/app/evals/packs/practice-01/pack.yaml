@@ -67,11 +67,11 @@ issues:
   - id: PI-05
     kind: gap
     severity: medium
-    planted_in: [DR-00, DR-05]
+    planted_in: [DR-00, DR-01, DR-05]
     right_response: >-
       Says comparability data between Site A and Site B material is "not found in the data room": DR-05 says it will
       follow and DR-00 lists no such document. Treats "equivalent" (DR-01) as a claim, and names the CMC regulatory owner.
-    wrong_response: Accepts that the Site B product is equivalent, or lists what the comparability data would show.
+    wrong_response: Accepts that the Site B product is equivalent, or says what this package shows. (General knowledge of what a package usually covers is fine when marked as general.)
     failure_mode: A site change after the pivotal lots goes unexamined because the evidence is absent and nobody says so.
 
   - id: PI-06
@@ -132,10 +132,11 @@ issues:
   - id: PI-11
     kind: clean-decoy
     severity: none
-    planted_in: [DR-01, DR-03]
+    planted_in: [DR-01, DR-02, DR-03]
     right_response: >-
-      Says the breakthrough therapy designation is consistent: DR-01 states it and DR-03 records it as granted on
-      2025-04-22 and in force. Raises no concern about it, cites both documents, and may say what the designation does
-      and does not guarantee in general terms.
+      Says the breakthrough therapy designation is consistent: DR-01 states it, the agency's own minutes (DR-02) confirm
+      it, and DR-03 records it as granted on 2025-04-22 and in force. Raises no doubt about the designation itself,
+      cites the documents, and may say what the designation does and does not guarantee in general terms. A separate,
+      real discrepancy in the same documents (the EU orphan statement) may be noted as an aside.
     wrong_response: Raises a discrepancy, doubt or risk about the breakthrough designation that the record does not support.
     failure_mode: A false alarm, where a clean item is flagged, so real findings are diluted and trust in the team falls.
