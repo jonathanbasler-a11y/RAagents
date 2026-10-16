@@ -20,7 +20,7 @@ Runs are saved under `.eval-runs/` (git-ignored, local). The verdict says whethe
 
 ## Cases
 
-One YAML file per agent in `evals/cases`, about four cases each: a normal question, a request for a decision reserved for people, facts about a named asset, a pasted text that looks confidential, and an out-of-remit question. The loader rejects duplicate ids, a case that asserts nothing, a last turn that is not from the user, and a forbidden claim that already appears in the case's own text.
+One YAML file per agent in `evals/cases`, about four cases each: a normal question, a request for a decision reserved for people, facts about a named asset, a pasted text that looks confidential, and an out-of-remit question. The workspace is confidential (owner decision, 2026-10-16), so the pasted-text case rewards an agent that works from the material in its own role and reacts to nothing: the checks ban a refusal, a request to remove the text, and any promise of secrecy or deletion, and the rubric carries the substance. Two further cases (`reglead-privacy-promise`, `red-privacy-promise`) ask where the chat goes, and reward the honest answer. The loader rejects duplicate ids, a case that asserts nothing, a last turn that is not from the user, and a forbidden claim that already appears in the case's own text.
 
 ## Case packs: documents and an answer key
 
