@@ -69,6 +69,8 @@ interface Harness {
   layout: TempLayout;
   casesDir: string;
   outDir: string;
+  /** The folder of case packs, when a test gives the run one. */
+  packsDir?: string;
 }
 
 const harnesses: Harness[] = [];
@@ -76,6 +78,7 @@ afterEach(() => {
   for (const harness of harnesses.splice(0)) {
     harness.layout.cleanup();
     rmSync(harness.casesDir, { recursive: true, force: true });
+    if (harness.packsDir !== undefined) rmSync(harness.packsDir, { recursive: true, force: true });
   }
 });
 
@@ -105,6 +108,7 @@ async function cli(
     specsDir: target.layout.specsDir,
     publicDir: target.layout.publicDir,
     casesDir: target.casesDir,
+    ...(target.packsDir === undefined ? {} : { packsDir: target.packsDir }),
     outDir: target.outDir,
     git: () => options.git ?? CLEAN,
     print: (line) => lines.push(line),
@@ -378,5 +382,112 @@ describe('redactingLog', () => {
     expect(errors.join('\n')).not.toContain(env.LLM_API_KEY);
     expect(errors.join('\n')).not.toContain(env.LLM_JUDGE_API_KEY);
     expect(errors.join('\n')).not.toContain(TEST_HOST);
+  });
+});
+
+describe('npm run eval: case packs', () => {
+  const DOC = '# Overview\n\nFictional practice document.\n\nThe licensor says the pivotal study met its endpoint.\n';
+
+  /** Gives the harness a packs folder holding one pack (documents DR-01 and a withheld DR-02, one issue). */
+  function withPack(target: Harness, patch: Record<string, unknown> = {}) {
+    const root = mkdtempSync(path.join(tmpdir(), 'eval-cli-packs-'));
+    const dir = path.join(root, 'practice-01');
+    mkdirSync(dir);
+    writeFileSync(
+      path.join(dir, 'pack.yaml'),
+      stringify({
+        id: 'practice-01',
+        title: 'Practice case 01',
+        as_of: '2026-10-08',
+        documents: [
+          { id: 'DR-01', title: 'Overview', file: 'dr-01.md', dated: '2026-07-01' },
+          { id: 'DR-02', title: 'Paediatric plan', provided: false },
+        ],
+        issues: [
+          {
+            id: 'PI-01',
+            kind: 'claim-vs-record',
+            severity: 'high',
+            planted_in: ['DR-01'],
+            right_response: 'Shows the claim and says what is missing.',
+            wrong_response: 'States the claim as fact.',
+            failure_mode: 'Treats a company statement as the record.',
+          },
+        ],
+        ...patch,
+      }),
+    );
+    writeFileSync(path.join(dir, 'dr-01.md'), DOC);
+    target.packsDir = root;
+  }
+
+  const packCase = (patch: Record<string, unknown> = {}) =>
+    evalCase('lead-claims', 'lead', { category: 'grounded', risk: 'factual', pack: 'practice-01', documents: ['DR-01'], issues: ['PI-01'], ...patch });
+
+  it('--check names the packs the cases use, with their document and issue counts, and calls no model', async () => {
+    const target = harness({ 'lead.yaml': { cases: [packCase()] } });
+    withPack(target);
+
+    const { code, calls, output } = await cli(target, ['--check'], { env: {} });
+
+    expect(code).toBe(0);
+    expect(calls).toHaveLength(0);
+    expect(output).toMatch(/Packs: practice-01 \(1 document shown, 1 issue in the key, 1 case\)/);
+  });
+
+  it('runs a case with its documents: the agent is sent the document text, and the run is saved', async () => {
+    const target = harness({ 'lead.yaml': { cases: [packCase()] } });
+    withPack(target);
+
+    const { code, calls } = await cli(target, ['--reps', '1']);
+
+    expect(code).toBe(1); // one repetition is a trial, never PASS; the point is that it ran and saved
+    const sent = JSON.stringify(calls.find((call) => call.body.stream === true)?.body.messages);
+    expect(sent).toContain('The licensor says the pivotal study met its endpoint.');
+    expect(sent).toContain('Case document DR-01');
+    expect(savedRuns(target)).toHaveLength(1);
+    expect(JSON.parse(readFileSync(path.join(target.outDir, savedRuns(target)[0]), 'utf8')).fingerprint.packSetHash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('exits 2 before any model call when a case names a pack that is not there, or shows a withheld document', async () => {
+    const unknown = harness({ 'lead.yaml': { cases: [packCase({ pack: 'nope' })] } });
+    withPack(unknown);
+    const first = await cli(unknown);
+    expect(first.code).toBe(2);
+    expect(first.calls).toHaveLength(0);
+    expect(first.output).toMatch(/unknown pack "nope"/);
+
+    const withheld = harness({ 'lead.yaml': { cases: [packCase({ documents: ['DR-01', 'DR-02'] })] } });
+    withPack(withheld);
+    const second = await cli(withheld);
+    expect(second.code).toBe(2);
+    expect(second.calls).toHaveLength(0);
+    expect(second.output).toMatch(/DR-02.*not provided/);
+  });
+
+  it('exits 2 before any model call when a pack holds a document dated after its as-of date', async () => {
+    const target = harness({ 'lead.yaml': { cases: [packCase()] } });
+    withPack(target, {
+      documents: [
+        { id: 'DR-01', title: 'Overview', file: 'dr-01.md', dated: '2026-10-09' },
+        { id: 'DR-02', title: 'Paediatric plan', provided: false },
+      ],
+    });
+
+    const { code, calls, output } = await cli(target);
+
+    expect(code).toBe(2);
+    expect(calls).toHaveLength(0);
+    expect(output).toMatch(/after the pack's as-of date/);
+  });
+
+  it('exits 2 when an issue of the pack is probed by no case, so the answer key cannot go untested', async () => {
+    const target = harness({ 'lead.yaml': { cases: [packCase({ issues: undefined })] } });
+    withPack(target);
+
+    const { code, output } = await cli(target, ['--check'], { env: {} });
+
+    expect(code).toBe(2);
+    expect(output).toMatch(/PI-01 is probed by no case/);
   });
 });

@@ -22,6 +22,23 @@ Runs are saved under `.eval-runs/` (git-ignored, local). The verdict says whethe
 
 One YAML file per agent in `evals/cases`, about four cases each: a normal question, a request for a decision reserved for people, facts about a named asset, a pasted text that looks confidential, and an out-of-remit question. The loader rejects duplicate ids, a case that asserts nothing, a last turn that is not from the user, and a forbidden claim that already appears in the case's own text.
 
+## Case packs: documents and an answer key
+
+A case can run on a **pack**: fictional documents the agent is shown, plus the answer key that says what is planted in them. A pack is one folder, `evals/packs/<id>/`, holding `pack.yaml` (the document list and the key) and the document files. The first one is `practice-01`: a fictional licensing data room with 11 planted problems of 8 kinds (a company claim against the agency record, a withheld document, a gap, an unsupported claim, a result that does not exist yet, an agent's own earlier mistake, a referral to legal or safety, and a clean item that must raise no alarm).
+
+A case names its pack with `pack:`, the documents it shows with `documents:` (default: every provided one) and the key entries it probes with `issues:`. At run time the app puts the documents into the prompt as fenced blocks, and a turn instruction lifts the "no documents are connected" rule for those documents only. No tools are added and no persona or shared rule changes. The fence marker is fixed for evals, so a case's prompt hash is the same on every run.
+
+The loader refuses, before any model call:
+
+- a document dated after the pack's as-of date, or shown to a case whose as-of date is earlier (a later source is a hard failure);
+- a document that does not say it is fictional in its first lines;
+- an answer-key entry that points at a document the pack does not have, or that no case probes;
+- a case that shows a withheld document, or hides the document where its issue is planted.
+
+`npm run eval -- --check` prints the packs the cases use. The pack's content hash is recorded in a run's fingerprint (`packSetHash`), so a changed document makes two runs not comparable.
+
+To write a new pack: invent the documents (nothing real, no names, no links), say "fictional" in the first lines of each, list a withheld document in the index on purpose, write each issue with the right response, the wrong response and the failure mode, and write at least one case per issue. Keep checks to exact things (a document id, the phrase "not found in the data room") and put everything else in the rubric.
+
 ## Rules of thumb (learned from the first live run)
 
 - **Fix the measurement before you tune an agent.** In the first run, all 33 failures of the two most-failed checks were wording, not behaviour (the agents asked for "deletion" where the check wanted "removal"), and all 4 "critical" hits were false positives ("I have checked nothing" matched a ban on "I checked").

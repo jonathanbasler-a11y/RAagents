@@ -22,6 +22,7 @@ import { runAgent } from '@/server/chat/run-agent';
 import { checkEnvFilePermissions, createLlmClient, modelFamily, readLlmConfig } from '@/server/llm';
 import type { AgentRegistry, LlmConfigResult, LlmRouteName } from '@/shared/contracts';
 import { EvalCaseError, formatIssue, loadCases, type EvalCase } from '../evals/lib/cases';
+import { bindPacks, EvalPackError, loadPacks, type CasePack } from '../evals/lib/packs';
 import { compareRuns, formatReport, verdictOf } from '../evals/lib/report';
 import {
   EVAL_REPETITIONS,
@@ -181,6 +182,8 @@ export interface EvalCliOptions {
   publicDir: string;
   /** The folder of case files (evals/cases). */
   casesDir: string;
+  /** The folder of case packs (evals/packs): fictional documents and the answer key. Optional. */
+  packsDir?: string;
   /** Where runs are saved (.eval-runs). */
   outDir: string;
   /** The checkout's state; default: read it with git. */
@@ -287,6 +290,18 @@ function selectCases(allCases: readonly EvalCase[], registry: AgentRegistry, arg
   return { cases: selected, problems };
 }
 
+/** One line per pack the selected cases use: documents shown, issues in the key, cases. */
+function packsLines(cases: readonly EvalCase[], packs: ReadonlyMap<string, CasePack>): string[] {
+  const used = [...new Set(cases.filter((evalCase) => evalCase.pack !== undefined).map((evalCase) => evalCase.pack as string))].sort();
+  return used.flatMap((id) => {
+    const pack = packs.get(id);
+    if (pack === undefined) return [];
+    const forPack = cases.filter((evalCase) => evalCase.pack === id);
+    const shown = new Set(forPack.flatMap((evalCase) => evalCase.documents ?? pack.documents.filter((doc) => doc.provided).map((doc) => doc.id)));
+    return [`Packs: ${id} (${plural(shown.size, 'document')} shown, ${plural(pack.issues.length, 'issue')} in the key, ${plural(forPack.length, 'case')})`];
+  });
+}
+
 function casesLine(cases: readonly EvalCase[], registry: AgentRegistry): string {
   const counts = registry.agents
     .map((agent) => ({ name: agent.name, count: cases.filter((evalCase) => evalCase.agent === agent.id).length }))
@@ -330,6 +345,16 @@ export async function runEvalCli(options: EvalCliOptions): Promise<number> {
     else printProblems('The eval cases cannot be read', [error instanceof Error ? error.message : String(error)]);
     return 2;
   }
+  let packs: ReadonlyMap<string, CasePack> = new Map();
+  try {
+    packs = options.packsDir === undefined ? new Map() : loadPacks(options.packsDir);
+    bindPacks(allCases, packs);
+  } catch (error) {
+    if (error instanceof EvalPackError) printProblems(plural(error.issues.length, 'problem') + ' in the eval packs', error.issues);
+    else if (error instanceof EvalCaseError) printProblems(plural(error.issues.length, 'problem') + ' between the cases and the packs', error.issues.map(formatIssue));
+    else printProblems('The eval packs cannot be read', [error instanceof Error ? error.message : String(error)]);
+    return 2;
+  }
   const selection = selectCases(allCases, registry, args);
   if (selection.problems.length > 0) {
     printProblems(plural(selection.problems.length, 'problem') + ' with the cases or filters', selection.problems);
@@ -337,6 +362,7 @@ export async function runEvalCli(options: EvalCliOptions): Promise<number> {
   }
   const { cases } = selection;
   print(casesLine(cases, registry));
+  for (const line of packsLines(cases, packs)) print(line);
 
   const agents = readLlmConfig('agents', options.env);
   const judge = readLlmConfig('judge', options.env);
@@ -383,6 +409,7 @@ export async function runEvalCli(options: EvalCliOptions): Promise<number> {
     record = await runEval(
       {
         cases,
+        packs,
         reps: args.reps,
         filters: { agents: args.agents.length > 0 ? args.agents : null, cases: args.cases.length > 0 ? args.cases : null },
       },
@@ -443,6 +470,7 @@ async function main(): Promise<number> {
     specsDir: path.resolve(appDir, specsFromEnv !== undefined && specsFromEnv.trim() !== '' ? specsFromEnv : path.join('..', '..', '04_agents')),
     publicDir: path.join(appDir, 'public'),
     casesDir: path.join(appDir, 'evals', 'cases'),
+    packsDir: path.join(appDir, 'evals', 'packs'),
     outDir: path.join(appDir, '.eval-runs'),
     print: (line) => console.log(line),
   });

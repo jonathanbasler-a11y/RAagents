@@ -59,6 +59,11 @@ export function promptHashFor(agentId: string, context: RunAgentContext, deps: R
     now: (deps.now ?? (() => new Date()))(),
     timeZone: context.timeZone,
     history: context.history,
+    omitted: context.omitted,
+    roomContext: context.roomContext,
+    instructions: context.instructions,
+    lengthWords: context.lengthWords,
+    random: context.fenceRandom,
   }).promptHash;
 }
 

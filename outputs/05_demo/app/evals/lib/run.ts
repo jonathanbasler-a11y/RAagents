@@ -17,6 +17,7 @@ import { LlmError, modelFamily, type ModelFamily } from '@/server/llm';
 import { buildAgentPrompt, type AgentPrompt } from '@/server/prompts';
 import type { AgentId, AgentSpec, ChatErrorCode, ChatLimits, LlmClient, LlmMessage, MessageStatus } from '@/shared/contracts';
 import type { CaseCategory, CaseRisk, EvalCase } from './cases';
+import { caseMaterial, type CaseMaterial, type CasePack } from './packs';
 import { runChecks, type CheckResult } from './checks';
 import { JUDGE_MAX_TOKENS, buildJudgeMessages, judgePromptHash, parseJudgeReply, type JudgeScores } from './judge';
 
@@ -107,6 +108,8 @@ export interface EvalFingerprint {
   caseSetHash: string;
   /** sha256 over the run's case ids and the prompt hashes runAgent reported. */
   promptSetHash: string;
+  /** sha256 over the ids and content hashes of the case packs the run used. Absent when no case uses a pack. */
+  packSetHash?: string;
   judgePromptHash: string;
   agentsModel: ModelRecord;
   judgeModel: ModelRecord;
@@ -145,6 +148,8 @@ export type RunAgentFn = (agentId: AgentId, context: RunAgentContext, deps: RunA
 
 export interface EvalRunOptions {
   cases: readonly EvalCase[];
+  /** The case packs (fictional documents and answer key) by id; needed when a case names a pack. */
+  packs?: ReadonlyMap<string, CasePack>;
   /** Default 3. */
   reps?: number;
   /** What the person asked for, recorded in the fingerprint. */
@@ -190,9 +195,21 @@ function historyOf(evalCase: EvalCase): LlmMessage[] {
   return evalCase.turns.map(({ role, content }) => ({ role, content }));
 }
 
+/**
+ * The fence marker of every eval call. Fixed, so a case's prompt (and its hash) is the same on every
+ * run. The app uses a random marker; the documents of a case are authored and fictional, so nothing
+ * relies on the marker being secret here.
+ */
+export const EVAL_FENCE_MARKER = 'eval0fence00001';
+const evalFenceRandom = () => EVAL_FENCE_MARKER;
+
 /** The context runAgent gets for a case: the agent's 1:1 room, as the chat's 1:1 executor calls it. */
-export function evalContext(evalCase: EvalCase, signal: AbortSignal): RunAgentContext {
-  return { room: 'one-to-one', role: 'solo', history: historyOf(evalCase), timeZone: EVAL_TIME_ZONE, signal };
+export function evalContext(evalCase: EvalCase, signal: AbortSignal, material?: CaseMaterial): RunAgentContext {
+  const withMaterial =
+    material !== undefined && material.roomContext.length > 0
+      ? { roomContext: material.roomContext, instructions: material.instructions, fenceRandom: evalFenceRandom }
+      : {};
+  return { room: 'one-to-one', role: 'solo', history: historyOf(evalCase), timeZone: EVAL_TIME_ZONE, signal, ...withMaterial };
 }
 
 /**
@@ -200,7 +217,7 @@ export function evalContext(evalCase: EvalCase, signal: AbortSignal): RunAgentCo
  * as teammates, the 1:1 room, the frozen clock and the history). The judge sees its
  * system message; the runner checks its hash against the one runAgent reports.
  */
-export function agentPromptFor(evalCase: EvalCase, getAgent: EvalRunDeps['getAgent']): AgentPrompt {
+export function agentPromptFor(evalCase: EvalCase, getAgent: EvalRunDeps['getAgent'], material?: CaseMaterial): AgentPrompt {
   const agent = getAgent(evalCase.agent);
   if (agent === undefined || !agent.active) throw new EvalSetupError(`case ${evalCase.id}: agent "${evalCase.agent}" is not an active agent`);
   const teammates = agent.handoffs
@@ -214,6 +231,9 @@ export function agentPromptFor(evalCase: EvalCase, getAgent: EvalRunDeps['getAge
     now: frozenNow(evalCase.asOf),
     timeZone: EVAL_TIME_ZONE,
     history: historyOf(evalCase),
+    ...(material !== undefined && material.roomContext.length > 0
+      ? { roomContext: material.roomContext, instructions: material.instructions, random: evalFenceRandom }
+      : {}),
   });
 }
 
@@ -299,8 +319,18 @@ export async function runEval(options: EvalRunOptions, deps: EvalRunDeps): Promi
   if (cases.length === 0) throw new EvalSetupError('no cases to run');
   const familyProblem = judgeFamilyProblem(deps.agentsLlm.model, deps.judgeLlm.model);
   if (familyProblem !== null) throw new EvalSetupError(familyProblem);
+  // A case that names a pack needs it loaded: refuse before any call, never run it without its documents.
+  const materials = new Map<string, CaseMaterial>();
+  const usedPacks = new Map<string, CasePack>();
+  for (const evalCase of cases) {
+    if (evalCase.pack === undefined) continue;
+    const pack = options.packs?.get(evalCase.pack);
+    if (pack === undefined) throw new EvalSetupError(`case ${evalCase.id}: pack "${evalCase.pack}" is not loaded (looked in evals/packs)`);
+    usedPacks.set(pack.id, pack);
+    materials.set(evalCase.id, caseMaterial(evalCase, pack));
+  }
   // Throws EvalSetupError for an unknown or inactive agent, before any call.
-  const prompts = new Map(cases.map((evalCase) => [evalCase.id, agentPromptFor(evalCase, deps.getAgent)]));
+  const prompts = new Map(cases.map((evalCase) => [evalCase.id, agentPromptFor(evalCase, deps.getAgent, materials.get(evalCase.id))]));
 
   const clock = deps.clock ?? (() => new Date());
   const elapsed = deps.elapsed ?? (() => performance.now());
@@ -327,7 +357,7 @@ export async function runEval(options: EvalRunOptions, deps: EvalRunDeps): Promi
       const started = elapsed();
       let result: RunAgentResult;
       try {
-        result = await deps.runAgent(evalCase.agent, evalContext(evalCase, deadline()), {
+        result = await deps.runAgent(evalCase.agent, evalContext(evalCase, deadline(), materials.get(evalCase.id)), {
           getAgent: deps.getAgent,
           llm: deps.agentsLlm,
           now: () => frozenNow(evalCase.asOf),
@@ -410,6 +440,9 @@ export async function runEval(options: EvalRunOptions, deps: EvalRunDeps): Promi
       reps,
       caseSetHash: sha256(caseLines.join('\n')),
       promptSetHash: sha256(promptLines.join('\n')),
+      ...(usedPacks.size === 0
+        ? {}
+        : { packSetHash: sha256([...usedPacks.values()].map((pack) => `${pack.id}\t${pack.hash}`).sort().join('\n')) }),
       judgePromptHash: judgePromptHash(),
       agentsModel: { configured: deps.agentsLlm.model, family: modelFamily(deps.agentsLlm.model), resolved: [...resolvedAgents].sort() },
       judgeModel: { configured: deps.judgeLlm.model, family: modelFamily(deps.judgeLlm.model), resolved: [...resolvedJudge].sort() },
