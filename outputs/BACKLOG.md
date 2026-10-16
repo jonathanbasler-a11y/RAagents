@@ -20,9 +20,13 @@ Source for items 2 to 11: `outputs/01_concept/learnings-from-the-other-team.md` 
 10. **One testable value hypothesis and the ask** [5]. Same shape as the other team's opener, for our ask to stakeholders.
 11. **Reuse the other team's fictional data room** [7]. Blocked until they consent and the invented names are checked (open question 25).
 
+12. **Confidential workspace** (owner, 2026-10-16; plan to be approved first). Replace the shared rule "Public information only", the screen banners, `LIVE-DEMO.md` and the guardrail lines in the agent specs (26 mention it) with a confidential-workspace rule: agents use and may quote what a person shares, without warning or disclaimer, and still never promise secrecy or deletion. Rewrite the 14 confidential-paste cases and add a deterministic check for secrecy promises. Take a fresh baseline of all cases first and a measured run after, because a shared-rule change re-baselines every agent. Supersedes open question 21.
+13. **Erase a workspace's data** (owner, 2026-10-16). A person-only action that deletes a workspace's chats from the computer. The chat store is append-only by design (triggers refuse update and delete), so this needs its own plan, a confirmation and an audit line, and honest screen wording until it exists.
+
 ## Other open items (details in `OPEN_QUESTIONS.md`)
 
-- Question 21: shorter replies after a pasted confidential text. Explained to the owner 2026-10-15; decision pending.
+- Question 21: superseded on 2026-10-16 by the confidential-workspace direction (backlog item 12).
+- Question 26: how sceptical agents should be of an agency record inside a seller's data room (found in the practice-case trials).
 - Question 19: whether Ona environments can reach the company model gateway (the probe is on `main`, `docs/ONA.md`).
 - Question 20: the other team's files on `main` (left as they are, for now).
 - Owner settings to review: the GitHub email-privacy setting, and optional extra deny rules in `.claude/settings.json`.
