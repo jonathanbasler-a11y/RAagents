@@ -96,7 +96,7 @@ Prefer the command to the recorded value.
 | Agents' model and the judge's model | an Anthropic model for the agents, an OpenAI model for the judge | `npm run smoke` prints the resolved models and their families | 2026-10-12 |
 | Node | 24.x (the app requires 24 or later) | `node --version` | 2026-10-12 |
 | Next.js | 16.4.0 | `grep '"next"' outputs/05_demo/app/package.json` | 2026-10-12 |
-| Offline test baseline | 1758 passed, 1 skipped, at commit 6b820cd (the skip is the name-protection test, which needs a local hash file) | `npm test` | 2026-10-14 |
+| Offline test baseline | 1817 passed, 1 skipped, after the confidential-workspace change (the skip is the name-protection test, which needs a local hash file) | `npm test` | 2026-10-16 |
 | First live evaluation | overall 4.33 ± 0.11 over 177 answers; 128 of 177 "good"; the 4 critical hits were false positives of the checks | the saved run under `.eval-runs/` (local, git-ignored); `scripts/eval.ts` repeats it | 2026-10-12 |
 | Stable demo copy | version 4 (commit 6b820cd), outside the repository; versions 3, 2 and 1 are kept beside it for rollback | the `README-DEMO.md` in that folder | 2026-10-14 |
 | Demo auto-start | a user login job, label `com.raagents.demo`; no restart on exit; settings from the development tree's settings file | `launchctl print gui/501/com.raagents.demo` and the `promote-stable-demo` skill | 2026-10-15 |

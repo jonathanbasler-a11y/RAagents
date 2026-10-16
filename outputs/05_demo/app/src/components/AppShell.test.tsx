@@ -64,16 +64,16 @@ describe('AppShell navigation to the illustrative workspace', () => {
 describe('AppShell in practice mode', () => {
   const PRACTICE_BANNER = 'Practice mode: replies come from a stand-in model, not AI. Do not present them as real answers.';
 
-  it('shows the practice banner on the page, right under the public-information banner', () => {
+  it('shows the practice banner on the page, right under the confidential-workspace banner', () => {
     render(
       <AppShell agentsLoad={{ ok: true, agents: ROSTER }} mode="practice">
         <p>Page body</p>
       </AppShell>,
     );
 
-    const publicBanner = screen.getByText('Public information only. Do not paste confidential or company information.');
+    const confidentialBanner = screen.getByText('Confidential workspace. Chats stay on this computer and go to your company\'s model gateway; agents cannot promise secrecy or deletion.');
     const practiceBanner = screen.getByText(PRACTICE_BANNER);
-    expect(publicBanner.compareDocumentPosition(practiceBanner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(confidentialBanner.compareDocumentPosition(practiceBanner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(practiceBanner.compareDocumentPosition(screen.getByRole('banner')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -113,7 +113,7 @@ describe('AppShell in practice mode', () => {
 });
 
 describe('AppShell', () => {
-  it('shows the product name, the public-information banner, the rail and the page', () => {
+  it('shows the product name, the confidential-workspace banner, the rail and the page', () => {
     render(
       <AppShell agentsLoad={{ ok: true, agents: ROSTER }}>
         <p>Page body</p>
@@ -121,7 +121,7 @@ describe('AppShell', () => {
     );
 
     expect(screen.getByText('Digital Human Hybrid Team')).toBeInTheDocument();
-    expect(screen.getByText('Public information only. Do not paste confidential or company information.')).toBeInTheDocument();
+    expect(screen.getByText('Confidential workspace. Chats stay on this computer and go to your company\'s model gateway; agents cannot promise secrecy or deletion.')).toBeInTheDocument();
     expect(within(screen.getByRole('navigation', { name: 'Rooms' })).getByRole('link', { name: /Rosa/ })).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveTextContent('Page body');
   });
@@ -135,7 +135,7 @@ describe('AppShell', () => {
 
     expect(within(screen.getByRole('navigation', { name: 'Rooms' })).getByText(/Agents unavailable/)).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveTextContent('Setup message');
-    expect(screen.getByText('Public information only. Do not paste confidential or company information.')).toBeInTheDocument();
+    expect(screen.getByText('Confidential workspace. Chats stay on this computer and go to your company\'s model gateway; agents cannot promise secrecy or deletion.')).toBeInTheDocument();
     // The illustrative workspace needs no agents, so the header still offers it.
     expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Workspace (illustrative)' })).toHaveAttribute('href', '/workspace');
   });

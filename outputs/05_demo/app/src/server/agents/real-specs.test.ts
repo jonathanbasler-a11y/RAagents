@@ -46,6 +46,29 @@ describe('real specs', () => {
     expect(registry.agents.filter((agent) => agent.locked).map((agent) => agent.id)).toEqual(['orc', 'san', 'ev', 'red', 'syn']);
   });
 
+  // The workspace is confidential (owner decision, 2026-10-16): no brief may tell an agent to refuse, or to ask for
+  // shared material to be removed, and every brief says what the agent does instead.
+  it('has no agent that stops on confidential material, and every agent says it works in the confidential workspace', () => {
+    const registry = loadRegistry({ specsDir: REAL_SPECS_DIR, publicDir: APP_PUBLIC_DIR });
+
+    for (const agent of registry.agents) {
+      const text = `${agent.sections.guardrails}\n${agent.sections.inThisPhase}`;
+      expect(agent.sections.guardrails, agent.id).toMatch(/confidential workspace/);
+      expect(text, agent.id).not.toMatch(/public, company-neutral information only|illustrative or public examples only|not a cleared workspace/i);
+      expect(text, agent.id).not.toMatch(/(?:stops?|stop) and (?:asks?|ask) for (?:it|the \w+) to be removed/i);
+    }
+  });
+
+  it('says in every brief except the sanitiser that the agent may quote what is shared and never promises secrecy or deletion', () => {
+    const registry = loadRegistry({ specsDir: REAL_SPECS_DIR, publicDir: APP_PUBLIC_DIR });
+
+    for (const agent of registry.agents.filter((candidate) => candidate.id !== 'san')) {
+      expect(agent.sections.guardrails, agent.id).toMatch(/may quote what the person shares, without warnings or disclaimers/);
+      expect(agent.sections.guardrails, agent.id).toMatch(/never promises? secrecy or deletion/);
+    }
+    expect(registry.get('san')?.sections.guardrails).toMatch(/Works on what the person shares in this confidential workspace/);
+  });
+
   // The mockup decides when an agent joins by stage: 'late' at Phase 3 or once filed, 'filed' once
   // filed. The specs have to say the same, or the roster in the app and in the mockup drift apart.
   it('names the agents that join by stage, as the mockup does', () => {

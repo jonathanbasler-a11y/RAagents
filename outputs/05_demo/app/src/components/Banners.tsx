@@ -3,7 +3,7 @@ import { PRACTICE_MODE_BANNER } from './labels';
 
 /**
  * Practice mode: replies come from the stand-in model. Persistent and not dismissible: it is
- * meant to sit under the "Public information only" banner on every page. Live renders nothing.
+ * meant to sit under the "Confidential workspace" banner on every page. Live renders nothing.
  */
 export function PracticeBanner({ mode }: { mode: 'live' | 'practice' }) {
   if (mode !== 'practice') return null;

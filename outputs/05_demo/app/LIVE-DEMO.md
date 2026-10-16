@@ -31,7 +31,7 @@ Open http://127.0.0.1:3200.
 
 Point out:
 
-- **The honest frame, before any reply**: the dark banner at the top, "Public information only. Do not paste confidential or company information.", and the line beside the title, "In this phase no documents and no tools are connected. Agent replies are model output, not sources." Say it now; you repeat it at the close.
+- **The honest frame, before any reply**: the dark banner at the top, "Confidential workspace. Chats stay on this computer and go to your company's model gateway; agents cannot promise secrecy or deletion.", and the line beside the title, "In this phase no documents and no tools are connected. Agent replies are model output, not sources." Say it now; you repeat it at the close.
 - **25 named AI agents, each with a picture**, in the four groups of the mockup: Regulatory function (9), Specialists by asset (7), Team roles (5) and Other functions (4, folded away because they are built for other playbooks).
 - Each name starts with the letter of its capability: Rosa, Regulatory lead. Carlos, CMC regulatory. Emeka, Evidence checker.
 - **Who is selected for this DD**: the line "14 of 25 agents selected for this DD" and the switch on each card. The five team roles show **Always on**. In the team chat, routing only picks selected agents. Emeka, Saskia and Ruben answer only when @mentioned; Oskar answers when nobody else fits; Sofia sums up after two or more contributions.
