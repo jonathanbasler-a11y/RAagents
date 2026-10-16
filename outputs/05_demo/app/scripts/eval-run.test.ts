@@ -4,7 +4,8 @@ import { runAgent } from '@/server/chat/run-agent';
 import { LlmError } from '@/server/llm';
 import type { LlmClient, LlmRequest } from '@/shared/contracts';
 import { JUDGE_SYSTEM_PROMPT, judgePromptHash } from '../evals/lib/judge';
-import { EvalAbortedError, EvalSetupError, judgeFamilyProblem, runEval, type EvalRunDeps, type GitState } from '../evals/lib/run';
+import { MATERIAL_INSTRUCTIONS, type CasePack } from '../evals/lib/packs';
+import { EVAL_FENCE_MARKER, EvalAbortedError, EvalSetupError, judgeFamilyProblem, runEval, type EvalRunDeps, type GitState } from '../evals/lib/run';
 import {
   AGENTS_MODEL,
   JUDGE_MODEL,
@@ -100,6 +101,90 @@ describe('runEval: one execution path', () => {
     expect(judge.requests[0].messages[1].content).toContain('You are Rosa. Your capability: Regulatory lead.');
     expect(judge.requests[0].messages[1].content).toContain('Thursday 8 October 2026, 12:00');
     expect(record.results[0]).toMatchObject({ answer: { model: `${AGENTS_MODEL}-20261001`, unusable: null }, judge: { ok: true } });
+  });
+});
+
+const TEST_PACK: CasePack = {
+  id: 'practice-01',
+  title: 'Practice case 01',
+  asOf: '2026-10-08',
+  documents: [
+    { id: 'DR-01', title: 'Overview', provided: true, dated: '2026-07-01', text: '# Overview\n\nFictional practice document.\n\nThe licensor says the study met its endpoint.' },
+    { id: 'DR-02', title: 'Paediatric plan', provided: false },
+  ],
+  issues: [{ id: 'PI-01', kind: 'claim-vs-record', severity: 'high', plantedIn: ['DR-01'], rightResponse: 'r', wrongResponse: 'w', failureMode: 'f' }],
+  hash: 'p'.repeat(64),
+  source: 'practice-01',
+};
+
+describe('runEval: case documents (a pack)', () => {
+  const packCase = (patch: Parameters<typeof testCase>[0] = {}) =>
+    testCase({ id: 'lead-claims', pack: 'practice-01', documents: ['DR-01'], issues: ['PI-01'], ...patch });
+
+  async function runWithRealRunAgent(cases: ReturnType<typeof testCase>[], packs: Map<string, CasePack> | undefined) {
+    const seen: LlmRequest[] = [];
+    const agentsLlm: LlmClient = {
+      route: 'agents',
+      model: AGENTS_MODEL,
+      complete: () => Promise.reject(new Error('runAgent streams')),
+      async *stream(request) {
+        seen.push(request);
+        yield { type: 'delta', text: 'DR-01 says the licensor claims it; to verify.' };
+        yield { type: 'end', result: { text: '', finishReason: 'stop', truncated: false, partial: false, model: `${AGENTS_MODEL}-20261001` } };
+      },
+    };
+    const judge = fakeJudge();
+    const record = await runEval(
+      { cases, reps: 1, ...(packs === undefined ? {} : { packs }) },
+      { runAgent, getAgent, agentsLlm, judgeLlm: judge.client, git: () => CLEAN, print: () => {}, nodeVersion: 'v24' },
+    );
+    return { seen, judge, record };
+  }
+
+  it('sends the documents as fenced blocks with the turn instructions, agrees with the real runAgent on the prompt, and shows the judge the same prompt', async () => {
+    const { seen, judge, record } = await runWithRealRunAgent([packCase()], new Map([[TEST_PACK.id, TEST_PACK]]));
+
+    const system = seen[0].messages[0].content;
+    expect(system).toContain(`BEGIN UNTRUSTED TEXT ${EVAL_FENCE_MARKER} (from: Case document DR-01: Overview (fictional practice document, dated 2026-07-01))`);
+    expect(system).toContain('The licensor says the study met its endpoint.');
+    for (const line of MATERIAL_INSTRUCTIONS) expect(system).toContain(line);
+    expect(system).not.toContain('Paediatric plan');
+    // The run did not abort on a hash mismatch, and the judge read the same documents.
+    expect(record.results[0].judge).toMatchObject({ ok: true });
+    expect(judge.requests[0].messages[1].content).toContain('The licensor says the study met its endpoint.');
+  });
+
+  it('keeps the prompt hash the same from run to run (the fence marker is fixed for evals)', async () => {
+    const first = await runWithRealRunAgent([packCase()], new Map([[TEST_PACK.id, TEST_PACK]]));
+    const second = await runWithRealRunAgent([packCase()], new Map([[TEST_PACK.id, TEST_PACK]]));
+
+    expect(second.record.results[0].answer.promptHash).toBe(first.record.results[0].answer.promptHash);
+    expect(second.record.fingerprint.promptSetHash).toBe(first.record.fingerprint.promptSetHash);
+  });
+
+  it('records the pack content in the fingerprint, and only when a pack is used', async () => {
+    const plain = await runWithRealRunAgent([testCase()], undefined);
+    expect('packSetHash' in plain.record.fingerprint).toBe(false);
+
+    const withPack = await runWithRealRunAgent([packCase()], new Map([[TEST_PACK.id, TEST_PACK]]));
+    const edited = await runWithRealRunAgent([packCase()], new Map([[TEST_PACK.id, { ...TEST_PACK, hash: 'q'.repeat(64) }]]));
+    expect(withPack.record.fingerprint.packSetHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(edited.record.fingerprint.packSetHash).not.toBe(withPack.record.fingerprint.packSetHash);
+  });
+
+  it('refuses, before any call, a case whose pack was not loaded', async () => {
+    const { deps, agent } = setup();
+
+    await expect(runEval({ cases: [packCase()], reps: 1 }, deps)).rejects.toThrow(EvalSetupError);
+    await expect(runEval({ cases: [packCase({ pack: 'nope' })], reps: 1, packs: new Map([[TEST_PACK.id, TEST_PACK]]) }, deps)).rejects.toThrow(/pack "nope"/);
+    expect(agent.calls).toHaveLength(0);
+  });
+
+  it('leaves a case with no pack exactly as it was: no context blocks, no extra instructions', async () => {
+    const { seen } = await runWithRealRunAgent([testCase()], new Map([[TEST_PACK.id, TEST_PACK]]));
+
+    expect(seen[0].messages[0].content).not.toContain('Room context');
+    expect(seen[0].messages[0].content).not.toContain('Practice case:');
   });
 });
 

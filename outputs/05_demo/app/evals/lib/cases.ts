@@ -64,6 +64,12 @@ export interface EvalCase {
   /** Starts with the person, alternates, ends with the person. */
   turns: EvalTurn[];
   expected: EvalExpected;
+  /** The case pack (fictional documents and answer key) this case runs on. Absent for a case with no documents. */
+  pack?: string;
+  /** The pack documents the agent is shown, in this order. Absent: every provided document of the pack. */
+  documents?: string[];
+  /** The answer-key issues this case probes. */
+  issues?: string[];
   /** Only the rubric can judge this case: deterministic checks would misfire (for example on a refusal). */
   rubricOnly: boolean;
   /** What a good answer does, one criterion per item. The judge grades against it. */
@@ -118,6 +124,9 @@ const CASE_KEYS: ReadonlySet<string> = new Set([
   'expected',
   'rubric_only',
   'rubric',
+  'pack',
+  'documents',
+  'issues',
 ]);
 const REQUIRED_CASE_KEYS = ['id', 'version', 'agent', 'category', 'risk', 'as_of', 'turns', 'rubric'] as const;
 const TURN_KEYS: ReadonlySet<string> = new Set(['role', 'content']);
@@ -141,7 +150,7 @@ function nearMiss(key: string, allowed: ReadonlySet<string>): string {
   return snake !== key && allowed.has(snake) ? ` (did you mean "${snake}"?)` : '';
 }
 
-function isCalendarDate(value: string): boolean {
+export function isCalendarDate(value: string): boolean {
   if (!DATE_PATTERN.test(value)) return false;
   const date = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
@@ -166,6 +175,10 @@ function hashCase(evalCase: Omit<EvalCase, 'source' | 'hash'>): string {
     },
     rubricOnly: evalCase.rubricOnly,
     rubric: evalCase.rubric,
+    // Present only when used, so the hash of a case without a pack never changes.
+    ...(evalCase.pack === undefined ? {} : { pack: evalCase.pack }),
+    ...(evalCase.documents === undefined ? {} : { documents: evalCase.documents }),
+    ...(evalCase.issues === undefined ? {} : { issues: evalCase.issues }),
   };
   return createHash('sha256').update(JSON.stringify(content)).digest('hex');
 }
@@ -243,6 +256,13 @@ function readCase(raw: unknown, index: number, report: (caseId: string, message:
 
   const rubric = readRubric(raw.rubric, problem);
 
+  const pack = readPackKey(raw.pack, problem);
+  const documents = readIdList('documents', raw.documents, DOCUMENT_ID_PATTERN, 'a document id such as DR-03', problem);
+  const issues = readIdList('issues', raw.issues, ISSUE_ID_PATTERN, 'an issue id such as PI-04', problem);
+  if (pack === undefined && (documents !== undefined || issues !== undefined)) {
+    problem('documents and issues need a "pack": name the case pack they come from');
+  }
+
   if (!ok || turns === undefined || expected === undefined || rubric === undefined) return undefined;
   const evalCase: Omit<EvalCase, 'source' | 'hash'> = {
     id,
@@ -256,8 +276,49 @@ function readCase(raw: unknown, index: number, report: (caseId: string, message:
     expected,
     rubricOnly,
     rubric,
+    ...(pack === undefined ? {} : { pack }),
+    ...(documents === undefined ? {} : { documents }),
+    ...(issues === undefined ? {} : { issues }),
   };
   return { ...evalCase, source, hash: hashCase(evalCase) };
+}
+
+export const PACK_ID_PATTERN = /^[a-z][a-z0-9-]{0,39}$/;
+export const DOCUMENT_ID_PATTERN = /^[A-Z][A-Z0-9-]{1,19}$/;
+export const ISSUE_ID_PATTERN = /^PI-\d{2}$/;
+
+function readPackKey(value: unknown, problem: (message: string) => void): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string' || !PACK_ID_PATTERN.test(value)) {
+    problem('pack must be a pack id: lowercase letters, digits and hyphens, starting with a letter');
+    return undefined;
+  }
+  return value;
+}
+
+function readIdList(
+  key: string,
+  value: unknown,
+  pattern: RegExp,
+  example: string,
+  problem: (message: string) => void,
+): string[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value) || value.length === 0) {
+    problem(`${key} must be a list with at least one entry`);
+    return undefined;
+  }
+  const bad = value.filter((item) => typeof item !== 'string' || !pattern.test(item));
+  if (bad.length > 0) {
+    problem(`${key} must hold ${example}; got ${bad.map((item) => JSON.stringify(item)).join(', ')}`);
+    return undefined;
+  }
+  const list = value as string[];
+  if (new Set(list).size !== list.length) {
+    problem(`${key} lists the same entry twice`);
+    return undefined;
+  }
+  return list;
 }
 
 function readTurns(value: unknown, problem: (message: string) => void): EvalTurn[] | undefined {
@@ -404,7 +465,7 @@ export function parseCaseFile(text: string, source: string): ParsedCaseFile {
   const issues: CaseIssue[] = [];
   const fileProblem = (message: string) => issues.push({ source, message });
   const lineCounter = new LineCounter();
-  const doc = parseDocument(text.replace(/^﻿/, '').replace(/\r\n?/g, '\n'), { lineCounter, prettyErrors: false, uniqueKeys: true });
+  const doc = parseDocument(text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n'), { lineCounter, prettyErrors: false, uniqueKeys: true });
   const problems = [...doc.errors, ...doc.warnings];
   for (const problem of problems) fileProblem(`YAML error on line ${lineCounter.linePos(problem.pos[0]).line}: ${problem.message}`);
   if (problems.length > 0) return { cases: [], issues };

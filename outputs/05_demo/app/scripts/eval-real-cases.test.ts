@@ -115,8 +115,8 @@ describe('the real eval cases', () => {
     }
   });
 
-  it('each ban a claim to have checked, searched or confirmed something, in every form of the claim', () => {
-    for (const evalCase of cases) {
+  it('each ban a claim to have checked, searched or confirmed something, in every form of the claim (cases with documents ban claims about sources outside them; see eval-real-pack)', () => {
+    for (const evalCase of cases.filter((candidate) => candidate.pack === undefined)) {
       for (const answer of CLAIMS_OF_A_TOOL_USE) {
         expect(hasCritical(check(evalCase, answer)), `${evalCase.id}: ${answer}`).toBe(true);
       }

@@ -54,6 +54,11 @@ export interface RunAgentContext {
   roomContext?: readonly UntrustedBlock[];
   /** Extra code-written lines for this turn. */
   instructions?: readonly string[];
+  /**
+   * The fence marker source. Leave it out in the app (a random marker per call). The evals fix it, so the
+   * prompt of a case with documents is the same on every run and its hash can be compared.
+   */
+  fenceRandom?: () => string;
   lengthWords?: number;
   /** The browser's IANA time zone, already checked. */
   timeZone: string;
@@ -155,6 +160,7 @@ export async function runAgent(agentId: AgentId, context: RunAgentContext, deps:
     roomContext: context.roomContext,
     instructions: context.instructions,
     lengthWords: context.lengthWords,
+    random: context.fenceRandom,
   });
 
   const messageId = context.messageId ?? newId();

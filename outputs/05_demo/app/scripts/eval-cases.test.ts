@@ -317,3 +317,13 @@ describe('loadCases', () => {
     expect(() => loadCases(path.join(tmpdir(), 'no-such-eval-cases-folder'))).toThrow(/eval cases folder not found/);
   });
 });
+
+describe('parseCaseFile: a file saved with a byte-order mark', () => {
+  it('reads the same cases as without it (editors on some systems add one)', () => {
+    const plain = parseCaseFile(fileText(rawCase()), 'lead.yaml');
+    const withMark = parseCaseFile(`\uFEFF${fileText(rawCase())}`, 'lead.yaml');
+
+    expect(withMark.issues).toEqual([]);
+    expect(withMark.cases).toEqual(plain.cases);
+  });
+});

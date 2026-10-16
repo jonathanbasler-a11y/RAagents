@@ -104,6 +104,21 @@ describe('runAgent: a normal reply', () => {
     expect(fake.calls[0].body.stream).toBe(true);
   });
 
+  it('puts room context in a fence with the marker the caller fixes (the evals compare prompts), and a random one when it does not', async () => {
+    const block = [{ label: 'Case document DR-01', text: 'Fictional practice document.' }];
+    const fixed = setup([okStream('Hi')]);
+    await runAgent('lead', context({ roomContext: block, fenceRandom: () => 'fixedmarker0001' }), fixed.deps);
+    const sentFixed = (fixed.fake.calls[0].body.messages as LlmMessage[])[0].content;
+    expect(sentFixed).toContain('BEGIN UNTRUSTED TEXT fixedmarker0001 (from: Case document DR-01)');
+    expect(sentFixed).toContain('END UNTRUSTED TEXT fixedmarker0001');
+
+    const random = setup([okStream('Hi')]);
+    await runAgent('lead', context({ roomContext: block }), random.deps);
+    const sentRandom = (random.fake.calls[0].body.messages as LlmMessage[])[0].content;
+    expect(sentRandom).not.toContain('fixedmarker0001');
+    expect(sentRandom).toMatch(/BEGIN UNTRUSTED TEXT [0-9a-f]{16} \(from: Case document DR-01\)/);
+  });
+
   it('names its handoff teammates that are in the roster', async () => {
     const { fake, deps } = setup([okStream('Hi')]);
 
