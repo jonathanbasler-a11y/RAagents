@@ -28,6 +28,8 @@ A case can run on a **pack**: fictional documents the agent is shown, plus the a
 
 A case names its pack with `pack:`, the documents it shows with `documents:` (default: every provided one) and the key entries it probes with `issues:`. At run time the app puts the documents into the prompt as fenced blocks, and a turn instruction lifts the "no documents are connected" rule for those documents only. No tools are added and no persona or shared rule changes. The fence marker is fixed for evals, so a case's prompt hash is the same on every run.
 
+Cases with documents ban a claim to have checked something *outside* the documents (a register, a database, the web) instead of the strict ban on "I checked" that the other cases keep: comparing the documents it was given is legitimate, and the first live trial showed the strict ban would punish it.
+
 The loader refuses, before any model call:
 
 - a document dated after the pack's as-of date, or shown to a case whose as-of date is earlier (a later source is a hard failure);
