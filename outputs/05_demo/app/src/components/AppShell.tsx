@@ -9,7 +9,8 @@ import { SelectionProvider } from './SelectionProvider';
 import { WORKSPACE_PATH } from './workspace/screens';
 import { TeamChatWorkspaceLink } from './workspace/TeamChatWorkspaceLink';
 
-export const PUBLIC_ONLY_BANNER = 'Public information only. Do not paste confidential or company information.';
+export const CONFIDENTIAL_BANNER =
+  "Confidential workspace. Chats stay on this computer and go to your company's model gateway; agents cannot promise secrecy or deletion.";
 
 /**
  * Banner, header, the rail and the page. Rendered by the root layout on every page. `mode` comes
@@ -31,7 +32,7 @@ export function AppShell({
           Skip to content
         </a>
         <div className="banner" role="note">
-          {PUBLIC_ONLY_BANNER}
+          {CONFIDENTIAL_BANNER}
         </div>
         <PracticeBanner mode={mode} />
         <header className="docbar">

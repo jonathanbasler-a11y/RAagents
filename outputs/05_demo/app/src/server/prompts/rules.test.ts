@@ -34,11 +34,18 @@ describe('shared rules', () => {
     expect(rule(/ai agent/i)).toMatch(/AI agent with a human owner/);
   });
 
-  it('keep to public, company-neutral information and stop on pasted confidential material', () => {
-    const text = rule(/public information only/i);
-    expect(text).toMatch(/public, company-neutral/);
-    expect(text).toMatch(/confidential/);
-    expect(text).toMatch(/\bstop\b/i);
+  it('make the workspace confidential: work from what a person shares and quote it, never refuse or warn, and never promise secrecy or deletion', () => {
+    const text = rule(/confidential workspace/i);
+    expect(text).toMatch(/cleared to share confidential material/);
+    expect(text).toMatch(/work from it/);
+    expect(text).toMatch(/quote it/);
+    expect(text).toMatch(/Do not refuse it, warn about it, add a disclaimer about it or ask for it to be removed/);
+    expect(text).toMatch(/still claims to verify, not facts/);
+    expect(text).toMatch(/Never promise secrecy or deletion/);
+    expect(text).toMatch(/stored on the person's computer and sent to the company's model gateway/);
+    // The old rule is gone, and no other paragraph tells the agent to stop on confidential material.
+    expect(SHARED_RULES).not.toMatch(/public information only|public, company-neutral|leave it unused/i);
+    expect(SHARED_RULES).not.toMatch(/stop:/i);
   });
 
   it('carry the "In this phase" limits: no documents, no tools, "to verify", no claims of absence or of the latest version', () => {

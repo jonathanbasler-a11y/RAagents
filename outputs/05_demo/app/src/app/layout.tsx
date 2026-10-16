@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: { default: 'Digital Human Hybrid Team', template: '%s · Digital Human Hybrid Team' },
-  description: 'Named agent personas with a team chat and 1:1 rooms. A demo on public information only.',
+  description: 'Named agent personas with a team chat and 1:1 rooms. A confidential workspace for due diligence preparation.',
   // No favicon file: an empty icon keeps the browser from logging a 404 on every page.
   icons: { icon: 'data:,' },
 };
