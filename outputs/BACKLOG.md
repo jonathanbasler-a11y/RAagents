@@ -20,8 +20,11 @@ Source for items 2 to 11: `outputs/01_concept/learnings-from-the-other-team.md` 
 10. **One testable value hypothesis and the ask** [5]. Same shape as the other team's opener, for our ask to stakeholders.
 11. **Reuse the other team's fictional data room** [7]. Blocked until they consent and the invented names are checked (open question 25).
 
-12. **Confidential workspace: built and merged, measurement pending** (owner, 2026-10-16). Rule, banner, 25 briefs and the 14 paste cases are changed (see `DECISIONS.md`). Still to do: run all cases on the new setup and compare case by case with the baseline taken on the previous setup (concision and each judge dimension separately, the judge reading each agent's own brief), then promote the demo after a live check. Supersedes open question 21.
+12. **Confidential workspace: built, merged and measured** (owner, 2026-10-16). The measured result is in `DECISIONS.md`: no movement outside the noise on the other cases, the refusals gone, no secrecy promise. Remaining: promote the demo (done once the live check passes).
 13. **Erase a workspace's data** (owner, 2026-10-16). A person-only action that deletes a workspace's chats from the computer. The chat store is append-only by design (triggers refuse update and delete), so this needs its own plan, a confirmation and an audit line, and honest screen wording until it exists.
+
+14. **Short, plain answer to "is this private?"** (found in the measurement, 2026-10-16). One answer ran to a lecture with claims it could not support (copies exist, IT owns the gateway). The rule says to "say so plainly"; consider a clause asking for two or three sentences and nothing it cannot know. A shared-rule change, so measured on its own.
+15. **Calibration and owners in the new case answers** (found in the measurement). Weaker answers state general requirements as fixed ("usually", "must be booked") and do not name a human owner for each check. The same appears in the before-run, so it is not caused by this change; fix per agent in its own brief, not in the shared rules.
 
 ## Other open items (details in `OPEN_QUESTIONS.md`)
 
