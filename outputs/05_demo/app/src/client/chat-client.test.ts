@@ -343,6 +343,14 @@ describe('JSON helpers', () => {
     expect(bodyOf(withdrawn)).toEqual({ action: 'withdraw', reason: 'wrong file' });
   });
 
+  it('encodes the document id in a withdrawal too', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { ok: 1 }));
+
+    await client(fetchImpl).withdrawDocument('a/b?c', 'why');
+
+    expect(fetchImpl.mock.calls[0][0]).toBe('/api/data-room/documents/a%2Fb%3Fc');
+  });
+
   it('returns the error body for a refused document (400)', async () => {
     const body = { error: 'invalid_request', message: 'The title is required.', correlationId: 'c-3' };
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(400, body));

@@ -340,6 +340,8 @@ describe('DataRoomPanel: adding a document', () => {
     client.addDocument.mockResolvedValue(docReply('DR-01'));
     renderPanel(client);
     await user.type(await screen.findByLabelText('Title'), 'Paediatric study plan');
+    // A date typed before the box is ticked is not sent: a document that is not provided has none.
+    await user.type(screen.getByLabelText('Dated'), '2026-07-30');
     await user.click(screen.getByLabelText('Listed in the index but not provided'));
 
     expect(screen.getByLabelText('Dated')).toBeDisabled();
