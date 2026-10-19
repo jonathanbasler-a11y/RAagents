@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fixtureSpecs } from '@/server/agents/test-fixtures';
 import { PROPOSE_FINDINGS_INSTRUCTIONS } from '@/server/prompts/findings';
-import { FINDINGS_REQUEST_TEXT } from '@/shared/findings';
+import { FINDINGS_REQUEST_TEXT, PROPOSAL_MAX_TOKENS } from '@/shared/findings';
 import type { RunAgentContext, RunAgentResult } from '@/server/chat/run-agent';
 import type { CasePack } from '../evals/lib/packs';
 import {
@@ -132,6 +132,8 @@ describe('runProposeEval', () => {
     for (const line of PROPOSE_FINDINGS_INSTRUCTIONS) expect(second.context.instructions).toContain(line);
     expect(second.context.roomContext?.length).toBeGreaterThan(0);
     expect(second.context.room).toBe('one-to-one');
+    expect(second.context.maxTokens).toBe(PROPOSAL_MAX_TOKENS);
+    expect(first.context.maxTokens).toBeUndefined();
     expect(record.schema).toBe(PROPOSE_RECORD_SCHEMA);
   });
 

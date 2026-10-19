@@ -18,7 +18,7 @@ import type { RunAgentDeps, RunAgentResult } from '@/server/chat/run-agent';
 import { dataRoomMaterial } from '@/server/prompts/data-room';
 import { PROPOSE_FINDINGS_INSTRUCTIONS, proposalContextFor } from '@/server/prompts/findings';
 import type { AgentId, AgentSpec, CheckedFinding, LlmClient, LlmMessage, ProposalRefusalCode, RefusedClaim } from '@/shared/contracts';
-import { FINDINGS_REQUEST_TEXT, checkProposal } from '@/shared/findings';
+import { FINDINGS_REQUEST_TEXT, PROPOSAL_MAX_TOKENS, checkProposal } from '@/shared/findings';
 import type { EvalCase } from './cases';
 import { caseMaterial, caseRoom, type CasePack, type IssueKind } from './packs';
 import {
@@ -215,6 +215,7 @@ async function proposeOnce(
       fenceRandom: evalFenceRandom,
       timeZone: EVAL_TIME_ZONE,
       signal: deps.deadline(),
+      maxTokens: PROPOSAL_MAX_TOKENS,
     },
     runDeps,
   );

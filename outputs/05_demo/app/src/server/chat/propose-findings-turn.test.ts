@@ -7,6 +7,7 @@ import { startTurn } from '@/server/chat/turn-runner';
 import { FROZEN_NOW, sequentialIds, tempStore, type TempStore } from '@/server/chat/test-support';
 import { DATA_ROOM_INSTRUCTIONS } from '@/server/prompts/data-room';
 import { FINDINGS_REQUEST_TEXT, PROPOSE_FINDINGS_INSTRUCTIONS } from '@/server/prompts/findings';
+import { PROPOSAL_MAX_TOKENS } from '@/shared/findings';
 import type { ChatEvent, LlmMessage, NewDocument, TurnIntent } from '@/shared/contracts';
 
 // A findings proposal: the person asks an agent, in its own room, to propose findings from the data room. Code reads
@@ -121,6 +122,18 @@ describe('a findings proposal turn', () => {
     const messages = temp.store.listMessages(turn!.threadId);
     expect(messages.find((message) => message.author === 'human')?.text).toBe(FINDINGS_REQUEST_TEXT);
     expect(messages.some((message) => message.text === note?.text)).toBe(true);
+  });
+
+  it('lets the proposal reply be longer than an ordinary answer, and only that reply: the default cap cut real proposals off', async () => {
+    room();
+    const { fake, ask } = setup([() => stream(reply([])), () => stream('A normal answer.')]);
+
+    await ask('propose-findings');
+    await ask();
+
+    expect(PROPOSAL_MAX_TOKENS).toBeGreaterThan(1500);
+    expect(fake.calls[0].body.max_tokens).toBe(PROPOSAL_MAX_TOKENS);
+    expect(fake.calls[1].body.max_tokens).toBe(1500);
   });
 
   it('gives the agent the data room and the findings instructions on this turn only', async () => {

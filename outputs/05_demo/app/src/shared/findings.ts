@@ -26,6 +26,13 @@ export const MAX_ASSUMPTION_CHARS = 200;
 export const FINDINGS_REQUEST_TEXT = 'Propose findings from your last answer, in the findings format.';
 
 export const MAX_PROPOSED_PER_TURN = 8;
+
+/**
+ * The output cap of a proposal reply, in tokens. An ordinary answer fits the default cap (1,500), but a reply with several
+ * findings, each a claim, a verbatim quote and a reason, does not: the first live trial cut both replies off, so the
+ * person would have got "the reply was cut off" for most proposals.
+ */
+export const PROPOSAL_MAX_TOKENS = 4000;
 const MAX_REFUSAL_MESSAGE_CHARS = 300;
 
 /** A company disclosure is what the seller states; everything else is a primary record. */

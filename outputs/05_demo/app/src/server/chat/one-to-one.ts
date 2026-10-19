@@ -4,7 +4,7 @@ import type { AgentId, ChatLimits, Message, ProposalTrace, RouteDecision, Store,
 import { runAgent, toAgentOutcome, toReplyMessage, type RunAgentDeps, type RunAgentResult } from './run-agent';
 import { dataRoomMaterial, type DataRoomMaterial } from '@/server/prompts/data-room';
 import { PROPOSE_FINDINGS_INSTRUCTIONS, proposalContextFor } from '@/server/prompts/findings';
-import { checkProposal } from '@/shared/findings';
+import { PROPOSAL_MAX_TOKENS, checkProposal } from '@/shared/findings';
 import { toPromptHistory, type PromptHistory } from './store';
 import type { RoomExecutor, TurnOutcome, TurnRun } from './turn-runner';
 
@@ -136,6 +136,7 @@ export function oneToOneExecutor(agentId: AgentId, deps: OneToOneDeps, options: 
           timeZone: run.timeZone,
           signal: run.signal,
           emit: run.emit,
+          ...(proposing ? { maxTokens: PROPOSAL_MAX_TOKENS } : {}),
         },
         deps,
       );
