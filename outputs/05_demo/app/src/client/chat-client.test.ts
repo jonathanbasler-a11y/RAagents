@@ -399,6 +399,58 @@ describe('JSON helpers', () => {
   });
 });
 
+describe('postTurn: findings proposal', () => {
+  it('sends the intent only when asked, and no intent field otherwise', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => sseResponse([frame(DONE)]));
+    const chat = client(fetchImpl);
+
+    await chat.postTurn('reglead', 'Propose findings', {}, { intent: 'propose-findings' });
+    await chat.postTurn('reglead', 'A normal question');
+
+    expect(bodyOf(fetchImpl.mock.calls[0])).toMatchObject({ intent: 'propose-findings' });
+    expect(bodyOf(fetchImpl.mock.calls[1])).not.toHaveProperty('intent');
+  });
+});
+
+describe('findings', () => {
+  it('reads the register with a GET', async () => {
+    const payload = { workspaceId: 'demo', findings: [], openQuestions: [] };
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(200, payload));
+
+    const result = await client(fetchImpl).getFindings();
+
+    expect(result).toEqual({ ok: true, data: payload });
+    expect(fetchImpl.mock.calls[0][0]).toBe('/api/findings');
+    expect(fetchImpl.mock.calls[0][1]?.method ?? 'GET').toBe('GET');
+  });
+
+  it('posts only the decision and a note, with the id encoded, and nothing a caller could use to name who decided', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { finding: {} }));
+    const chat = client(fetchImpl);
+
+    await chat.decideFinding('F-001', 'accept', 'Checked against the label.');
+    await chat.decideFinding('F-002', 'reject');
+    await chat.decideFinding('a/b?c', 'accept', '');
+
+    const [accepted, rejected, odd] = fetchImpl.mock.calls;
+    expect(accepted[0]).toBe('/api/findings/F-001');
+    expect(accepted[1]?.method).toBe('POST');
+    expect(bodyOf(accepted)).toEqual({ decision: 'accept', note: 'Checked against the label.' });
+    expect(bodyOf(rejected)).toEqual({ decision: 'reject' });
+    expect(odd[0]).toBe('/api/findings/a%2Fb%3Fc');
+    expect(bodyOf(odd)).toEqual({ decision: 'accept' });
+  });
+
+  it('returns the error body when the finding was already decided (409)', async () => {
+    const body = { error: 'finding_decided', message: 'This finding was already decided.', correlationId: 'c-9' };
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(409, body));
+
+    const result = await client(fetchImpl).decideFinding('F-001', 'accept');
+
+    expect(result).toEqual({ ok: false, status: 409, error: body, message: body.message });
+  });
+});
+
 describe('createClientTurnId', () => {
   it('uses crypto.randomUUID when it exists', () => {
     expect(createClientTurnId({ randomUUID: () => 'from-random-uuid', getRandomValues: (array) => array })).toBe(

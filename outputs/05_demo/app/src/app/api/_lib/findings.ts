@@ -1,6 +1,6 @@
 import 'server-only';
 import { FindingAlreadyDecidedError, FindingNotFoundError, FindingSourceWithdrawnError } from '@/server/chat/store';
-import type { FindingsResponse } from '@/shared/contracts';
+import type { FindingDecisionResponse, FindingsResponse } from '@/shared/contracts';
 import type { ApiDeps } from './deps';
 import { apiError, json, logFailure } from './http';
 import { checkSameOriginJson, readJsonBody } from './request-guard';
@@ -62,7 +62,8 @@ export async function postFindingDecision(request: Request, deps: ApiDeps, findi
 
     const { store, workspaceId } = deps.runtime();
     const finding = store.decideFinding(workspaceId, findingId, decision.decision, decision.note);
-    return json({ finding });
+    const decided: FindingDecisionResponse = { finding };
+    return json(decided);
   } catch (error) {
     if (error instanceof FindingNotFoundError) return apiError('finding_not_found', correlationId);
     if (error instanceof FindingAlreadyDecidedError) return apiError('finding_decided', correlationId);

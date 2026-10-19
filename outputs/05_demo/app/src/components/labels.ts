@@ -6,6 +6,10 @@ import type {
   ChatErrorCode,
   ClassificationId,
   ContributionRole,
+  FindingBasis,
+  FindingConfidence,
+  FindingStatus,
+  ProposalTrace,
   NotConsultedReason,
   PublicAgent,
   RouteSource,
@@ -105,6 +109,14 @@ export function dataRoomTraceText(trace: DataRoomTrace): string {
   return parts.join(' ');
 }
 
+/** "How this turn ran": what a findings proposal put in the register. Written by code from the stored trace, never by the agent. */
+export function proposalTraceText(trace: ProposalTrace): string {
+  if (trace.problem !== null) return `Nothing was added to the register: ${trace.problem}`;
+  const findings = trace.findingIds.length === 0 ? 'no drafts' : `drafts ${trace.findingIds.join(', ')}`;
+  const questions = trace.questionIds.length === 0 ? 'no open questions' : `open questions ${trace.questionIds.join(', ')}`;
+  return `Added to the register: ${findings}; ${questions}. A draft is not a finding until a person accepts it.`;
+}
+
 /** What the agents do with a data-room document, in the data room list. */
 export const DOCUMENT_STATE_LABELS: Record<DocumentTurnState, string> = {
   shown: 'Agents see it',
@@ -112,6 +124,26 @@ export const DOCUMENT_STATE_LABELS: Record<DocumentTurnState, string> = {
   withdrawn: 'Withdrawn',
   after_as_of: 'Not shown: dated after the as-of date',
   too_large: 'Not shown: it did not fit',
+};
+
+/** A finding's status in the register. Only a person moves it from draft. */
+export const FINDING_STATUS_LABELS: Record<FindingStatus, string> = {
+  draft: 'Draft: no person has decided',
+  accepted: 'Accepted by a person',
+  rejected: 'Rejected by a person',
+};
+
+/** What a finding stands on. A seller's own document is attributed to the seller and never becomes verified fact. */
+export const FINDING_BASIS_LABELS: Record<FindingBasis, string> = {
+  attributed: 'Attributed: what the seller states, not verified fact',
+  'primary-record': 'Primary record',
+};
+
+/** How sure the agent is that the quote shows the claim; not how likely the claim is to be true. */
+export const FINDING_CONFIDENCE_LABELS: Record<FindingConfidence, string> = {
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
 };
 
 export function shortCapability(agent: Pick<PublicAgent, 'capability' | 'shortCapability'>): string {

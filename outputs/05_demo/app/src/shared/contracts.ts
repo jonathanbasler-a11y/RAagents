@@ -1320,3 +1320,8 @@ export interface FindingDecisionRequest {
   note?: string;
 }
 
+/** The finding as it is saved after the decision. */
+export interface FindingDecisionResponse {
+  finding: Finding;
+}
+

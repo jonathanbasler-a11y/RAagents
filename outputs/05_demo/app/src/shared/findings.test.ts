@@ -185,7 +185,8 @@ describe('checkProposedFinding: what becomes a finding', () => {
   });
 
   it('takes no assumptions as an empty list', () => {
-    const { assumptions: _assumptions, ...without } = good;
+    const without: Record<string, unknown> = { ...good };
+    delete without.assumptions;
 
     expect(checkProposedFinding(without, context())).toMatchObject({ ok: true, finding: { assumptions: [] } });
   });

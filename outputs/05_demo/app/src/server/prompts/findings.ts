@@ -1,14 +1,13 @@
 import 'server-only';
 import type { DataRoom } from '@/shared/contracts';
-import { MAX_PROPOSED_PER_TURN, MIN_QUOTE_CHARS, type ProposalContext } from '@/shared/findings';
+import { FINDINGS_REQUEST_TEXT, MAX_PROPOSED_PER_TURN, MIN_QUOTE_CHARS, type ProposalContext } from '@/shared/findings';
 import { neutraliseUntrusted } from './fence';
 
 // What a findings proposal turn adds to the agent's prompt. It rides on the turn, gated on the person's request
 // (a button in the agent's own room), never in the shared rules or a persona. The agent proposes; code checks every
 // claim (src/shared/findings.ts); a person decides. Nothing here makes a claim a finding.
 
-/** The question the app records for a findings proposal. The browser's text is not used. */
-export const FINDINGS_REQUEST_TEXT = 'Propose findings from your last answer, in the findings format.';
+export { FINDINGS_REQUEST_TEXT };
 
 export const PROPOSE_FINDINGS_INSTRUCTIONS: readonly string[] = [
   'This turn is a findings proposal. The person asked you to turn the points of your last answer into findings that can be checked against the documents of the data room. You decide nothing: code checks every claim, and a person accepts or rejects each finding.',

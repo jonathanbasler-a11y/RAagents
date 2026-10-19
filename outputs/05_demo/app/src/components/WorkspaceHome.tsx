@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AGENT_GROUPS, type AgentGroup, type PublicAgent } from '@/shared/contracts';
 import type { ChatApi } from '@/client/chat-client';
 import { DataRoomSummary } from './DataRoomSummary';
+import { FindingsSummary } from './FindingsSummary';
 import { DdSetupPanel } from './DdSetupPanel';
 import { HomeLede } from './DocumentsNotes';
 import { GROUP_INFO } from './labels';
@@ -61,6 +62,7 @@ export function WorkspaceHome({ agents, client }: { agents: PublicAgent[]; clien
 
       <DdSetupPanel agents={roster} />
       <DataRoomSummary />
+      <FindingsSummary />
 
       <section className="sheet team-entry" aria-labelledby="team-entry-title">
         <div>

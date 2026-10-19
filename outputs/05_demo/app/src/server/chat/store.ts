@@ -20,7 +20,6 @@ import type {
   NewThreadResult,
   OpenQuestion,
   Provenance,
-  ProposeFindingsInput,
   ReconcileOptions,
   RoomId,
   StartTurnResult,

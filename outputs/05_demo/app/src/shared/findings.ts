@@ -22,6 +22,9 @@ export const MAX_CONFIDENCE_REASON_CHARS = 300;
 export const MAX_ASSUMPTIONS = 5;
 export const MAX_ASSUMPTION_CHARS = 200;
 /** The most claims one proposal turn may put forward; the rest are refused as too many. */
+/** The question a findings proposal turn records. The server writes it; the button shows it. The browser's own text is not used. */
+export const FINDINGS_REQUEST_TEXT = 'Propose findings from your last answer, in the findings format.';
+
 export const MAX_PROPOSED_PER_TURN = 8;
 const MAX_REFUSAL_MESSAGE_CHARS = 300;
 

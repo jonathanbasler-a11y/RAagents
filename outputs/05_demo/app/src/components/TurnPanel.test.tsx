@@ -61,6 +61,29 @@ describe('TurnPanel: the data room', () => {
   });
 });
 
+describe('TurnPanel: a findings proposal', () => {
+  const withProposal = (proposal: TurnTrace['proposal']) => makeTurn({ id: 't3', status: 'done', trace: { ...TRACE, intent: 'propose-findings', proposal }, startedAt: TURN.startedAt, finishedAt: TURN.finishedAt });
+
+  it('says what the turn put in the register, from the stored trace', () => {
+    render(<TurnPanel turn={withProposal({ findingIds: ['F-001'], questionIds: ['Q-001'], problem: null })} />);
+
+    expect(screen.getByText('Findings')).toBeInTheDocument();
+    expect(screen.getByText(/Added to the register: drafts F-001; open questions Q-001/)).toBeInTheDocument();
+  });
+
+  it('says honestly when nothing was added', () => {
+    render(<TurnPanel turn={withProposal({ findingIds: [], questionIds: [], problem: 'the reply was cut off.' })} />);
+
+    expect(screen.getByText('Nothing was added to the register: the reply was cut off.')).toBeInTheDocument();
+  });
+
+  it('has no findings row for an ordinary turn', () => {
+    render(<TurnPanel turn={TURN} />);
+
+    expect(screen.queryByText('Findings')).not.toBeInTheDocument();
+  });
+});
+
 describe('TurnPanel', () => {
   it('is collapsed until opened', async () => {
     const user = userEvent.setup();
