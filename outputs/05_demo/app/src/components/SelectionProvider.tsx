@@ -32,6 +32,8 @@ export interface SelectionState {
   loadError: SelectionProblem | null;
   /** Flips one switch through POST /api/selection; the reply is the new saved state. */
   setSelected(agentId: AgentId, selected: boolean): Promise<void>;
+  /** Takes a selection that another save already returned (a DD setup change), without a request. */
+  adopt(selected: readonly AgentId[]): void;
   reload(): void;
 }
 
@@ -44,6 +46,7 @@ const UNAVAILABLE: SelectionState = {
   saveErrors: {},
   loadError: null,
   setSelected: async () => undefined,
+  adopt: () => undefined,
   reload: () => undefined,
 };
 
@@ -62,8 +65,28 @@ export function SelectionProvider({ children, client = chatClient }: { children:
   const [loadError, setLoadError] = useState<SelectionProblem | null>(null);
   const [loadRequest, setLoadRequest] = useState(0);
   const savingNow = useRef(new Set<AgentId>());
+  /** Counts every state a save handed us, so a read that started before one can tell it was overtaken. */
+  const writes = useRef(0);
 
   const fetchSelection = useEffectEvent(() => client.getSelection());
+
+  /** Reads again without showing "loading". A failed read changes nothing: what is shown stays. */
+  const refreshQuietly = useEffectEvent(async () => {
+    const before = writes.current;
+    const result = await client.getSelection();
+    if (!result.ok || writes.current !== before) return;
+    setSelectedIds(new Set(result.data.selected));
+    setLoadError(null);
+    setStatus('ready');
+  });
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void refreshQuietly();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +124,7 @@ export function SelectionProvider({ children, client = chatClient }: { children:
       try {
         const result = await client.setSelection(agentId, on);
         if (result.ok) {
+          writes.current += 1;
           setSelectedIds(new Set(result.data.selected));
         } else {
           setSaveErrors((current) => ({
@@ -116,9 +140,16 @@ export function SelectionProvider({ children, client = chatClient }: { children:
     [client],
   );
 
+  const adopt = useCallback((ids: readonly AgentId[]) => {
+    writes.current += 1;
+    setSelectedIds(new Set(ids));
+    setLoadError(null);
+    setStatus('ready');
+  }, []);
+
   const value = useMemo<SelectionState>(
-    () => ({ status, selected, saving, saveErrors, loadError, setSelected, reload }),
-    [status, selected, saving, saveErrors, loadError, setSelected, reload],
+    () => ({ status, selected, saving, saveErrors, loadError, setSelected, adopt, reload }),
+    [status, selected, saving, saveErrors, loadError, setSelected, adopt, reload],
   );
 
   return <SelectionContext.Provider value={value}>{children}</SelectionContext.Provider>;
