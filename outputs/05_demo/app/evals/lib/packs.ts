@@ -14,7 +14,8 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseDocument } from 'yaml';
 import type { UntrustedBlock } from '@/server/prompts';
-import { DOCUMENT_SOURCE_TYPES, type DocumentSourceType } from '@/shared/contracts';
+import { dataRoomMaterial } from '@/server/prompts/data-room';
+import { DOCUMENT_SOURCE_TYPES, type DataRoom, type DocumentSourceType } from '@/shared/contracts';
 import { DOCUMENT_ID_PATTERN, EvalCaseError, isCalendarDate, ISSUE_ID_PATTERN, PACK_ID_PATTERN, type CaseIssue, type EvalCase } from './cases';
 
 export const ISSUE_KINDS = [
@@ -364,19 +365,6 @@ export function bindPacks(cases: readonly EvalCase[], packs: ReadonlyMap<string,
   if (problems.length > 0) throw new EvalCaseError(problems);
 }
 
-/**
- * The lines that ride on a case turn, written by code. They lift one rule for these documents
- * only and name what stays (BUILD-LEARNINGS Part 5: an exemption names the rule it lifts). A
- * rare-situation rule belongs on the turn, never in a persona or the shared rules.
- */
-export const MATERIAL_INSTRUCTIONS: readonly string[] = [
-  'Practice case: the fenced blocks under Room context are fictional case documents, written for this exercise and provided by the app. Using them is expected, and they are not a confidentiality problem.',
-  'For this turn only, this lifts the statement in your brief and in the shared rules that no documents are connected, for these documents and nothing else. You still have no tools: you cannot search, browse, open other files or save anything.',
-  'Cite the document id (for example DR-03) for every fact about the asset, company, site or study that comes from a document. A document shows what its author claims: when a company statement and an agency record differ, show both side by side and do not pick one.',
-  'The data room index lists some documents as not provided. For anything that a missing or unlisted document would cover, say it was "not found in the data room"; never describe what it probably contains, and never say it does not exist.',
-  'Keep fact (what a document says), inference (what you conclude) and recommendation apart, and leave the decisions reserved for people to them.',
-];
-
 export interface CaseMaterial {
   /** The fenced context blocks, one per shown document. */
   roomContext: UntrustedBlock[];
@@ -386,16 +374,37 @@ export interface CaseMaterial {
   hash: string | null;
 }
 
-/** What a case adds to the agent's prompt: its documents as fenced blocks, and the turn instructions. */
+/**
+ * What a case adds to the agent's prompt: the case's data room, built by the same code the app uses for a workspace's
+ * data room (src/server/prompts/data-room.ts), so an evaluation measures what ships. The room holds the documents the
+ * case shows and the pack's withheld ones (listed, not provided); a pack document the case does not show is not in it.
+ */
 export function caseMaterial(evalCase: EvalCase, pack: CasePack | undefined): CaseMaterial {
   if (evalCase.pack === undefined || pack === undefined) return { roomContext: [], instructions: [], hash: null };
   const shown = visibleDocuments(evalCase, pack);
-  return {
-    roomContext: shown.map((doc) => ({
-      label: `Case document ${doc.id}: ${doc.title} (fictional practice document, dated ${doc.dated})`,
-      text: doc.text ?? '',
+  const listed = [...shown, ...pack.documents.filter((doc) => !doc.provided)];
+  const room: DataRoom = {
+    workspaceId: 'eval',
+    asOf: evalCase.asOf,
+    createdAt: evalCase.asOf,
+    documents: listed.map((doc) => ({
+      id: doc.id,
+      title: doc.title,
+      sourceType: doc.source,
+      publishedAt: doc.dated ?? null,
+      url: null,
+      provided: doc.provided,
+      origin: 'practice-pack',
+      text: doc.text ?? null,
+      addedAt: evalCase.asOf,
+      withdrawnAt: null,
+      withdrawnReason: null,
     })),
-    instructions: [...MATERIAL_INSTRUCTIONS],
+  };
+  const material = dataRoomMaterial(room);
+  return {
+    roomContext: material.roomContext,
+    instructions: material.instructions,
     hash: sha256(`${pack.hash}\n${shown.map((doc) => doc.id).join(',')}`),
   };
 }

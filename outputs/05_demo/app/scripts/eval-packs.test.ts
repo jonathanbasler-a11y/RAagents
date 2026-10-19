@@ -4,7 +4,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
 import { parseCaseFile } from '../evals/lib/cases';
-import { bindPacks, caseMaterial, loadPack, loadPacks, MATERIAL_INSTRUCTIONS, type CasePack } from '../evals/lib/packs';
+import { DATA_ROOM_INSTRUCTIONS } from '@/server/prompts/data-room';
+import { bindPacks, caseMaterial, loadPack, loadPacks, type CasePack } from '../evals/lib/packs';
 
 // Case packs: fictional practice documents plus the answer key, kept with the cases. The loader
 // refuses anything that could make a run unfair or unsafe: a document dated after the case's
@@ -307,27 +308,37 @@ describe('bindPacks', () => {
 });
 
 describe('caseMaterial', () => {
-  it('turns the visible documents into fenced context blocks, in the case order, with the exemption line', () => {
+  it('builds the case\'s data room with the same code the app uses: the index first, then the visible documents in id order, with the exemption lines', () => {
     const material = caseMaterial(packCase(), loadedPack());
 
     expect(material.roomContext.map((block) => block.label)).toEqual([
-      'Case document DR-01: Overview (fictional practice document, dated 2026-07-01)',
-      'Case document DR-02: Agency minutes (fictional practice document, dated 2026-08-15)',
+      'Data room index, written by the app',
+      'Data room document DR-01: Overview (fictional practice document, company disclosure, dated 2026-07-01)',
+      'Data room document DR-02: Agency minutes (fictional practice document, company disclosure, dated 2026-08-15)',
     ]);
-    expect(material.roomContext[0].text).toContain('Fictional practice document');
-    expect(material.instructions).toEqual(MATERIAL_INSTRUCTIONS);
+    expect(material.roomContext[1].text).toContain('Fictional practice document');
+    expect(material.instructions).toEqual([...DATA_ROOM_INSTRUCTIONS]);
     expect(material.hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it('lists in the index only what the case shows and what the pack withholds, as the agents of that case see the room', () => {
+    const index = (documents?: string[]) => caseMaterial(packCase(documents === undefined ? {} : { documents }), loadedPack()).roomContext[0].text;
+
+    expect(index(['DR-01'])).toContain('DR-01 | Overview | company disclosure | dated 2026-07-01 | shown');
+    expect(index(['DR-01'])).toContain('DR-03 | Paediatric plan | listed, not provided');
+    expect(index(['DR-01'])).not.toContain('DR-02');
+    expect(index(['DR-01'])).toContain(`Data room as of ${packCase().asOf}.`);
+  });
+
   it('shows only the documents the case lists, and all provided ones when it lists none', () => {
-    expect(caseMaterial(packCase({ documents: ['DR-02'] }), loadedPack()).roomContext).toHaveLength(1);
+    expect(caseMaterial(packCase({ documents: ['DR-02'] }), loadedPack()).roomContext).toHaveLength(2);
     const noList = packCase();
     delete (noList as { documents?: string[] }).documents;
-    expect(caseMaterial(noList, loadedPack()).roomContext.map((block) => block.label.slice(14, 19))).toEqual(['DR-01', 'DR-02']);
+    expect(caseMaterial(noList, loadedPack()).roomContext.slice(1).map((block) => /DR-\d\d/.exec(block.label)?.[0])).toEqual(['DR-01', 'DR-02']);
   });
 
   it('says in its instructions what the "In this phase" rule keeps and what it lifts', () => {
-    const text = MATERIAL_INSTRUCTIONS.join(' ');
+    const text = DATA_ROOM_INSTRUCTIONS.join(' ');
 
     expect(text).toMatch(/lifts?.*no documents are connected/i);
     expect(text).toMatch(/not found in the data room/);

@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { loadRegistry } from '@/server/agents';
 import { loadCases, type EvalCase } from '../evals/lib/cases';
 import { allPassed, hasCritical, runChecks } from '../evals/lib/checks';
-import { bindPacks, caseMaterial, ISSUE_KINDS, loadPacks, MATERIAL_INSTRUCTIONS } from '../evals/lib/packs';
+import { DATA_ROOM_INSTRUCTIONS } from '@/server/prompts/data-room';
+import { bindPacks, caseMaterial, ISSUE_KINDS, loadPacks } from '../evals/lib/packs';
 import { agentPromptFor } from '../evals/lib/run';
 
 // The real practice pack (evals/packs/practice-01) and the cases that use it: that they load and bind,
@@ -235,13 +236,13 @@ describe('the prompt each practice case builds', () => {
     for (const evalCase of packCases) {
       const material = caseMaterial(evalCase, pack);
       const system = agentPromptFor(evalCase, getAgent, material).messages[0].content;
-      const shown = new Set(material.roomContext.map((block) => block.label.slice('Case document '.length, 'Case document '.length + 5)));
+      const shown = new Set(material.roomContext.flatMap((block) => (/^Data room document (DR-\d+)/.exec(block.label) ?? []).slice(1)));
       expect(shown.size, evalCase.id).toBeGreaterThan(0);
       for (const doc of pack.documents.filter((candidate) => candidate.provided)) {
         const present = system.includes(headingOf(doc.id));
         expect(present, `${evalCase.id} ${doc.id}`).toBe(shown.has(doc.id));
       }
-      for (const line of MATERIAL_INSTRUCTIONS) expect(system, evalCase.id).toContain(line);
+      for (const line of DATA_ROOM_INSTRUCTIONS) expect(system, evalCase.id).toContain(line);
       expect(system, evalCase.id).toContain('BEGIN UNTRUSTED TEXT');
     }
   });
