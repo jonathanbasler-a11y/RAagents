@@ -2,6 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { getAgent, listAgents, listPublicAgents } from '@/server/agents';
 import { getChatRuntime, type ChatRuntime } from '@/server/chat/boot';
+import { loadPracticeRoom, type PracticeRoom } from '@/server/data-room/practice-pack';
 import { createLlmClient, readLlmConfig, rememberedRefusal, type RememberedRefusal } from '@/server/llm';
 import { redact, type RedactionTargets } from '@/server/llm/errors';
 import type { AgentId, AgentSpec, LlmClient, LlmConfigResult, LlmRouteConfig, LlmRouteName, PublicAgent } from '@/shared/contracts';
@@ -32,6 +33,8 @@ export interface ApiDeps {
   turnDeadlineMs?: number;
   /** Default: the SSE writer's 15 s. */
   heartbeatMs?: number;
+  /** The fictional practice data room, or null when the pack is not installed. Throws when it is installed but broken. Left out: not available. */
+  practiceRoom?: () => PracticeRoom | null;
 }
 
 /** Key and endpoint pairs whose values must never reach a log line (raw env values, even when a route is incomplete). */
@@ -76,5 +79,6 @@ export function apiDeps(): ApiDeps {
     now: () => new Date(),
     newId: () => randomUUID(),
     log: redactingLog(),
+    practiceRoom: () => loadPracticeRoom(),
   };
 }

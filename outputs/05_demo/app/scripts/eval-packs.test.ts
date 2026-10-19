@@ -131,6 +131,30 @@ describe('loadPack: documents', () => {
     expect(issuesOf(makePack(withheldWithFile))).toEqual([expect.stringMatching(/DR-03.*provided: false.*no file/)]);
   });
 
+  it('reads what kind of source each document is, and takes a company disclosure when the pack does not say', () => {
+    const pack = rawPack();
+    (pack.documents as Record<string, unknown>[])[1].source = 'agency-record';
+
+    const loaded = loadPack(makePack(pack));
+
+    expect(loaded.issues).toEqual([]);
+    expect(loaded.pack?.documents.map((doc) => [doc.id, doc.source])).toEqual([
+      ['DR-01', 'company-disclosure'],
+      ['DR-02', 'agency-record'],
+      ['DR-03', 'company-disclosure'],
+    ]);
+  });
+
+  it('refuses a source type it does not know, and changes the hash when a source changes', () => {
+    const typo = rawPack();
+    (typo.documents as Record<string, unknown>[])[1].source = 'rumour';
+    expect(issuesOf(makePack(typo))).toEqual([expect.stringMatching(/DR-02.*source must be one of company-disclosure, agency-record, registry, publication/)]);
+
+    const changed = rawPack();
+    (changed.documents as Record<string, unknown>[])[1].source = 'agency-record';
+    expect(loadPack(makePack(changed)).pack?.hash).not.toBe(loadPack(makePack()).pack?.hash);
+  });
+
   it('refuses duplicate document ids and unknown keys', () => {
     const dup = rawPack();
     (dup.documents as Record<string, unknown>[])[1].id = 'DR-01';

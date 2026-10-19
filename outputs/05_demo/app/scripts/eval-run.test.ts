@@ -109,8 +109,8 @@ const TEST_PACK: CasePack = {
   title: 'Practice case 01',
   asOf: '2026-10-08',
   documents: [
-    { id: 'DR-01', title: 'Overview', provided: true, dated: '2026-07-01', text: '# Overview\n\nFictional practice document.\n\nThe licensor says the study met its endpoint.' },
-    { id: 'DR-02', title: 'Paediatric plan', provided: false },
+    { id: 'DR-01', title: 'Overview', provided: true, source: 'company-disclosure', dated: '2026-07-01', text: '# Overview\n\nFictional practice document.\n\nThe licensor says the study met its endpoint.' },
+    { id: 'DR-02', title: 'Paediatric plan', provided: false, source: 'company-disclosure' },
   ],
   issues: [{ id: 'PI-01', kind: 'claim-vs-record', severity: 'high', plantedIn: ['DR-01'], rightResponse: 'r', wrongResponse: 'w', failureMode: 'f' }],
   hash: 'p'.repeat(64),

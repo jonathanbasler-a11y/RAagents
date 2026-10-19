@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeChatRuntime } from '@/server/chat/boot';
 import { captureLogs } from '@/server/llm/test-support/fake-gateway';
 import * as agentsRoute from './agents/route';
+import * as dataRoomRoute from './data-room/route';
+import * as documentsRoute from './data-room/documents/route';
+import * as documentRoute from './data-room/documents/[id]/route';
 import * as ddSetupRoute from './dd-setup/route';
 import * as healthRoute from './health/route';
 import * as messagesRoute from './rooms/[room]/messages/route';
@@ -18,6 +21,9 @@ import * as selectionRoute from './selection/route';
 
 const ROUTES = [
   ['agents', agentsRoute, ['GET']],
+  ['data-room', dataRoomRoute, ['GET', 'POST']],
+  ['data-room/documents', documentsRoute, ['POST']],
+  ['data-room/documents/[id]', documentRoute, ['GET', 'POST']],
   ['dd-setup', ddSetupRoute, ['GET', 'POST']],
   ['health', healthRoute, ['GET']],
   ['rooms/[room]/messages', messagesRoute, ['GET']],
@@ -51,6 +57,9 @@ describe('API route files', () => {
     ['rooms/[room]/new', (request: Request) => newRoute.POST(request, { params: Promise.resolve({ room: 'reglead' }) })],
     ['selection', (request: Request) => selectionRoute.POST(request)],
     ['dd-setup', (request: Request) => ddSetupRoute.POST(request)],
+    ['data-room', (request: Request) => dataRoomRoute.POST(request)],
+    ['data-room/documents', (request: Request) => documentsRoute.POST(request)],
+    ['data-room/documents/[id]', (request: Request) => documentRoute.POST(request, { params: Promise.resolve({ id: 'DR-01' }) })],
   ])('%s refuses a cross-site POST with 403 before it opens the database', async (_name, post) => {
     captureLogs();
     const request = new Request('http://localhost/api/x', {

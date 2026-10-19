@@ -14,6 +14,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseDocument } from 'yaml';
 import type { UntrustedBlock } from '@/server/prompts';
+import { DOCUMENT_SOURCE_TYPES, type DocumentSourceType } from '@/shared/contracts';
 import { DOCUMENT_ID_PATTERN, EvalCaseError, isCalendarDate, ISSUE_ID_PATTERN, PACK_ID_PATTERN, type CaseIssue, type EvalCase } from './cases';
 
 export const ISSUE_KINDS = [
@@ -43,6 +44,8 @@ export interface PackDocument {
   dated?: string;
   /** The file's text; set for a provided document. */
   text?: string;
+  /** What kind of source it is; a company disclosure when the pack does not say. */
+  source: DocumentSourceType;
 }
 
 /** One entry of the answer key. */
@@ -84,7 +87,7 @@ type Fields = Record<string, unknown>;
 const isMapping = (value: unknown): value is Fields => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const PACK_KEYS: ReadonlySet<string> = new Set(['id', 'title', 'as_of', 'documents', 'issues']);
-const DOCUMENT_KEYS: ReadonlySet<string> = new Set(['id', 'title', 'file', 'dated', 'provided']);
+const DOCUMENT_KEYS: ReadonlySet<string> = new Set(['id', 'title', 'file', 'dated', 'provided', 'source']);
 const ISSUE_KEYS: ReadonlySet<string> = new Set(['id', 'kind', 'severity', 'planted_in', 'right_response', 'wrong_response', 'failure_mode']);
 
 /** A document must say it is fictional within its first lines. */
@@ -152,6 +155,10 @@ export function loadPack(dir: string): { pack?: CasePack; issues: string[] } {
       if (!nonEmptyString(entry.title)) problem(`${at}: title is missing`);
       const title = nonEmptyString(entry.title) ? entry.title.trim() : docId;
       const provided = entry.provided === undefined ? true : entry.provided;
+      if (entry.source !== undefined && !(DOCUMENT_SOURCE_TYPES as readonly unknown[]).includes(entry.source)) {
+        problem(`${at}: source must be one of ${DOCUMENT_SOURCE_TYPES.join(', ')}`);
+      }
+      const source: DocumentSourceType = (DOCUMENT_SOURCE_TYPES as readonly unknown[]).includes(entry.source) ? (entry.source as DocumentSourceType) : 'company-disclosure';
       if (typeof provided !== 'boolean') {
         problem(`${at}: provided must be true or false`);
         return;
@@ -159,7 +166,7 @@ export function loadPack(dir: string): { pack?: CasePack; issues: string[] } {
 
       if (!provided) {
         if (entry.file !== undefined) problem(`${at}: provided: false means the document is withheld, so it has no file`);
-        documents.push({ id: docId, title, provided: false, ...(typeof entry.dated === 'string' ? { dated: entry.dated } : {}) });
+        documents.push({ id: docId, title, provided: false, source, ...(typeof entry.dated === 'string' ? { dated: entry.dated } : {}) });
         return;
       }
 
@@ -191,7 +198,7 @@ export function loadPack(dir: string): { pack?: CasePack; issues: string[] } {
       if (!FICTION_NOTICE.test(text.split('\n').slice(0, NOTICE_LINES).join('\n'))) {
         problem(`${at}: ${file} must say it is fictional in its first ${NOTICE_LINES} lines`);
       }
-      documents.push({ id: docId, title, provided: true, dated, text });
+      documents.push({ id: docId, title, provided: true, source, dated, text });
     });
   }
 
@@ -269,7 +276,7 @@ export function loadPack(dir: string): { pack?: CasePack; issues: string[] } {
     id,
     title: (raw.title as string).trim(),
     asOf,
-    documents: documents.map((doc) => ({ id: doc.id, title: doc.title, provided: doc.provided, dated: doc.dated ?? null, text: doc.text ?? null })),
+    documents: documents.map((doc) => ({ id: doc.id, title: doc.title, provided: doc.provided, source: doc.source, dated: doc.dated ?? null, text: doc.text ?? null })),
     issues: issueList,
   };
   return { pack: { ...(content as Omit<CasePack, 'hash' | 'source'>), hash: sha256(JSON.stringify(content)), source }, issues };
