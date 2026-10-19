@@ -14,6 +14,14 @@ describe('team roles group note', () => {
   });
 });
 
+describe('specialists group note', () => {
+  it('says the DD setup brings them in, and that a hand switch is still possible', () => {
+    expect(GROUP_INFO.spec.note).toBe(
+      'Brought in by the asset’s classification or stage, set in the DD setup. You can still switch one on or off by hand.',
+    );
+  });
+});
+
 describe('triggerText', () => {
   it('says nothing when an agent has no trigger', () => {
     expect(triggerText(undefined)).toBeNull();

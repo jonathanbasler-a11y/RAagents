@@ -3,11 +3,10 @@ import type { ReactNode } from 'react';
 import type { DemoMode } from '@/shared/contracts';
 import { AgentRail } from './AgentRail';
 import { PracticeBanner } from './Banners';
+import { DdSetupProvider } from './DdSetupProvider';
 import { DemoModeProvider } from './DemoMode';
 import type { AgentsLoad } from './load-agents';
 import { SelectionProvider } from './SelectionProvider';
-import { WORKSPACE_PATH } from './workspace/screens';
-import { TeamChatWorkspaceLink } from './workspace/TeamChatWorkspaceLink';
 
 export const CONFIDENTIAL_BANNER =
   "Confidential workspace. Chats stay on this computer and go to your company's model gateway; agents cannot promise secrecy or deletion.";
@@ -45,24 +44,22 @@ export function AppShell({
               ? 'In this phase no documents and no tools are connected. Replies in practice mode are stand-in text, not model output and not sources.'
               : 'In this phase no documents and no tools are connected. Agent replies are model output, not sources.'}
           </p>
-          <Link href={WORKSPACE_PATH} className="btn btn-quiet btn-sm">
-            Workspace (illustrative)
-          </Link>
         </header>
         <SelectionProvider>
-          <div className="shell">
-            {agentsLoad.ok ? (
-              <AgentRail agents={agentsLoad.agents} />
-            ) : (
-              <nav className="rail" aria-label="Rooms">
-                <p className="note rail-note">Agents unavailable: see the setup message.</p>
-              </nav>
-            )}
-            <main id="main" className="main" tabIndex={-1}>
-              <TeamChatWorkspaceLink />
-              {children}
-            </main>
-          </div>
+          <DdSetupProvider>
+            <div className="shell">
+              {agentsLoad.ok ? (
+                <AgentRail agents={agentsLoad.agents} />
+              ) : (
+                <nav className="rail" aria-label="Rooms">
+                  <p className="note rail-note">Agents unavailable: see the setup message.</p>
+                </nav>
+              )}
+              <main id="main" className="main" tabIndex={-1}>
+                {children}
+              </main>
+            </div>
+          </DdSetupProvider>
         </SelectionProvider>
       </div>
     </DemoModeProvider>

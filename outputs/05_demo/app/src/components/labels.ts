@@ -34,7 +34,7 @@ export const GROUP_INFO: Record<AgentGroup, GroupInfo> = {
   spec: {
     label: 'Specialists by asset',
     tag: 'Specialist',
-    note: 'Brought in by the asset’s classification or stage. In this phase you switch them on and off by hand.',
+    note: 'Brought in by the asset’s classification or stage, set in the DD setup. You can still switch one on or off by hand.',
     collapsed: false,
   },
   role: {

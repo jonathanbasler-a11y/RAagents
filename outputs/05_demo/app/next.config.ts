@@ -13,8 +13,7 @@ function distDirFromEnv(value: string | undefined): string {
   return value;
 }
 
-// Sent on every route. X-Frame-Options is SAMEORIGIN, never DENY: the /workspace page frames
-// the mockup route (/workspace/mockup) from the same origin.
+// Sent on every route. X-Frame-Options is SAMEORIGIN, as frame-ancestors 'self' below: only the app itself may frame it.
 const SECURITY_HEADERS = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'same-origin' },
@@ -22,8 +21,8 @@ const SECURITY_HEADERS = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
 ];
 
-// Content-Security-Policy for every route except /workspace/mockup. Everything loads from this
-// origin only. 'unsafe-inline' stays for scripts and styles because Next.js writes inline
+// Content-Security-Policy for every route, with no exception. Everything loads from this
+// origin only, and the app frames nothing. 'unsafe-inline' stays for scripts and styles because Next.js writes inline
 // hydration scripts and the components use style attributes; per-request nonces would be
 // stricter and are deferred. There is no 'unsafe-eval' on purpose: only `next dev` (React's
 // debugging stacks, hot reload) needs it, and the demo never runs dev. Under `npm run dev` the
@@ -34,17 +33,12 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "connect-src 'self'",
-  "frame-src 'self'",
+  "frame-src 'none'",
   "frame-ancestors 'self'",
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'self'",
 ].join('; ');
-
-// Matches every path except /workspace/mockup (with or without a trailing slash). That route
-// sends its own, stricter policy (default-src 'none'); a second CSP header would be intersected
-// with it, so it is left out here.
-const ALL_ROUTES_EXCEPT_MOCKUP = '/((?!workspace/mockup(?:/|$)).*)';
 
 const nextConfig: NextConfig = {
   // Gzip buffers server-sent events, so streamed replies would arrive in bursts.
@@ -54,8 +48,7 @@ const nextConfig: NextConfig = {
   async headers() {
     // "/:path*" matches "/" and every nested path: pages, API routes and static files.
     return [
-      { source: '/:path*', headers: SECURITY_HEADERS },
-      { source: ALL_ROUTES_EXCEPT_MOCKUP, headers: [{ key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY }] },
+      { source: '/:path*', headers: [...SECURITY_HEADERS, { key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY }] },
     ];
   },
 };

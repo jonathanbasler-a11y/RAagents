@@ -26,8 +26,6 @@ beforeEach(() => {
   pathname.current = '/';
 });
 
-const WORKSPACE_FROM_TEAM_CHAT = 'Open the DD workspace (illustrative)';
-
 function renderShell() {
   return render(
     <AppShell agentsLoad={{ ok: true, agents: ROSTER }}>
@@ -36,28 +34,28 @@ function renderShell() {
   );
 }
 
-describe('AppShell navigation to the illustrative workspace', () => {
-  it('links the workspace from the app header', () => {
+describe('AppShell navigation', () => {
+  it('has the product link home in the header and no second workspace entry', () => {
     renderShell();
 
-    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Workspace (illustrative)' })).toHaveAttribute('href', '/workspace');
+    const header = within(screen.getByRole('banner'));
+    expect(header.getAllByRole('link')).toHaveLength(1);
+    expect(header.getByRole('link', { name: /Digital Human Hybrid Team/ })).toHaveAttribute('href', '/');
   });
 
-  it('gives the team chat a small link to the workspace, above the chat', () => {
-    pathname.current = '/team';
-    renderShell();
-
-    const main = screen.getByRole('main');
-    const link = within(main).getByRole('link', { name: WORKSPACE_FROM_TEAM_CHAT });
-    expect(link).toHaveAttribute('href', '/workspace');
-    expect(link.compareDocumentPosition(within(main).getByText('Page body')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it.each(['/', '/workspace', '/chat/reglead'])('shows that link only in the team chat, not on %s', (path) => {
+  it.each(['/', '/team', '/chat/reglead'])('adds no link above the page on %s', (path) => {
     pathname.current = path;
     renderShell();
 
-    expect(within(screen.getByRole('main')).queryByRole('link', { name: WORKSPACE_FROM_TEAM_CHAT })).not.toBeInTheDocument();
+    const main = within(screen.getByRole('main'));
+    expect(main.queryAllByRole('link')).toHaveLength(0);
+    expect(screen.queryByText(/illustrative/i)).not.toBeInTheDocument();
+  });
+
+  it('shows one banner above the page, not two', () => {
+    renderShell();
+
+    expect(screen.getAllByRole('note')).toHaveLength(1);
   });
 });
 
@@ -136,7 +134,5 @@ describe('AppShell', () => {
     expect(within(screen.getByRole('navigation', { name: 'Rooms' })).getByText(/Agents unavailable/)).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveTextContent('Setup message');
     expect(screen.getByText('Confidential workspace. Chats stay on this computer and go to your company\'s model gateway; agents cannot promise secrecy or deletion.')).toBeInTheDocument();
-    // The illustrative workspace needs no agents, so the header still offers it.
-    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Workspace (illustrative)' })).toHaveAttribute('href', '/workspace');
   });
 });
