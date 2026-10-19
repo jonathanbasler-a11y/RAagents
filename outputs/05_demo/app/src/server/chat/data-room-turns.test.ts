@@ -198,6 +198,10 @@ describe('the team chat with a data room', () => {
     expect(fake.calls).toHaveLength(3);
     const byName = new Map(fake.calls.map((call) => [agentNameOf(call), systemOf(call)]));
     expect(byName.get('Rosa')).toContain('The licensor says the asset has orphan designation.');
+    for (const line of DATA_ROOM_INSTRUCTIONS) {
+      expect(byName.get('Rosa'), line).toContain(line);
+      expect(byName.get('Carlos'), line).toContain(line);
+    }
     expect(byName.get('Carlos')).toContain('The licensor says the asset has orphan designation.');
     expect(byName.get('Carlos')).toContain(DATA_ROOM_INSTRUCTIONS[0]);
     expect(byName.get('Sofia')).not.toContain('orphan designation');
@@ -215,5 +219,6 @@ describe('the team chat with a data room', () => {
 
     expect(fake.calls).toHaveLength(1);
     expect(systemOf(fake.calls[0])).toContain('The licensor says the asset has orphan designation.');
+    for (const line of DATA_ROOM_INSTRUCTIONS) expect(systemOf(fake.calls[0])).toContain(line);
   });
 });

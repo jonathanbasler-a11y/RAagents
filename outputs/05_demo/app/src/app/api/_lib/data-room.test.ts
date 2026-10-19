@@ -156,21 +156,25 @@ describe('POST /api/data-room: start', () => {
     expect((await jsonOf<DataRoomResponse>(getDataRoom(api.deps))).dataRoom?.asOf).toBe('2026-09-01');
   });
 
+  const SHAPE = /Send \{ "asOf": "YYYY-MM-DD" \} for an empty data room, or \{ "practice": true \}/;
   it.each([
-    ['nothing', {}],
-    ['both', { asOf: AS_OF, practice: true }],
-    ['practice false', { practice: false }],
-    ['a date that is not a date', { asOf: '2026-02-30' }],
-    ['a date as a number', { asOf: 20261012 }],
-    ['an array', []],
-    ['text', 'hello'],
-  ])('answers 400 for %s, and starts nothing', async (_label, body) => {
+    ['nothing', {}, SHAPE],
+    ['both', { asOf: AS_OF, practice: true }, SHAPE],
+    ['practice false', { practice: false }, SHAPE],
+    ['practice as text', { practice: 'yes' }, SHAPE],
+    ['a date that is not a date', { asOf: '2026-02-30' }, /real date/],
+    ['a date as a number', { asOf: 20261012 }, /real date/],
+    ['an array', [], SHAPE],
+    ['text', 'hello', /JSON/],
+  ])('answers 400 for %s, with the message that fits, and starts nothing', async (_label, body, message) => {
     const api = setup();
 
     const response = await start(api, body);
 
     expect(response.status).toBe(400);
-    expect((await jsonOf<ApiErrorBody>(response)).error).toBe('invalid_request');
+    const error = await jsonOf<ApiErrorBody>(response);
+    expect(error.error).toBe('invalid_request');
+    expect(error.message).toMatch(message);
     expect((await jsonOf<DataRoomResponse>(getDataRoom(api.deps))).dataRoom).toBeNull();
   });
 
