@@ -494,6 +494,8 @@ export type TurnIntent = (typeof TURN_INTENTS)[number];
 export interface ProposalTrace {
   findingIds: string[];
   questionIds: string[];
+  /** Ids of the findings that claims of this turn repeated and that were not added again. Left out when none. */
+  duplicateIds?: string[];
   /** Why nothing was added, when the reply could not be used. */
   problem: string | null;
 }
@@ -850,10 +852,12 @@ export interface Store {
    * transaction (all or nothing), with a 'proposed' event for each draft. The register checks each claim again against
    * the room: the document must exist, not be withdrawn and be dated on or before the as-of date, and the quote must be
    * in it. The basis, date and title come from the document. There is no way to set a status here: this is the only
-   * way an agent's claim enters the register, and it always enters as a draft. Throws NoDataRoomError, or RangeError
-   * (nothing saved) for a claim it refuses or a turn that does not exist.
+   * way an agent's claim enters the register, and it always enters as a draft. A claim on a document and a quote the
+   * register already holds (at any status, so a rejected finding is not asked again) is not added again: it comes back
+   * in `duplicates` with the id it repeats. Throws NoDataRoomError, or RangeError (nothing saved) for a claim it refuses
+   * or a turn that does not exist.
    */
-  proposeFindings(workspaceId: WorkspaceId, input: ProposeFindingsInput): { findings: Finding[]; openQuestions: OpenQuestion[] };
+  proposeFindings(workspaceId: WorkspaceId, input: ProposeFindingsInput): ProposeFindingsResult;
   /**
    * A person's decision on a draft, recorded once with the time, LOCAL_PERSON and an optional note (up to 300
    * characters), plus an audit event. The ONLY writer of a finding's status. Throws FindingNotFoundError,
@@ -1277,6 +1281,14 @@ export interface Finding {
   /** Who decided. Today the app has no login, so this says so. */
   decidedBy: string | null;
   decisionNote: string | null;
+}
+
+/** What a proposal added to the register, and what it repeated. */
+export interface ProposeFindingsResult {
+  findings: Finding[];
+  openQuestions: OpenQuestion[];
+  /** Claims whose document and quote were already in the register: not added again. */
+  duplicates: Array<{ claim: string; existingId: string }>;
 }
 
 /** A claim that did not become a finding, with the reason. Never evidence. */

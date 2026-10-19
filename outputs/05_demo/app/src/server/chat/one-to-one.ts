@@ -48,12 +48,19 @@ const TURN_STATUS = { complete: 'done', partial: 'partial', error: 'error' } as 
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
-function summaryNote(findingIds: readonly string[], questionIds: readonly string[]): string {
-  if (findingIds.length === 0 && questionIds.length === 0) return 'No findings were drafted and no claims were kept as open questions.';
+function summaryNote(findingIds: readonly string[], questionIds: readonly string[], duplicateIds: readonly string[]): string {
+  const repeated = (() => {
+    if (duplicateIds.length === 0) return '';
+    const ids = [...new Set(duplicateIds)].join(', ');
+    return `${plural(duplicateIds.length, 'claim', 'claims')} repeated ${duplicateIds.length === 1 ? 'a finding' : 'findings'} already in the register (${ids}) and ${duplicateIds.length === 1 ? 'was' : 'were'} not added again.`;
+  })();
   const parts = [];
   if (findingIds.length > 0) parts.push(`${plural(findingIds.length, 'finding', 'findings')} drafted (${findingIds.join(', ')})`);
   if (questionIds.length > 0) parts.push(`${plural(questionIds.length, 'claim', 'claims')} kept as open questions (${questionIds.join(', ')})`);
-  return `${parts.join(' and ')}. Nothing is a finding until a person accepts it.`;
+  if (parts.length === 0) {
+    return repeated === '' ? 'No findings were drafted and no claims were kept as open questions.' : `No new findings were drafted: ${repeated}`;
+  }
+  return `${parts.join(' and ')}.${repeated === '' ? '' : ` ${repeated}`} Nothing is a finding until a person accepts it.`;
 }
 
 interface ProposalOutcome {
@@ -97,8 +104,9 @@ function proposeFromReply(deps: OneToOneDeps, run: TurnRun, result: RunAgentResu
     });
     const findingIds = saved.findings.map((finding) => finding.id);
     const questionIds = saved.openQuestions.map((question) => question.id);
-    note(summaryNote(findingIds, questionIds));
-    return { trace: { findingIds, questionIds, problem: null }, failure: null };
+    const duplicateIds = saved.duplicates.map((entry) => entry.existingId);
+    note(summaryNote(findingIds, questionIds, duplicateIds));
+    return { trace: { findingIds, questionIds, ...(duplicateIds.length > 0 ? { duplicateIds } : {}), problem: null }, failure: null };
   } catch (error) {
     const correlationId = newId();
     log.error(`[findings] could not write the proposal of turn ${run.turn.id} (correlation ${correlationId}): ${error instanceof Error ? `${error.name}: ${error.message}` : String(error)}`);

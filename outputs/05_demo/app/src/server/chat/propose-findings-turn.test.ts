@@ -124,6 +124,44 @@ describe('a findings proposal turn', () => {
     expect(messages.some((message) => message.text === note?.text)).toBe(true);
   });
 
+  it('says when a claim repeats a finding already in the register, and adds nothing for it', async () => {
+    room();
+    const second = [finding({ claim: 'Said differently.' }), finding({ claim: 'A new one.', documentId: 'DR-02', quote: 'did not agree that STUDY-301 alone would suffice' })];
+    const { ask } = setup([() => stream(reply([finding()])), () => stream(reply(second))]);
+    await ask('propose-findings');
+
+    const { turn, events } = await ask('propose-findings');
+
+    expect(temp.store.listFindings('demo').map((entry) => entry.id)).toEqual(['F-001', 'F-002']);
+    const note = events.find((event): event is Extract<ChatEvent, { type: 'note' }> => event.type === 'note');
+    expect(note?.text).toBe(
+      '1 finding drafted (F-002). 1 claim repeated a finding already in the register (F-001) and was not added again. Nothing is a finding until a person accepts it.',
+    );
+    expect(turn?.trace?.proposal).toMatchObject({ findingIds: ['F-002'], duplicateIds: ['F-001'], problem: null });
+  });
+
+  it('says so plainly when every claim repeats one, and the register does not change', async () => {
+    room();
+    const { ask } = setup([() => stream(reply([finding()])), () => stream(reply([finding({ claim: 'Same quote again.' })]))]);
+    await ask('propose-findings');
+
+    const { turn, events } = await ask('propose-findings');
+
+    expect(temp.store.listFindings('demo')).toHaveLength(1);
+    const note = events.find((event): event is Extract<ChatEvent, { type: 'note' }> => event.type === 'note');
+    expect(note?.text).toBe('No new findings were drafted: 1 claim repeated a finding already in the register (F-001) and was not added again.');
+    expect(turn?.trace?.proposal).toMatchObject({ findingIds: [], duplicateIds: ['F-001'] });
+  });
+
+  it('leaves duplicateIds out of the trace when nothing repeated', async () => {
+    room();
+    const { ask } = setup([() => stream(reply([finding()]))]);
+
+    const { turn } = await ask('propose-findings');
+
+    expect(turn?.trace?.proposal).not.toHaveProperty('duplicateIds');
+  });
+
   it('lets the proposal reply be longer than an ordinary answer, and only that reply: the default cap cut real proposals off', async () => {
     room();
     const { fake, ask } = setup([() => stream(reply([])), () => stream('A normal answer.')]);
@@ -189,11 +227,14 @@ describe('a findings proposal turn', () => {
     room();
     const { ask } = setup([() => jsonResponse({ error: { message: 'bad request' } }, 400)]);
 
-    const { turn } = await ask('propose-findings');
+    const { turn, events } = await ask('propose-findings');
 
     expect(turn?.status).toBe('error');
     expect(temp.store.listFindings('demo')).toEqual([]);
     expect(temp.store.listOpenQuestions('demo')).toEqual([]);
+    // The failure has its own error bubble: no register note about a reply that never arrived, and no proposal in the trace.
+    expect(events.some((event) => event.type === 'note')).toBe(false);
+    expect(turn?.trace?.proposal).toBeUndefined();
   });
 
   it('refuses a claim that cites a document the agent was not shown in this turn', async () => {

@@ -114,7 +114,8 @@ export function proposalTraceText(trace: ProposalTrace): string {
   if (trace.problem !== null) return `Nothing was added to the register: ${trace.problem}`;
   const findings = trace.findingIds.length === 0 ? 'no drafts' : `drafts ${trace.findingIds.join(', ')}`;
   const questions = trace.questionIds.length === 0 ? 'no open questions' : `open questions ${trace.questionIds.join(', ')}`;
-  return `Added to the register: ${findings}; ${questions}. A draft is not a finding until a person accepts it.`;
+  const repeated = trace.duplicateIds && trace.duplicateIds.length > 0 ? ` Already in the register, not added again: ${[...new Set(trace.duplicateIds)].join(', ')}.` : '';
+  return `Added to the register: ${findings}; ${questions}.${repeated} A draft is not a finding until a person accepts it.`;
 }
 
 /** What the agents do with a data-room document, in the data room list. */

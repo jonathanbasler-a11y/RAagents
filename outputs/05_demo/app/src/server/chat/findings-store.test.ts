@@ -146,6 +146,97 @@ describe('proposeFindings', () => {
     ]);
   });
 
+  it('cuts a very long refused claim and trims a padded one, rather than failing the whole proposal', () => {
+    const { store, turnId } = seeded();
+
+    const saved = store.proposeFindings('demo', {
+      turnId,
+      agent: AGENT,
+      owner: OWNER,
+      findings: [checked()],
+      refused: [refused({ claim: 'y'.repeat(700) }), refused({ claim: '   padded claim   ' })],
+    });
+
+    expect(saved.findings).toHaveLength(1);
+    expect(saved.openQuestions.map((question) => question.claim)).toEqual(['y'.repeat(600), 'padded claim']);
+  });
+
+  describe('the same quote is not put in the register twice', () => {
+    it('skips a claim on a document and quote already in the register, at any status, and names the finding it repeats', () => {
+      const { store, turnId } = seeded();
+      store.proposeFindings('demo', { turnId, agent: AGENT, owner: OWNER, findings: [checked()], refused: [] });
+      store.decideFinding('demo', 'F-001', 'rejected', null);
+
+      const again = store.proposeFindings('demo', {
+        turnId,
+        agent: AGENT,
+        owner: OWNER,
+        findings: [checked({ claim: 'Said another way: one study is enough, says the seller.' })],
+        refused: [],
+      });
+
+      expect(again.findings).toEqual([]);
+      expect(again.duplicates).toEqual([{ claim: 'Said another way: one study is enough, says the seller.', existingId: 'F-001' }]);
+      expect(store.listFindings('demo').map((entry) => [entry.id, entry.status])).toEqual([['F-001', 'rejected']]);
+      expect(store.listFindingEvents('demo').map((event) => event.kind)).toEqual(['proposed', 'rejected']);
+    });
+
+    it('recognises the same quote through curly quotes and spacing, as the checker does', () => {
+      const { store, turnId } = seeded();
+      store.proposeFindings('demo', { turnId, agent: AGENT, owner: OWNER, findings: [checked({ quote: 'one adequate and  well-controlled pivotal study is sufficient' })], refused: [] });
+
+      const again = store.proposeFindings('demo', { turnId, agent: AGENT, owner: OWNER, findings: [checked({ quote: 'one adequate and well–controlled pivotal study is sufficient' })], refused: [] });
+
+      expect(again.findings).toEqual([]);
+      expect(again.duplicates.map((entry) => entry.existingId)).toEqual(['F-001']);
+    });
+
+    it('does not use up an id for a duplicate, and still adds a different quote of the same document', () => {
+      const { store, turnId } = seeded();
+      store.proposeFindings('demo', { turnId, agent: AGENT, owner: OWNER, findings: [checked()], refused: [] });
+
+      const next = store.proposeFindings('demo', {
+        turnId,
+        agent: AGENT,
+        owner: OWNER,
+        findings: [checked(), checked({ quote: 'The agency has agreed that one adequate', claim: 'A different part of the same sentence.' })],
+        refused: [],
+      });
+
+      expect(next.findings.map((entry) => entry.id)).toEqual(['F-002']);
+      expect(next.duplicates.map((entry) => entry.existingId)).toEqual(['F-001']);
+    });
+
+    it('keeps the first of two identical claims in one proposal and reports the second as a repeat of it', () => {
+      const { store, turnId } = seeded();
+
+      const result = store.proposeFindings('demo', { turnId, agent: AGENT, owner: OWNER, findings: [checked(), checked({ claim: 'Same quote, other words.' })], refused: [] });
+
+      expect(result.findings.map((entry) => entry.id)).toEqual(['F-001']);
+      expect(result.duplicates).toEqual([{ claim: 'Same quote, other words.', existingId: 'F-001' }]);
+    });
+
+    it('treats the same words in another document as a different finding', () => {
+      const store = openStore();
+      const shared = 'The licensor expects approval on one pivotal study alone.';
+      store.createDataRoom('demo', {
+        asOf: AS_OF,
+        documents: [
+          { id: 'DR-01', title: 'Overview', sourceType: 'company-disclosure', publishedAt: '2026-07-14', provided: true, text: shared },
+          { id: 'DR-02', title: 'Deck', sourceType: 'company-disclosure', publishedAt: '2026-07-15', provided: true, text: shared },
+        ],
+      });
+      const { turn } = store.startTurn({ workspaceId: 'demo', roomId: 'reglead', clientTurnId: 'c1', bootId: 'boot-1', deadlineAt: '2026-10-12T08:03:00.000Z' });
+      const words = { quote: 'approval on one pivotal study alone', claim: 'The licensor expects approval on one study.' };
+      store.proposeFindings('demo', { turnId: turn.id, agent: AGENT, owner: OWNER, findings: [checked({ ...words, documentId: 'DR-01' })], refused: [] });
+
+      const result = store.proposeFindings('demo', { turnId: turn.id, agent: AGENT, owner: OWNER, findings: [checked({ ...words, documentId: 'DR-02', documentTitle: 'Deck', publishedAt: '2026-07-15' })], refused: [] });
+
+      expect(result.findings.map((entry) => [entry.id, entry.documentId])).toEqual([['F-002', 'DR-02']]);
+      expect(result.duplicates).toEqual([]);
+    });
+  });
+
   it('keeps a refused claim as an open question with the reason, never as a finding', () => {
     const { store, turnId } = seeded();
 
@@ -164,7 +255,7 @@ describe('proposeFindings', () => {
     const { store, turnId } = seeded();
     store.proposeFindings('demo', { turnId, agent: AGENT, owner: OWNER, findings: [checked()], refused: [refused()] });
 
-    const second = store.proposeFindings('demo', { turnId, agent: AGENT, owner: OWNER, findings: [checked({ claim: 'Another claim.' })], refused: [refused({ claim: 'Again.' })] });
+    const second = store.proposeFindings('demo', { turnId, agent: AGENT, owner: OWNER, findings: [checked({ claim: 'Another claim.', quote: 'The agency has agreed that one adequate' })], refused: [refused({ claim: 'Again.' })] });
 
     expect(second.findings[0].id).toBe('F-002');
     expect(second.openQuestions[0].id).toBe('Q-002');
@@ -393,6 +484,31 @@ describe('what the database refuses by itself', () => {
     expect(() => db.exec("UPDATE findings SET status = 'accepted', decided_at = 'x', decided_by = 'y' WHERE id = 'F-001'")).not.toThrow();
     expect(() => db.exec("UPDATE findings SET status = 'rejected', decided_at = 'z', decided_by = 'y' WHERE id = 'F-001'")).toThrow(/cannot be changed/);
     expect(() => db.exec("UPDATE findings SET decision_note = 'later' WHERE id = 'F-001'")).toThrow(/cannot be changed/);
+  });
+
+  it('refuses to change any part of a finding along with its decision', () => {
+    const db = raw();
+    const changes = [
+      "quote = 'a changed quote that is long enough'",
+      "confidence = 'high'",
+      "confidence_reason = 'changed'",
+      "assumptions = '[\"changed\"]'",
+      "owner = 'Someone else'",
+      "agent_id = 'other'",
+      "agent_name = 'Other'",
+      "agent_version = '9'",
+      "model = 'other-model'",
+      "prompt_hash = 'sha256:other'",
+      "document_id = 'DR-02'",
+      "published_at = '2026-01-01'",
+      "as_of = '2026-10-13'",
+      "created_at = 'x'",
+    ];
+
+    for (const change of changes) {
+      expect(() => db.exec(`UPDATE findings SET status = 'accepted', decided_at = 'x', decided_by = 'y', ${change} WHERE id = 'F-001'`), change).toThrow(/cannot be changed/);
+    }
+    expect(db.prepare("SELECT status FROM findings WHERE id = 'F-001'").get()).toMatchObject({ status: 'draft' });
   });
 
   it('refuses to accept a finding whose document is withdrawn, but not to reject it', () => {

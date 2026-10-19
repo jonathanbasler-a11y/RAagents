@@ -85,6 +85,11 @@ describe('quoteIsInDocument', () => {
   it('finds nothing in no text', () => {
     expect(quoteIsInDocument('anything at all here', [])).toBe(false);
   });
+
+  it('finds nothing for an empty quote, or one that is only spaces: an empty string is in every text', () => {
+    expect(quoteIsInDocument('', [TEXT_01])).toBe(false);
+    expect(quoteIsInDocument('  \n ', [TEXT_01])).toBe(false);
+  });
 });
 
 describe('basisOf', () => {
@@ -134,6 +139,14 @@ describe('parseProposalReply', () => {
 
     expect(result.ok).toBe(false);
     expect(result.ok ? '' : result.message).toMatch(/findings/i);
+  });
+});
+
+describe('parseProposalReply: a fenced block wins over braces in the prose', () => {
+  it('reads the fenced json even when the sentence before it holds braces that are not json', () => {
+    const reply = 'I propose {one finding} and set it out below.\n\n```json\n{"findings": [{"claim": "c"}], "unsupported": []}\n```';
+
+    expect(parseProposalReply(reply)).toEqual({ ok: true, findings: [{ claim: 'c' }], unsupported: [] });
   });
 });
 
@@ -284,6 +297,24 @@ describe('checkProposedFinding: what is refused, and why', () => {
     it('reports an unknown document before anything about its quote', () => {
       expect(refusal({ ...good, documentId: 'DR-77', quote: 'nonsense that is nowhere at all' }).code).toBe('document_unknown');
     });
+  });
+});
+
+describe('checkProposedFinding: the limits of a quote are inclusive', () => {
+  const longText = 'a'.repeat(700);
+  const withText = (text: string) => context({ documents: new Map([['DR-01', facts({ texts: [text] })]]) });
+  const check = (quote: string, ctx = context()) => checkProposedFinding({ ...good, quote }, ctx);
+
+  it('takes a quote of exactly the minimum length, and refuses one character less', () => {
+    expect(MIN_QUOTE_CHARS).toBe(15);
+    expect(check('one adequate an')).toMatchObject({ ok: true });
+    expect(check('one adequate a')).toMatchObject({ ok: false, code: 'quote_too_short' });
+  });
+
+  it('takes a quote of exactly the maximum length, and refuses one character more', () => {
+    expect(MAX_QUOTE_CHARS).toBe(600);
+    expect(check('a'.repeat(MAX_QUOTE_CHARS), withText(longText))).toMatchObject({ ok: true });
+    expect(check('a'.repeat(MAX_QUOTE_CHARS + 1), withText(longText))).toMatchObject({ ok: false, code: 'quote_too_long' });
   });
 });
 

@@ -88,6 +88,15 @@ describe('proposalTraceText', () => {
     );
   });
 
+  it('says which findings a turn repeated, and that they were not added again', () => {
+    expect(proposalTraceText({ findingIds: ['F-004'], questionIds: [], duplicateIds: ['F-001', 'F-002'], problem: null })).toBe(
+      'Added to the register: drafts F-004; no open questions. Already in the register, not added again: F-001, F-002. A draft is not a finding until a person accepts it.',
+    );
+    expect(proposalTraceText({ findingIds: [], questionIds: [], duplicateIds: [], problem: null })).toBe(
+      'Added to the register: no drafts; no open questions. A draft is not a finding until a person accepts it.',
+    );
+  });
+
   it('says nothing was added, and why, when the reply could not be used', () => {
     expect(proposalTraceText({ findingIds: [], questionIds: [], problem: 'the reply was cut off.' })).toBe(
       'Nothing was added to the register: the reply was cut off.',

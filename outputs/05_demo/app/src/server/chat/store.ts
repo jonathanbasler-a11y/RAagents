@@ -20,6 +20,7 @@ import type {
   NewThreadResult,
   OpenQuestion,
   Provenance,
+  ProposeFindingsResult,
   ReconcileOptions,
   RoomId,
   StartTurnResult,
@@ -33,7 +34,7 @@ import type {
 } from '@/shared/contracts';
 import { CLASSIFICATION_IDS, DEVELOPMENT_STAGES, LOCAL_PERSON } from '@/shared/contracts';
 import { neutraliseUntrusted } from '@/server/prompts/fence';
-import { checkProposedFinding, type ProposalContext } from '@/shared/findings';
+import { checkProposedFinding, foldForMatch, type ProposalContext } from '@/shared/findings';
 import { MAX_REASON_CHARS, checkAsOf, checkNewDocument, compareDocumentIds, nextDocumentId } from '@/shared/data-room';
 import { immediateTransaction, migrateChatSchema } from './schema';
 
@@ -1063,12 +1064,27 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
           shownIds: new Set(room.documents.map((document) => document.id)),
         };
 
+        // One draft per quote of a document: the sentence is the evidence, and a person should not review it twice or be
+        // asked again about one they rejected. The key is the document and the quote as the checker compares it.
+        const quoteKey = (documentId: string, quote: string) => `${documentId}\u0000${foldForMatch(quote)}`;
+        const known = new Map<string, string>();
+        for (const row of sql.findingsOf.all(workspaceId) as unknown as FindingRow[]) {
+          const existing = toFinding(row);
+          known.set(quoteKey(existing.documentId, existing.quote), existing.id);
+        }
+        const duplicates: ProposeFindingsResult['duplicates'] = [];
+
         const findingIds: string[] = [];
         let next = Number((sql.nextFindingNumber.get(workspaceId) as { next: number }).next);
         for (const proposed of input.findings) {
           const result = checkProposedFinding(proposed, context);
           if (!result.ok) throw new RangeError(`${proposed.documentId}: ${result.message}`);
           const finding = result.finding;
+          const repeated = known.get(quoteKey(finding.documentId, finding.quote));
+          if (repeated !== undefined) {
+            duplicates.push({ claim: finding.claim, existingId: repeated });
+            continue;
+          }
           const id = numbered('F', next);
           next += 1;
           sql.insertFinding.run({
@@ -1094,6 +1110,7 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
             created_at: at,
           });
           sql.insertFindingEvent.run(workspaceId, id, 'proposed', at, `agent:${input.agent.agentId}`, null);
+          known.set(quoteKey(finding.documentId, finding.quote), id);
           findingIds.push(id);
         }
 
@@ -1121,6 +1138,7 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
         return {
           findings: findingIds.map((id) => mustExist(readFinding(workspaceId, id) ?? undefined, `finding ${id}`)),
           openQuestions: questions.filter((question) => questionIds.includes(question.id)),
+          duplicates,
         };
       });
     },
