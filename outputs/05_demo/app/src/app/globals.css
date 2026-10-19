@@ -704,7 +704,9 @@ details.rail-group > summary {
 .dr-asof {
   margin-bottom: 8px;
 }
+/* position: relative keeps the visually hidden header text (position: absolute) inside the table's scroll area, not the page's. */
 .dr-table {
+  position: relative;
   width: 100%;
   border-collapse: collapse;
   margin: 8px 0 20px;
@@ -726,6 +728,9 @@ details.rail-group > summary {
 }
 .dr-table tbody th {
   font-weight: 600;
+  white-space: nowrap;
+}
+.dr-table td:nth-child(4) {
   white-space: nowrap;
 }
 .dr-table .is-withdrawn td,

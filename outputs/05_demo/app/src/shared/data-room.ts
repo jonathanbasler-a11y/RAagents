@@ -59,7 +59,7 @@ export interface NormalizedDocument {
 export type DocumentCheck = { ok: true; document: NormalizedDocument } | { ok: false; message: string };
 
 function normaliseText(text: string): string {
-  return text.replace(/^﻿/, '').replace(/\r\n?/g, '\n').trim();
+  return text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
 }
 
 function checkUrl(value: unknown): { ok: true; url: string | null } | { ok: false; message: string } {

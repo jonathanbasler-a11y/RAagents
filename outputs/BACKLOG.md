@@ -6,6 +6,7 @@ Source for items 2 to 11: `outputs/01_concept/learnings-from-the-other-team.md` 
 ## The route to a proper MVP (owner, 2026-10-19)
 
 A. **DD workspace as the landing page, driving the real team.** Built on `feature/workspace-landing` (see `DECISIONS.md`).
+B1. **Data room: built** on `feature/data-room-findings` (see `DECISIONS.md`): the documents, the as-of wall, documents on the turn, what the agents saw in the trace. The pieces below are B2 and B3.
 B. **Data room, findings register, checklist, briefing.** A fictional practice pack first, ready for public sources (URL and date; the as-of date enforced in code). Read-only document tools for the agents, which edits the shared rules, so it needs a fresh baseline and a measured run first. The findings register enforces "no source, no finding" in code; a person accepts or rejects each finding; the checklist keeps "checked", "checked: not applicable", "not checked" and "could not check" apart; the briefing is built from accepted findings with the inputs for the probability of technical and regulatory success. Also correct the claim in `learnings-from-the-other-team.md` that "no source, no finding" is enforced in code today (it is not).
 C. **Gates** (items 2 and 3 below): go ahead, pause, ask for more, stop; the recommended call and the evidence that would change it; a recorded human decision; the always-human list. Open question 22.
 D. **Concept, canvas and deck** (`outputs/01_concept`, `02_canvas`, `03_deck`): drafted alongside B and C, finished last.
