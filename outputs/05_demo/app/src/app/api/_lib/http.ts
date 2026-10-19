@@ -16,6 +16,9 @@ const STATUS: Record<ApiErrorCode, number> = {
   data_room_exists: 409,
   no_data_room: 409,
   document_not_found: 404,
+  finding_not_found: 404,
+  finding_decided: 409,
+  finding_source_withdrawn: 409,
   llm_not_configured: 503,
   internal: 500,
 };
@@ -30,6 +33,9 @@ const MESSAGE: Record<ApiErrorCode, string> = {
   data_room_exists: 'This workspace already has a data room.',
   no_data_room: 'This workspace has no data room yet. Start one first.',
   document_not_found: 'There is no such document in the data room.',
+  finding_not_found: 'There is no such finding.',
+  finding_decided: 'This finding was already decided. A decision is made once.',
+  finding_source_withdrawn: 'The document behind this finding was withdrawn, so it cannot be accepted. It can still be rejected.',
   llm_not_configured: 'The model connection is not set up, so nothing was sent.',
   internal: 'Something went wrong on the server. The server log has the details under this correlation id.',
 };

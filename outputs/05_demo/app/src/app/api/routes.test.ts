@@ -8,6 +8,8 @@ import * as agentsRoute from './agents/route';
 import * as dataRoomRoute from './data-room/route';
 import * as documentsRoute from './data-room/documents/route';
 import * as documentRoute from './data-room/documents/[id]/route';
+import * as findingsRoute from './findings/route';
+import * as findingRoute from './findings/[id]/route';
 import * as ddSetupRoute from './dd-setup/route';
 import * as healthRoute from './health/route';
 import * as messagesRoute from './rooms/[room]/messages/route';
@@ -24,6 +26,8 @@ const ROUTES = [
   ['data-room', dataRoomRoute, ['GET', 'POST']],
   ['data-room/documents', documentsRoute, ['POST']],
   ['data-room/documents/[id]', documentRoute, ['GET', 'POST']],
+  ['findings', findingsRoute, ['GET']],
+  ['findings/[id]', findingRoute, ['POST']],
   ['dd-setup', ddSetupRoute, ['GET', 'POST']],
   ['health', healthRoute, ['GET']],
   ['rooms/[room]/messages', messagesRoute, ['GET']],
@@ -60,6 +64,7 @@ describe('API route files', () => {
     ['data-room', (request: Request) => dataRoomRoute.POST(request)],
     ['data-room/documents', (request: Request) => documentsRoute.POST(request)],
     ['data-room/documents/[id]', (request: Request) => documentRoute.POST(request, { params: Promise.resolve({ id: 'DR-01' }) })],
+    ['findings/[id]', (request: Request) => findingRoute.POST(request, { params: Promise.resolve({ id: 'F-001' }) })],
   ])('%s refuses a cross-site POST with 403 before it opens the database', async (_name, post) => {
     captureLogs();
     const request = new Request('http://localhost/api/x', {

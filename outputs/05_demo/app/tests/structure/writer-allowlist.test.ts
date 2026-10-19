@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
+import { SCAN_DIRS, findWriterUses as scanUses, writerViolations as scanViolations, type UseKind } from './writer-scan';
 
 // Structure guard: agent messages are written by the executors and nowhere else.
 //
@@ -23,81 +23,9 @@ const ALLOWED_WRITERS = [
 ] as const;
 
 const APP_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SCAN_DIRS = ['src', 'scripts'];
-const SOURCE_FILE = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
-const TEST_FILE = /\.test\.(?:ts|tsx|mts)$/;
-const SKIPPED_DIRS = new Set(['node_modules', '.next', '.data']);
 
-type UseKind = 'import' | 'export' | 'property access' | 'quoted access' | 'destructuring' | 'object member' | 'type reference';
-
-interface Use {
-  kind: UseKind;
-  line: number;
-}
-
-function scriptKind(fileName: string): ts.ScriptKind {
-  if (/\.tsx$/.test(fileName)) return ts.ScriptKind.TSX;
-  if (/\.jsx$/.test(fileName)) return ts.ScriptKind.JSX;
-  return /\.(?:js|mjs|cjs)$/.test(fileName) ? ts.ScriptKind.JS : ts.ScriptKind.TS;
-}
-
-/**
- * Every place the source uses the writer, as the compiler sees it. Declaring the method
- * (store.ts, the Store type in contracts.ts) is not a use; everything else is.
- */
-function findWriterUses(sourceText: string, fileName: string): Use[] {
-  const file = ts.createSourceFile(fileName, sourceText, ts.ScriptTarget.Latest, true, scriptKind(fileName));
-  const uses: Use[] = [];
-  const lineOf = (node: ts.Node) => file.getLineAndCharacterOfPosition(node.getStart(file)).line + 1;
-  const add = (kind: UseKind, node: ts.Node) => uses.push({ kind, line: lineOf(node) });
-  const isWriter = (name: ts.Node | undefined) =>
-    name !== undefined && (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) && name.text === WRITER;
-
-  const visit = (node: ts.Node): void => {
-    if (ts.isImportSpecifier(node) && (isWriter(node.name) || isWriter(node.propertyName))) add('import', node);
-    else if (ts.isExportSpecifier(node) && (isWriter(node.name) || isWriter(node.propertyName))) add('export', node);
-    else if (ts.isPropertyAccessExpression(node) && isWriter(node.name)) add('property access', node);
-    else if (ts.isElementAccessExpression(node) && isWriter(node.argumentExpression)) add('quoted access', node);
-    else if (ts.isBindingElement(node) && (isWriter(node.name) || isWriter(node.propertyName))) add('destructuring', node);
-    else if (
-      (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) &&
-      isWriter(node.name)
-    ) {
-      add('object member', node);
-    } else if (ts.isLiteralTypeNode(node) && ts.isStringLiteral(node.literal) && node.literal.text === WRITER) {
-      add('type reference', node); // Pick<Store, 'appendAgentMessage'> and the like
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(file);
-  return uses;
-}
-
-function walk(dir: string, found: string[] = []): string[] {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      if (!SKIPPED_DIRS.has(entry.name)) walk(join(dir, entry.name), found);
-    } else if (entry.isFile() && SOURCE_FILE.test(entry.name)) {
-      found.push(join(dir, entry.name));
-    }
-  }
-  return found;
-}
-
-const posix = (path: string) => path.split(sep).join('/');
-
-/** Files outside the allowlist (and not test files) that use the writer, as "path:line (kind)". */
-function writerViolations(root: string, dirs: readonly string[], allowed: readonly string[]): string[] {
-  const violations: string[] = [];
-  for (const dir of dirs) {
-    for (const path of walk(join(root, dir))) {
-      const name = posix(relative(root, path));
-      if (TEST_FILE.test(name) || allowed.includes(name)) continue;
-      for (const use of findWriterUses(readFileSync(path, 'utf8'), name)) violations.push(`${name}:${use.line} (${use.kind})`);
-    }
-  }
-  return violations.sort();
-}
+const findWriterUses = (source: string, fileName: string) => scanUses(source, fileName, WRITER);
+const writerViolations = (root: string, dirs: readonly string[], allowed: readonly string[]) => scanViolations(root, dirs, allowed, WRITER);
 
 describe('only the executors write agent messages', () => {
   it('has no importer, caller or re-exporter of the writer outside the allowlist and the tests', () => {
@@ -114,6 +42,41 @@ describe('only the executors write agent messages', () => {
     const real = ALLOWED_WRITERS.filter((path) => findWriterUses(readFileSync(join(APP_ROOT, path), 'utf8'), path).length > 0);
 
     expect(real).toEqual(expect.arrayContaining(['src/server/chat/one-to-one.ts', 'src/server/chat/team.ts']));
+  });
+});
+
+// The findings register has two writers, each with exactly one door:
+//   decideFinding   the only code that sets a finding's status: a person's accept or reject, through the API handler;
+//   proposeFindings the only code that puts agent-drafted findings in the register: the one-to-one executor.
+// Anything else calling them would create a finding, or decide one, without the checks or without a person.
+const REGISTER_WRITERS = [
+  { writer: 'decideFinding', allowed: ['src/app/api/_lib/findings.ts'] },
+  { writer: 'proposeFindings', allowed: ['src/server/chat/one-to-one.ts'] },
+] as const;
+
+describe.each(REGISTER_WRITERS)('only one module uses $writer', ({ writer, allowed }) => {
+  it('has no importer, caller or re-exporter outside the allowlist and the tests', () => {
+    expect(scanViolations(APP_ROOT, SCAN_DIRS, allowed, writer)).toEqual([]);
+  });
+
+  it('keeps the allowlist honest: the allowed module exists and really uses it', () => {
+    for (const path of allowed) {
+      expect(scanUses(readFileSync(join(APP_ROOT, path), 'utf8'), path, writer).length, path).toBeGreaterThan(0);
+    }
+  });
+
+  it('flags a rogue caller in a fixture app, so an empty list means something', () => {
+    const root = mkdtempSync(join(tmpdir(), 'register-writer-'));
+    try {
+      mkdirSync(join(root, 'src/app/api/rogue'), { recursive: true });
+      writeFileSync(join(root, 'src/app/api/rogue/route.ts'), `export const POST = (store: any) => store.${writer}('demo', {});\n`);
+      mkdirSync(join(root, 'src/server/chat'), { recursive: true });
+      writeFileSync(join(root, 'src/server/chat/store.ts'), `export const store = { ${writer}() { return 1; } };\n`);
+
+      expect(scanViolations(root, ['src'], allowed, writer)).toEqual(['src/app/api/rogue/route.ts:1 (property access)']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

@@ -15,7 +15,7 @@ They built the *process* first. A fixed due-diligence workflow of 12 stages with
 | Unit of design | Workflow stages with gates; agents are jobs inside stages | Personas in chat rooms; the playbook is described in the brief and the mockup | Add a real workflow with gates around our agents |
 | Humans | A named specialist per agent; 8 decisions always human | Owners per agent and playbook; reserved decisions | Adopt their explicit "always human" list |
 | Challenge | A red-team agent in a separate context that cannot change findings | Red team and evidence checker as team-role agents | Adopt the structured output of the challenge pass |
-| Evidence rules | Cite or stay silent; fact, inference and recommendation kept apart | "No source, no finding", enforced in code | Add the wording rule for absence |
+| Evidence rules | Cite or stay silent; fact, inference and recommendation kept apart | Chat answers are model output and never evidence. Since the findings register (2026-10-19), "no source, no finding" is enforced in code for findings: a claim becomes a draft only with a verbatim quote from a document the agent was shown, and a person accepts or rejects each one. Before that, this cell said the rule was enforced in code; it was not. | Add the wording rule for absence |
 | Testing | A planted-issue case with an answer key; a staged path to trust | 59 evaluation cases with a judge from another model family | Add their case types to our harness |
 | Demo | A voice co-presenter on a fictional case; the "run" is prewritten (*to verify*) | A live chat app and an illustrative workspace | Borrow the stage mechanics, keep ours real |
 | Scope | One use case | DD first, expansion playbooks as concepts | Keep ours |

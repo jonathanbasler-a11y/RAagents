@@ -41,6 +41,25 @@ The loader refuses, before any model call:
 
 To write a new pack: invent the documents (nothing real, no names, no links), say "fictional" in the first lines of each, list a withheld document in the index on purpose, write each issue with the right response, the wrong response and the failure mode, and write at least one case per issue. Keep checks to exact things (a document id, the phrase "not found in the data room") and put everything else in the rubric.
 
+## Findings proposals: `npm run eval:propose`
+
+A second, separate evaluation for the findings register. It asks each agent that has a single-question pack case to answer, then to "propose findings from your last answer" exactly as the app's button asks it (same data room, same findings instructions, same output cap), and counts what the app's own checks accept. **There is no judge model**: grading is code, and nothing here reads whether a claim is true.
+
+```sh
+npm run eval:propose -- --check                         # list the cases and the model setting; no model is called
+npm run eval:propose -- --agent reglead --reps 1        # a trial (counts as a TRIAL, not a measurement)
+npm run eval:propose                                    # the full run: 8 cases x 3 repetitions, two model calls each
+```
+
+What it reports, per case and in total (counts only, never answer text; the saved run under `.eval-runs/propose-*.json` holds the drafts):
+
+- **readable**: repetitions whose reply held a findings block the checker could read, out of all repetitions;
+- **drafts of proposed**: how many claims the agent put forward that passed every check (a verbatim quote from a document it was shown, dated on or before the as-of date, not withdrawn, with a confidence and its reason), and which check refused the rest;
+- **unsupported**: claims the agent itself listed as having no document behind them (they become open questions);
+- **issue coverage**: for the planted problems a draft can stand for (a company claim against the record, a gap, an unsupported claim, a result that does not exist yet), full when every shown document where it is planted has at least one draft, partial when some do, none when none do. This is **document level**: it says the agent drafted something on the right documents, not that the claim states the problem correctly.
+
+Read the numbers for what they are. A pass rate near 100% means the agent copies quotes faithfully; it does not mean the claims follow from the quotes (a claim may mention another document that its one quote does not show). The first full run drafted close to the limit of 8 on most replies, so the drafts count says little about selectivity. The first live trial found the output cap (1,500 tokens) cut every proposal off, which is why a proposal reply has its own, larger cap.
+
 ## Rules of thumb (learned from the first live run)
 
 - **Fix the measurement before you tune an agent.** In the first run, all 33 failures of the two most-failed checks were wording, not behaviour (the agents asked for "deletion" where the check wanted "removal"), and all 4 "critical" hits were false positives ("I have checked nothing" matched a ban on "I checked").

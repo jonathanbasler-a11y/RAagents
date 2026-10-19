@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef } from 'react';
-import type { AgentId, ChatErrorCode, ChatEvent, RoomId, RoomMessagesResponse } from '@/shared/contracts';
+import type { AgentId, ChatErrorCode, ChatEvent, RoomId, RoomMessagesResponse, TurnIntent } from '@/shared/contracts';
 import { chatClient, type ApiResult, type ChatApi, type PostTurnOutcome } from './chat-client';
 import {
   applyChatEvent,
@@ -73,7 +73,8 @@ export interface ChatRoomModel {
    * (phase is "error", loadError says "Still running? Check again."). reload() checks again.
    */
   pollingStopped: boolean;
-  send(text: string): Promise<SendOutcome>;
+  /** options.intent: a findings proposal; the server writes the question and the text shown is only a stand-in until the messages load. */
+  send(text: string, options?: { intent?: TurnIntent }): Promise<SendOutcome>;
   reload(): void;
   newConversation(): Promise<boolean>;
   dismissNotice(): void;
@@ -432,7 +433,7 @@ export function useChatRoom(roomId: RoomId, options: UseChatRoomOptions = {}): C
   const knownIds = useMemo(() => new Set((state.data?.messages ?? []).map((message) => message.id)), [state.data]);
 
   const send = useCallback(
-    async (text: string): Promise<SendOutcome> => {
+    async (text: string, sendOptions: { intent?: TurnIntent } = {}): Promise<SendOutcome> => {
       if (inFlight.current || busy) return { status: 'ignored' };
       inFlight.current = true;
       const controller = new AbortController();
@@ -449,7 +450,7 @@ export function useChatRoom(roomId: RoomId, options: UseChatRoomOptions = {}): C
               if (event.type === 'error' && SETUP_REFUSALS.has(event.code)) onSetupProblem?.();
             },
           },
-          { signal: controller.signal },
+          { signal: controller.signal, ...(sendOptions.intent ? { intent: sendOptions.intent } : {}) },
         );
         return await handleOutcome(outcome, text, knownIds);
       } catch (error) {

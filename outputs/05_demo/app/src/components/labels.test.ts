@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AGENT_TRIGGERS } from '@/shared/contracts';
-import { CLASSIFICATION_LABELS, DOCUMENT_STATE_LABELS, GROUP_INFO, dataRoomTraceText, evidenceBannerText, homeLedeText, phaseLineText, PRACTICE_REPLY_LABEL, describeChatError, selectionReasonText, teamChangeText, triggerText } from './labels';
+import { CLASSIFICATION_LABELS, DOCUMENT_STATE_LABELS, FINDING_BASIS_LABELS, FINDING_STATUS_LABELS, GROUP_INFO, dataRoomTraceText, evidenceBannerText, proposalTraceText, homeLedeText, phaseLineText, PRACTICE_REPLY_LABEL, describeChatError, selectionReasonText, teamChangeText, triggerText } from './labels';
 
 describe('practice mode label', () => {
   it('says a practice reply is not AI and not sourced', () => {
@@ -75,6 +75,45 @@ describe('dataRoomTraceText', () => {
   it('leaves out the part that has nothing in it, and says "none" when nothing was shown', () => {
     expect(dataRoomTraceText({ asOf: '2026-10-12', shown: ['DR-01'], notShown: [] })).toBe('As of 2026-10-12. Shown: DR-01.');
     expect(dataRoomTraceText({ asOf: '2026-10-12', shown: [], notShown: [] })).toBe('As of 2026-10-12. Shown: none.');
+  });
+});
+
+describe('proposalTraceText', () => {
+  it('says which drafts and open questions the turn put in the register, and that a draft is not yet a finding', () => {
+    expect(proposalTraceText({ findingIds: ['F-001', 'F-002'], questionIds: ['Q-001'], problem: null })).toBe(
+      'Added to the register: drafts F-001, F-002; open questions Q-001. A draft is not a finding until a person accepts it.',
+    );
+    expect(proposalTraceText({ findingIds: [], questionIds: [], problem: null })).toBe(
+      'Added to the register: no drafts; no open questions. A draft is not a finding until a person accepts it.',
+    );
+  });
+
+  it('says which findings a turn repeated, and that they were not added again', () => {
+    expect(proposalTraceText({ findingIds: ['F-004'], questionIds: [], duplicateIds: ['F-001', 'F-002'], problem: null })).toBe(
+      'Added to the register: drafts F-004; no open questions. Already in the register, not added again: F-001, F-002. A draft is not a finding until a person accepts it.',
+    );
+    expect(proposalTraceText({ findingIds: [], questionIds: [], duplicateIds: [], problem: null })).toBe(
+      'Added to the register: no drafts; no open questions. A draft is not a finding until a person accepts it.',
+    );
+  });
+
+  it('says nothing was added, and why, when the reply could not be used', () => {
+    expect(proposalTraceText({ findingIds: [], questionIds: [], problem: 'the reply was cut off.' })).toBe(
+      'Nothing was added to the register: the reply was cut off.',
+    );
+  });
+});
+
+describe('finding labels', () => {
+  it('never call a draft, or a seller’s statement, verified', () => {
+    expect(FINDING_STATUS_LABELS).toEqual({
+      draft: 'Draft: no person has decided',
+      accepted: 'Accepted by a person',
+      rejected: 'Rejected by a person',
+    });
+    expect(FINDING_BASIS_LABELS.attributed).toBe('Attributed: what the seller states, not verified fact');
+    expect(Object.values(FINDING_STATUS_LABELS).join(' ')).not.toMatch(/verified|confirmed|approved/i);
+    expect(FINDING_BASIS_LABELS['primary-record']).not.toMatch(/verified/i);
   });
 });
 

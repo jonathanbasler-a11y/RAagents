@@ -492,6 +492,24 @@ describe('useChatRoom: sending', () => {
   });
 });
 
+describe('useChatRoom: findings proposal', () => {
+  it('passes the intent to the turn, and not for a normal send', async () => {
+    const postTurn = vi.fn<ChatApi['postTurn']>().mockResolvedValue(STREAM_DONE);
+    const { result } = renderHook(() => useChatRoom('reglead', { client: fakeClient({ postTurn }), nameOf, soloAgentId: 'reglead' }));
+    await waitFor(() => expect(result.current.phase).toBe('idle'));
+
+    await act(async () => {
+      await result.current.send('Propose findings.', { intent: 'propose-findings' });
+    });
+    await act(async () => {
+      await result.current.send('A normal question.');
+    });
+
+    expect(postTurn.mock.calls[0][3]).toMatchObject({ intent: 'propose-findings' });
+    expect(postTurn.mock.calls[1][3]).not.toHaveProperty('intent');
+  });
+});
+
 describe('useChatRoom: never stuck', () => {
   it('an unexpected failure while sending leaves the room usable and the text unsent', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);

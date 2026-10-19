@@ -6,6 +6,7 @@ import { PracticeBanner } from './Banners';
 import { DataRoomProvider } from './DataRoomProvider';
 import { DdSetupProvider } from './DdSetupProvider';
 import { DemoModeProvider } from './DemoMode';
+import { FindingsProvider } from './FindingsProvider';
 import { PhaseLine } from './DocumentsNotes';
 import type { AgentsLoad } from './load-agents';
 import { SelectionProvider } from './SelectionProvider';
@@ -44,22 +45,24 @@ export function AppShell({
             </Link>
             <PhaseLine mode={mode} />
           </header>
-          <SelectionProvider>
-            <DdSetupProvider>
-              <div className="shell">
-                {agentsLoad.ok ? (
-                  <AgentRail agents={agentsLoad.agents} />
-                ) : (
-                  <nav className="rail" aria-label="Rooms">
-                    <p className="note rail-note">Agents unavailable: see the setup message.</p>
-                  </nav>
-                )}
-                <main id="main" className="main" tabIndex={-1}>
-                  {children}
-                </main>
-              </div>
-            </DdSetupProvider>
-          </SelectionProvider>
+          <FindingsProvider>
+            <SelectionProvider>
+              <DdSetupProvider>
+                <div className="shell">
+                  {agentsLoad.ok ? (
+                    <AgentRail agents={agentsLoad.agents} />
+                  ) : (
+                    <nav className="rail" aria-label="Rooms">
+                      <p className="note rail-note">Agents unavailable: see the setup message.</p>
+                    </nav>
+                  )}
+                  <main id="main" className="main" tabIndex={-1}>
+                    {children}
+                  </main>
+                </div>
+              </DdSetupProvider>
+            </SelectionProvider>
+          </FindingsProvider>
         </DataRoomProvider>
       </div>
     </DemoModeProvider>

@@ -23,7 +23,7 @@ In this phase no documents are connected and the agents have no tools. Every rep
 The times are estimates: confirm them in your rehearsal with the real model. Turns that end with Sofia's summary (steps 3 and 4) make three model calls in a row, so they take longest: talk while they stream.
 
 - **3 minutes:** steps 1, 3, 5, 6, 7 and 10.
-- **5 minutes:** steps 1 to 8 and 10. Without step 8, about 4.5 minutes. The optional part of step 4 adds about 45 s, step 1b about 40 s and the data room (step 9) about 90 s.
+- **5 minutes:** steps 1 to 8 and 10. Without step 8, about 4.5 minutes. The optional part of step 4 adds about 45 s, step 1b about 40 s the data room (step 9) about 90 s and the findings (step 9b) about 2 minutes more. The findings step needs the data room and a real model; it is not part of the 3 or 5 minute versions.
 
 ### 1. The DD workspace (about 30 s)
 
@@ -174,13 +174,29 @@ She says it is listed in the index as not provided (DR-09) and was "not found in
 
 If a document should not be there, **Withdraw** it with a reason: the agents stop seeing it at once and the list keeps it, greyed, with the reason. A document cannot be edited; withdraw it and add it again.
 
+### 9b. Findings: an agent drafts, code checks, a person decides (optional, about 2 minutes; only after step 9, in the same room)
+
+You are still in Rosa's room, after her answer about the paediatric study plan. Under the message box, click **Propose findings from this answer**. (The button appears only in an agent's own room, only after one of its answers, and only when the data room has a document she can read. It is not in the team chat.) It takes about 20 seconds: she is asked, in a fixed sentence the app writes itself, to turn her answer into findings in a set format.
+
+Then point out the line the app adds under her reply, written by code: how many findings were drafted and how many claims were kept as open questions, and "Nothing is a finding until a person accepts it." Open **How this turn ran**: the **Findings** row lists the ids that were added.
+
+Click **Findings** in the left rail. Point out:
+
+- Every card is a **draft**: "Draft: no person has decided". Each has the claim, the **quote** beside it in the highlighter, and the document it comes from (id, title, date, kind). Code has checked that the quote is word for word in a document she was shown; a claim without such a quote could not become a finding and is under **Open questions** instead.
+- A finding from the licensor's own document is labelled **Attributed: what the seller states, not verified fact**. A finding from an agency record is a primary record.
+- The card says **agent output, not evidence**, who drafted it and the human owner.
+- Type a short note on one card and click **Accept**; click **Reject** on another. A decided card moves under **Decided** and carries the stamp: **person (local, not authenticated)**. Say plainly that this app has no login, so it cannot tell who clicked; that is the next gate's job. A decision is made once and cannot be undone here.
+- If you click **Propose findings** again on a similar question, claims on a sentence already in the register are not added again; the line under her reply says which finding they repeated.
+
+If you **Withdraw** a document on the Data room page, the drafts that rest on it can still be rejected but no longer accepted.
+
 ### 10. Close (about 15 s)
 
 Say:
 
 - Unless you showed the data room in step 9: no documents are connected yet. Every reply you saw is unsourced model output, and the app labels each one "Model output · not sourced". If you did: the agents cited the fictional documents by id, and a seller's statement is still only a claim, never a checked fact.
 - People own every agent and every decision. Deal-breakers, the overall assessment and the recommendation are theirs. The agents explain, challenge and flag what needs checking. They do not decide.
-- A later phase is planned to connect public sources, such as EPARs, FDA review documents and ClinicalTrials.gov. The findings register comes next: a claim will carry its document, its quote and its date, code will check that the quote is really in the document, and a person will accept or reject each finding. "No source, no finding" is enforced there, in code, not in a prompt. It is not enforced yet.
+- A later phase is planned to connect public sources, such as EPARs, FDA review documents and ClinicalTrials.gov. If you showed step 9b: a finding carries its document, its quote and its date, code checked that the quote is really in the document, and a person accepted or rejected it. "No source, no finding" is enforced there, in code, not in a prompt. It covers findings only: every chat reply is still unsourced model output. If you did not show it: the findings register exists, but it was not part of this run.
 
 ## If something goes wrong
 

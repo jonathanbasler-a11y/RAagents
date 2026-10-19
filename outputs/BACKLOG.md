@@ -6,12 +6,22 @@ Source for items 2 to 11: `outputs/01_concept/learnings-from-the-other-team.md` 
 ## The route to a proper MVP (owner, 2026-10-19)
 
 A. **DD workspace as the landing page, driving the real team.** Built on `feature/workspace-landing` (see `DECISIONS.md`).
-B1. **Data room: built** on `feature/data-room-findings` (see `DECISIONS.md`): the documents, the as-of wall, documents on the turn, what the agents saw in the trace. The pieces below are B2 and B3.
+B1. **Data room: built and merged** (PR 18; see `DECISIONS.md`): the documents, the as-of wall, documents on the turn, what the agents saw in the trace.
+B2. **Findings register: built** on `feature/findings-register` (see `DECISIONS.md`): agents draft from the data room, code checks each quote, a person accepts or rejects. Not yet merged or in the demo. The piece below is B3: the checklist and the briefing.
 B. **Data room, findings register, checklist, briefing.** A fictional practice pack first, ready for public sources (URL and date; the as-of date enforced in code). Read-only document tools for the agents, which edits the shared rules, so it needs a fresh baseline and a measured run first. The findings register enforces "no source, no finding" in code; a person accepts or rejects each finding; the checklist keeps "checked", "checked: not applicable", "not checked" and "could not check" apart; the briefing is built from accepted findings with the inputs for the probability of technical and regulatory success. Also correct the claim in `learnings-from-the-other-team.md` that "no source, no finding" is enforced in code today (it is not).
 C. **Gates** (items 2 and 3 below): go ahead, pause, ask for more, stop; the recommended call and the evidence that would change it; a recorded human decision; the always-human list. Open question 22.
 D. **Concept, canvas and deck** (`outputs/01_concept`, `02_canvas`, `03_deck`): drafted alongside B and C, finished last.
 
 Not in the MVP: items 11, 13, 14 and 15 below, the Ona connection (question 19), the other team's files (question 20), and giving agents the DD setup in their prompt.
+
+## Found while building B2 (owner decides the order)
+
+- **Claim against quote.** The register proves a quote is real, not that the claim follows from it. A judge-based check (judge from another model family, claim and quote shown, graded as supported / partly / not) would measure this and could run in `eval:propose`. Until then the page shows claim and quote side by side.
+- **Selectivity.** Agents filled the cap of 8 on most proposals. Consider asking for "only what matters for the DD" in the findings instruction, measured with `eval:propose` before and after.
+- **Login.** Decisions are stamped "person (local, not authenticated)". Real per-person decision rights are needed before the app is shown beyond one computer, and before gate decisions (phase C).
+- **Findings page.** Filter and sort (by document, agent, status), and a way to ask for the proposal from several agents' answers at once. Not needed for the demo.
+- **Two claims on one sentence.** One draft per quote means a second, different claim on the same sentence is not added. Revisit if it bites.
+- **Re-measure the two practice cases** that dropped in the B1 measurement (comparability gap, interim teaser) with whole-room cases; `eval:propose` shows comparability-gap partly covered.
 
 ## Built, waiting for a measured baseline
 

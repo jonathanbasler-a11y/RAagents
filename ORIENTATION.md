@@ -43,8 +43,10 @@ Your model settings go in a git-ignored `.env.local` created with `install -m 60
 | `src/app`, `src/components`, `src/client` | Pages, API routes, UI, and the browser's chat state machine. The landing page `/` is the DD workspace (`WorkspaceHome`): the DD setup panel, the team chat entry, the status and the team overview. `/workspace` only redirects to it |
 | `src/shared/dd-setup.ts` | The DD setup rule: stage and asset classification decide who is on the team. Pure, used by the API, the page and the tests. `GET`/`POST /api/dd-setup`; the setup and the selection it implies are saved in one transaction |
 | `src/shared/data-room.ts`, `src/server/prompts/data-room.ts`, `src/server/data-room` | The data room: the rules (a document dated after the room's as-of date is refused and never shown; 12,000 characters per document, 48,000 per turn), the builder that puts the index and the documents in front of the agents (the same code the evaluations use), and the reader of the fictional practice case. Tables `data_rooms` and `data_room_documents` (schema version 3): documents never change, only a withdrawal, once. `/data-room`, `GET`/`POST /api/data-room` |
+| `src/shared/findings.ts`, `src/server/prompts/findings.ts`, `src/app/api/_lib/findings.ts`, `src/components/Findings*.tsx` | The findings register: the rules that decide what may be a finding (a verbatim quote from a document the agent was shown), the instructions of a proposal turn, `GET /api/findings` and the person's decision at `POST /api/findings/[id]`, and the page `/findings`. Tables `findings`, `finding_events`, `open_questions` (schema version 4). A proposal is a turn with `intent: "propose-findings"` in an agent's own room |
 | `outputs/05_demo/ux-mockup` | The design reference for the DD setup. Not part of the app; `tests/guards/mockup-rule-parity.test.ts` pins what the rule copies from it |
 | `evals/cases`, `scripts/eval.ts` | 59 evaluation cases for 14 agents and the runner (judge from a different model family) |
+| `evals/lib/propose.ts`, `scripts/eval-propose.ts` | `npm run eval:propose`: the findings-proposal evaluation, graded by code, no judge |
 | `scripts/demo`, `scripts/fake-llm.mjs` | The one-command launcher and the stand-in model used by practice mode and tests |
 | `tests/structure` | Tests of the architecture itself (who may write agent messages, security headers) |
 
@@ -64,7 +66,10 @@ These decide design arguments. Several are enforced by tests, which says so in t
 10. The team the router uses is the saved selection, read on every turn. A setup change moves only the agents whose own rule changed: a switch a person flipped by hand survives, and a hand switch never changes the classification. Unknown (still loading, or failed to load) is never shown as off or as the default.
 11. Documents ride on the turn; there are no tools. A turn reads the workspace's data room at its start, and every agent of that turn that sees documents (the 1:1 agent, the team primary and the secondaries; not the synthesiser) sees the same ones. A workspace without a data room gets exactly the prompt it had before. The turn's trace (`dataRoom`) names what was shown and what was not, and why. A withdrawn document, and one dated after the as-of date, are not even named in the agents' index.
 12. The answer key of the practice case never leaves `evals/`. The app reads the pack's documents only (`src/server/data-room/practice-pack.ts`), and a test pins that nothing of the key comes through.
-13. Seller documents are attributed claims, never verified fact. The turn instructions say so; the findings register (next step) will enforce it in code.
+13. Seller documents are attributed claims, never verified fact. The turn instructions say so, and the findings register enforces it: the basis of a finding comes from the document's kind, never from the agent.
+14. No source, no finding, in code. A claim becomes a draft only with a quote that is word for word in a document the agent was shown in that turn (checked twice: when the turn is read and again inside the database transaction). Anything else is an open question. Agent output is still never evidence: a draft is not a finding until a person accepts it.
+15. Only a person's action changes a finding's status: one handler (`decideFinding`), once, stamped as a local unauthenticated person because the app has no login. The database refuses a decided insert, an edit, a delete and a second decision. Two structure tests pin who may call the two register writers.
+16. A rule in a proposal turn rides on that turn only (an intent the person asks for, the server writes the question); it is not in the shared rules or a brief.
 
 ## Symptom, then first move
 
@@ -72,6 +77,7 @@ These decide design arguments. Several are enforced by tests, which says so in t
 |---|---|
 | The team chat answers as if an agent were off, or a card disagrees with the setup | Open the page again (a stale tab refreshes only when it becomes visible). `GET /api/dd-setup` shows the saved setup and the selection it implies; `GET /api/selection` is what the router reads. |
 | An agent says "not found in the data room" for something on the Data room page | Open **How this turn ran**: its Data room row lists every document the agents saw and every one they did not, with the reason (withdrawn, listed but not provided, dated after the as-of date, did not fit). |
+| A proposal says "Nothing was added to the register" | The note gives the reason: the reply was cut off, held no findings block the checker could read, or there is no data room. Open **How this turn ran**: its Findings row repeats it. A claim that cites a quote not in the document is not lost: it is on the Findings page under Open questions. |
 | Replies fail with a timeout or "fetch failed" | The company VPN is probably off. `npm run smoke` shows which route fails and why. Practice mode works without it. |
 | Setup banner and a disabled composer | A model setting is missing or refused. `npm run smoke` names it; compare with `env.example`. |
 | Yellow banner on every page | The server is in practice mode. That is intended; stop it with `npm run demo:stop` and run `npm run demo` for real answers. |
@@ -105,11 +111,12 @@ Prefer the command to the recorded value.
 | Agents' model and the judge's model | an Anthropic model for the agents, an OpenAI model for the judge | `npm run smoke` prints the resolved models and their families | 2026-10-12 |
 | Node | 24.x (the app requires 24 or later) | `node --version` | 2026-10-12 |
 | Next.js | 16.4.0 | `grep '"next"' outputs/05_demo/app/package.json` | 2026-10-12 |
-| Offline test baseline | 2224 passed, 1 skipped, after the data room (B1) (the skip is the name-protection test, which needs a local hash file) | `npm test` | 2026-10-19 |
+| Offline test baseline | 2485 passed, 1 skipped, after the findings register (B2) (the skip is the name-protection test, which needs a local hash file) | `npm test` | 2026-10-19 |
+| First proposal evaluation | 24 of 24 readable, 178 of 178 proposed claims passed, planted issues covered 16 full / 2 partial / 0 none (document level) | the saved run under `.eval-runs/propose-*` (local, git-ignored); `npm run eval:propose` repeats it | 2026-10-19 |
 | First live evaluation | overall 4.33 ± 0.11 over 177 answers; 128 of 177 "good"; the 4 critical hits were false positives of the checks | the saved run under `.eval-runs/` (local, git-ignored); `scripts/eval.ts` repeats it | 2026-10-12 |
-| Stable demo copy | version 6 (commit 1481134), outside the repository; versions 5 to 1 are kept beside it for rollback | the `README-DEMO.md` in that folder | 2026-10-19 |
+| Stable demo copy | version 7 (commit 2aba9ef), outside the repository; versions 6 to 1 are kept beside it for rollback | the `README-DEMO.md` in that folder | 2026-10-19 |
 | Demo auto-start | a user login job, label `com.raagents.demo`; no restart on exit; settings from the development tree's settings file | `launchctl print gui/501/com.raagents.demo` and the `promote-stable-demo` skill | 2026-10-15 |
-| CI on `main` | green after pull request 17 | `gh run list --branch main` | 2026-10-19 |
+| CI on `main` | green after pull request 18 | `gh run list --branch main` | 2026-10-19 |
 | Can a hosted environment reach the model gateway? | untested | run the connection probe in that environment (`docs/ONA.md` on branch `feature/ona-env`) | not yet |
 | Other team's material | on `main`, not reviewed | `ls hybrid-regulatory-dd-team` | 2026-10-12 |
 

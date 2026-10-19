@@ -3,13 +3,16 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { PublicAgent, RoomId } from '@/shared/contracts';
+import { FINDINGS_REQUEST_TEXT } from '@/shared/findings';
 import { chatClient, type ChatApi } from '@/client/chat-client';
 import { isSetupMissing, useHealth } from '@/client/use-health';
 import { useChatRoom, type RoomPhase } from '@/client/use-chat-room';
 import { Avatar } from './Avatar';
 import { EvidenceBanner, SetupBanner } from './Banners';
 import { Composer } from './Composer';
+import { useDocumentsConnected } from './DataRoomProvider';
 import { demoPromptsFor } from './demo-prompts';
+import { useFindings } from './FindingsProvider';
 import { AUTONOMY_LABELS, isMentionable } from './labels';
 import { AgentBubble, HumanBubble, SystemLine } from './MessageBubble';
 import { useSelection } from './SelectionProvider';
@@ -52,6 +55,8 @@ export function ChatRoom({ roomId, agents, client = chatClient }: ChatRoomProps)
     onSetupProblem: refreshHealth,
   });
   const selection = useSelection();
+  const documentsConnected = useDocumentsConnected();
+  const register = useFindings();
 
   const setupMissing = isSetupMissing(health);
   const loadFailed = room.phase === 'error' && room.data === null;
@@ -113,6 +118,26 @@ export function ChatRoom({ roomId, agents, client = chatClient }: ChatRoomProps)
     },
     [sendToRoom],
   );
+
+  // "Propose findings" is offered in an agent's own room, after one of its answers, when the data room has a document it
+  // could be shown. Asking again right after a proposal would propose from the proposal, so it waits for a new question.
+  const lastAgent = [...room.timeline].reverse().find((item) => item.kind === 'agent');
+  const lastHuman = [...room.timeline].reverse().find((item) => item.kind === 'human');
+  const canPropose =
+    agent !== undefined &&
+    documentsConnected.documents === 'connected' &&
+    register.status !== 'unavailable' &&
+    lastAgent?.kind === 'agent' &&
+    lastAgent.state === 'complete' &&
+    !(lastHuman?.kind === 'human' && lastHuman.text === FINDINGS_REQUEST_TEXT);
+  const { refresh: refreshFindings } = register;
+  const { send: sendIntent } = room;
+  const proposeFindings = useCallback(async () => {
+    atBottom.current = true;
+    const outcome = await sendIntent(FINDINGS_REQUEST_TEXT, { intent: 'propose-findings' });
+    // The turn put its drafts in the register while it ran; read it again so the page and the home card show them.
+    if (outcome.status === 'sent') await refreshFindings();
+  }, [sendIntent, refreshFindings]);
 
   const loadErrorBox = room.loadError && (
     <div className="state-error" role="alert">
@@ -236,6 +261,18 @@ export function ChatRoom({ roomId, agents, client = chatClient }: ChatRoomProps)
       <p className="visually-hidden" role="status">
         {LIVE_STATUS[room.phase]}
       </p>
+
+      {canPropose && agent && (
+        <div className="propose-bar">
+          <button type="button" className="btn btn-sm" disabled={disabled} onClick={() => void proposeFindings()}>
+            Propose findings from this answer
+          </button>
+          <span className="note">
+            {agent.name} drafts findings from the data room documents. Code checks every quote; drafts appear on the{' '}
+            <Link href="/findings">Findings page</Link>, and nothing is a finding until you accept it.
+          </span>
+        </div>
+      )}
 
       <Composer
         label={agent ? `Message ${agent.name}` : 'Message the team'}

@@ -13,6 +13,9 @@ import type {
   DataRoomDocumentResponse,
   DataRoomResponse,
   DataRoomStartRequest,
+  FindingDecisionRequest,
+  FindingDecisionResponse,
+  FindingsResponse,
   DdSetup,
   DdSetupResponse,
   DdSetupUpdateRequest,
@@ -20,6 +23,7 @@ import type {
   SelectionResponse,
   SelectionUpdateRequest,
   TurnDuplicateResponse,
+  TurnIntent,
   TurnStatus,
 } from '@/shared/contracts';
 import { readChatEvents } from './sse';
@@ -86,6 +90,8 @@ export interface PostTurnHandlers {
 export interface PostTurnOptions {
   /** Stops reading the stream. The turn keeps running on the server. */
   signal?: AbortSignal;
+  /** A findings proposal: the server writes the question itself and checks the room. */
+  intent?: TurnIntent;
 }
 
 export type DoneEvent = Extract<ChatEvent, { type: 'done' }>;
@@ -125,6 +131,9 @@ export interface ChatApi {
   startDataRoom(request: DataRoomStartRequest): Promise<ApiResult<DataRoomResponse>>;
   addDocument(request: AddDocumentRequest): Promise<ApiResult<DataRoomDocumentResponse>>;
   withdrawDocument(documentId: string, reason: string): Promise<ApiResult<DataRoomDocumentResponse>>;
+  getFindings(): Promise<ApiResult<FindingsResponse>>;
+  /** A person's decision on one draft finding. The server records who decided; this sends only the decision and a note. */
+  submitFindingDecision(findingId: string, decision: FindingDecisionRequest['decision'], note?: string): Promise<ApiResult<FindingDecisionResponse>>;
 }
 
 const UNREACHABLE_MESSAGE = 'Could not reach the server. Check the connection and try again.';
@@ -204,7 +213,7 @@ export function createChatClient(deps: ChatClientDeps = {}): ChatApi {
     }
 
     const { signal } = options;
-    const request: PostTurnRequest = { text: trimmed, clientTurnId: newId(), tz: timeZone() };
+    const request: PostTurnRequest = { text: trimmed, clientTurnId: newId(), tz: timeZone(), ...(options.intent ? { intent: options.intent } : {}) };
     const { clientTurnId } = request;
     const init: RequestInit = {
       method: 'POST',
@@ -288,6 +297,12 @@ export function createChatClient(deps: ChatClientDeps = {}): ChatApi {
         provided: request.provided,
         text: request.text,
       } satisfies AddDocumentRequest),
+    getFindings: () => requestJson<FindingsResponse>('/api/findings', { headers: { Accept: 'application/json' } }),
+    submitFindingDecision: (findingId, decision, note) =>
+      postJson<FindingDecisionResponse>(`/api/findings/${encodeURIComponent(findingId)}`, {
+        decision,
+        ...(note ? { note } : {}),
+      } satisfies FindingDecisionRequest),
     withdrawDocument: (documentId, reason) =>
       postJson<DataRoomDocumentResponse>(`/api/data-room/documents/${encodeURIComponent(documentId)}`, { action: 'withdraw', reason } satisfies WithdrawDocumentRequest),
   };
@@ -310,4 +325,6 @@ export const {
   startDataRoom,
   addDocument,
   withdrawDocument,
+  getFindings,
+  submitFindingDecision,
 } = chatClient;
