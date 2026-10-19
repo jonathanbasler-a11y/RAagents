@@ -11,10 +11,11 @@ import { FindingsProvider } from './FindingsProvider';
 import { finding, question } from './findings-fixtures';
 
 const ok = <T,>(data: T): ApiResult<T> => ({ ok: true, data });
-const register = (findings: FindingsResponse['findings'] = [], openQuestions: FindingsResponse['openQuestions'] = []): FindingsResponse => ({
+const register = (findings: FindingsResponse['findings'] = [], openQuestions: FindingsResponse['openQuestions'] = [], tags: FindingsResponse['tags'] = []): FindingsResponse => ({
   workspaceId: 'demo',
   findings,
   openQuestions,
+  tags,
 });
 
 const LIMITS = { documentChars: 12_000, turnChars: 48_000 };
@@ -47,6 +48,9 @@ function setup(initial: FindingsResponse, room: DataRoomResponse = roomWith()) {
   const client = {
     getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue(ok(initial)),
     submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
+    submitFindingTag: vi.fn<ChatApi['submitFindingTag']>(),
+    getChecklist: vi.fn<ChatApi['getChecklist']>(),
+    submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
   };
   const dataRoomClient = {
     getDataRoom: vi.fn<ChatApi['getDataRoom']>().mockResolvedValue(ok(room)),
@@ -63,6 +67,12 @@ function setup(initial: FindingsResponse, room: DataRoomResponse = roomWith()) {
     </DataRoomProvider>,
   );
   return client;
+}
+
+/** What a person does before Accept is possible: says which checklist item the finding supports, and what kind it is. */
+async function choose(card: HTMLElement, id: string, item = 'regions', kind = 'risk') {
+  await userEvent.selectOptions(within(card).getByLabelText(`Checklist item for ${id}`), item);
+  await userEvent.selectOptions(within(card).getByLabelText(`Kind of finding for ${id}`), kind);
 }
 
 describe('FindingsPanel', () => {
@@ -92,6 +102,9 @@ describe('FindingsPanel', () => {
     const client = {
       getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue({ ok: false, status: 0, error: null, message: 'Could not reach the server.' }),
       submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
+      submitFindingTag: vi.fn<ChatApi['submitFindingTag']>(),
+      getChecklist: vi.fn<ChatApi['getChecklist']>(),
+      submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
     };
     render(
       <FindingsProvider client={client}>
@@ -118,21 +131,90 @@ describe('FindingsPanel', () => {
     expect(citation).toHaveTextContent('DR-01, Licensor overview');
     expect(citation).toHaveTextContent('dated 2026-07-14');
     expect(within(card).getByText(/agent output, not evidence/)).toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: 'Accept F-001' })).toBeEnabled();
+    expect(within(card).getByRole('button', { name: 'Accept F-001' })).toBeDisabled();
     expect(within(card).getByRole('button', { name: 'Reject F-001' })).toBeEnabled();
+  });
+
+  it('keeps Accept off until both the checklist item and the kind are chosen, and says why', async () => {
+    setup(register([finding('F-001')]));
+    const card = await screen.findByRole('article', { name: 'F-001' });
+    const accept = within(card).getByRole('button', { name: 'Accept F-001' });
+    expect(within(card).getByText(/To accept, choose the checklist item it supports/)).toBeInTheDocument();
+
+    await userEvent.selectOptions(within(card).getByLabelText('Checklist item for F-001'), 'guidance');
+    expect(accept).toBeDisabled();
+    await userEvent.selectOptions(within(card).getByLabelText('Kind of finding for F-001'), 'positive');
+
+    expect(accept).toBeEnabled();
+    expect(within(card).queryByText(/To accept, choose/)).not.toBeInTheDocument();
+  });
+
+  it('offers every checklist item and the three kinds, with nothing preselected', async () => {
+    setup(register([finding('F-001')]));
+    const card = await screen.findByRole('article', { name: 'F-001' });
+
+    const items = within(card).getByLabelText('Checklist item for F-001') as HTMLSelectElement;
+    const kinds = within(card).getByLabelText('Kind of finding for F-001') as HTMLSelectElement;
+
+    expect(items.value).toBe('');
+    expect(kinds.value).toBe('');
+    expect([...items.options].map((option) => option.textContent)).toEqual([
+      'Choose…',
+      'Applicable guidance',
+      'Special designations',
+      'Regional differences',
+      'Bottleneck hunt',
+      'Inputs to the regulatory part of PTRS',
+      'Reimbursement and HTA risks',
+    ]);
+    expect([...kinds.options].map((option) => option.textContent)).toEqual(['Choose…', 'Positive', 'Risk', 'Neutral']);
+  });
+
+  it('shows what an accepted finding supports, from its tag', async () => {
+    const accepted = finding('F-001', { status: 'accepted', decidedAt: '2026-10-12T09:00:00.000Z', decidedBy: LOCAL_PERSON });
+    setup(register([accepted], [], [{ findingId: 'F-001', checklistItem: 'ptrs-inputs', category: 'positive', taggedAt: '2026-10-12T09:00:00.000Z', taggedBy: LOCAL_PERSON }]));
+
+    const card = await screen.findByRole('article', { name: 'F-001' });
+    expect(card).toHaveTextContent('Supports: Inputs to the regulatory part of PTRS · Positive');
+    expect(within(card).queryByText(/Not tagged yet/)).not.toBeInTheDocument();
+  });
+
+  it('lets a finding accepted without a tag be tagged afterwards, once', async () => {
+    const accepted = finding('F-001', { status: 'accepted', decidedAt: '2026-10-12T09:00:00.000Z', decidedBy: LOCAL_PERSON });
+    const client = setup(register([accepted]));
+    client.submitFindingTag.mockResolvedValue(ok({ tag: { findingId: 'F-001', checklistItem: 'bottlenecks', category: 'risk', taggedAt: '2026-10-12T09:30:00.000Z', taggedBy: LOCAL_PERSON } }));
+    const card = await screen.findByRole('article', { name: 'F-001' });
+    expect(card).toHaveTextContent('Not tagged yet');
+    expect(within(card).getByRole('button', { name: 'Save tag for F-001' })).toBeDisabled();
+
+    await choose(card, 'F-001', 'bottlenecks', 'risk');
+    await userEvent.click(within(card).getByRole('button', { name: 'Save tag for F-001' }));
+
+    await waitFor(() => expect(client.submitFindingTag).toHaveBeenCalledWith('F-001', { checklistItem: 'bottlenecks', category: 'risk' }));
+    await waitFor(() => expect(screen.getByRole('article', { name: 'F-001' })).toHaveTextContent('Supports: Bottleneck hunt · Risk'));
+    expect(screen.queryByRole('button', { name: 'Save tag for F-001' })).not.toBeInTheDocument();
+  });
+
+  it('gives a rejected finding no tag controls', async () => {
+    setup(register([finding('F-001', { status: 'rejected', decidedAt: '2026-10-12T09:00:00.000Z', decidedBy: LOCAL_PERSON })]));
+
+    const card = await screen.findByRole('article', { name: 'F-001' });
+    expect(within(card).queryByLabelText('Checklist item for F-001')).not.toBeInTheDocument();
+    expect(card).not.toHaveTextContent('Not tagged yet');
   });
 
   it('accepts with the note, and the card moves to Decided with the honest stamp', async () => {
     const client = setup(register([finding('F-001'), finding('F-002')]));
     client.submitFindingDecision.mockResolvedValue(
-      ok({ finding: finding('F-001', { status: 'accepted', decidedAt: '2026-10-12T09:30:00.000Z', decidedBy: LOCAL_PERSON, decisionNote: 'Checked against the label.' }) }),
+      ok({ finding: finding('F-001', { status: 'accepted', decidedAt: '2026-10-12T09:30:00.000Z', decidedBy: LOCAL_PERSON, decisionNote: 'Checked against the label.' }), tag: { findingId: 'F-001', checklistItem: 'regions', category: 'risk', taggedAt: '2026-10-12T09:30:00.000Z', taggedBy: LOCAL_PERSON } }),
     );
     const card = await screen.findByRole('article', { name: 'F-001' });
 
     await userEvent.type(within(card).getByLabelText('Note (optional)'), 'Checked against the label.');
+    await choose(card, 'F-001');
     await userEvent.click(within(card).getByRole('button', { name: 'Accept F-001' }));
 
-    await waitFor(() => expect(client.submitFindingDecision).toHaveBeenCalledWith('F-001', 'accept', 'Checked against the label.'));
+    await waitFor(() => expect(client.submitFindingDecision).toHaveBeenCalledWith('F-001', 'accept', 'Checked against the label.', { checklistItem: 'regions', category: 'risk' }));
     const decided = await screen.findByRole('region', { name: 'Decided' });
     const stamp = within(decided).getByRole('article', { name: 'F-001' });
     expect(stamp).toHaveTextContent('Accepted by person (local, not authenticated) on 2026-10-12.');
@@ -157,11 +239,11 @@ describe('FindingsPanel', () => {
 
   it('rejects without a note', async () => {
     const client = setup(register([finding('F-001')]));
-    client.submitFindingDecision.mockResolvedValue(ok({ finding: finding('F-001', { status: 'rejected', decidedAt: '2026-10-12T09:30:00.000Z', decidedBy: LOCAL_PERSON }) }));
+    client.submitFindingDecision.mockResolvedValue(ok({ finding: finding('F-001', { status: 'rejected', decidedAt: '2026-10-12T09:30:00.000Z', decidedBy: LOCAL_PERSON }), tag: null }));
 
     await userEvent.click(await screen.findByRole('button', { name: 'Reject F-001' }));
 
-    await waitFor(() => expect(client.submitFindingDecision).toHaveBeenCalledWith('F-001', 'reject', ''));
+    await waitFor(() => expect(client.submitFindingDecision).toHaveBeenCalledWith('F-001', 'reject', '', undefined));
     expect(await screen.findByText(/Rejected by person \(local, not authenticated\)/)).toBeInTheDocument();
   });
 
@@ -174,6 +256,7 @@ describe('FindingsPanel', () => {
       message: 'This finding was already decided.',
     });
 
+    await choose(await screen.findByRole('article', { name: 'F-001' }), 'F-001');
     await userEvent.click(await screen.findByRole('button', { name: 'Accept F-001' }));
 
     const alert = await screen.findByRole('alert');
@@ -186,6 +269,7 @@ describe('FindingsPanel', () => {
     setup(register([finding('F-001', { documentId: 'DR-02' })]), roomWith(['DR-02']));
 
     const card = await screen.findByRole('article', { name: 'F-001' });
+    await choose(card, 'F-001');
     await waitFor(() => expect(within(card).getByRole('button', { name: 'Accept F-001' })).toBeDisabled());
     expect(within(card).getByRole('button', { name: 'Reject F-001' })).toBeEnabled();
     expect(within(card).getByText(/document was withdrawn from the data room, so it cannot be accepted/)).toBeInTheDocument();

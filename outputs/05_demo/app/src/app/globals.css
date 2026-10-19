@@ -1414,3 +1414,41 @@ details.spec .kv {
   gap: 10px;
   padding: 8px 0;
 }
+
+/* ===== Checklist and tags ===== */
+.fd-tag {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0;
+}
+.fd-tag .dr-field {
+  min-width: 200px;
+  flex: 1 1 200px;
+}
+.fd-tagline {
+  font-weight: 600;
+}
+.cl-card {
+  margin-bottom: 12px;
+}
+.cl-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.cl-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+.cl-controls .dr-field {
+  min-width: 200px;
+  flex: 1 1 200px;
+}
+.cl-card .badge {
+  white-space: normal;
+  max-width: 100%;
+}
+

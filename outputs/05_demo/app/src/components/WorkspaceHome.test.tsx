@@ -6,7 +6,9 @@ import type { ApiResult, ChatApi } from '@/client/chat-client';
 import { ROSTER } from '@/client/test-fixtures';
 import type { DdSetup, DdSetupResponse, HealthResponse, SelectionResponse } from '@/shared/contracts';
 import { selectionAfterSetupChange } from '@/shared/dd-setup';
+import { ChecklistProvider } from './ChecklistProvider';
 import { DataRoomProvider } from './DataRoomProvider';
+import { FindingsProvider } from './FindingsProvider';
 import { DdSetupProvider } from './DdSetupProvider';
 import { SelectionProvider } from './SelectionProvider';
 import { WorkspaceHome } from './WorkspaceHome';
@@ -62,6 +64,44 @@ function renderHome(selected: string[] = SELECTED) {
   );
   return client;
 }
+
+describe('WorkspaceHome: the findings and the checklist', () => {
+  it('shows a findings card and a checklist card after the data room and before the team chat entry, when the registers exist', async () => {
+    const client = {
+      ...api(SELECTED),
+      getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue(ok({ workspaceId: 'demo', findings: [], openQuestions: [], tags: [] })),
+      submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
+      submitFindingTag: vi.fn<ChatApi['submitFindingTag']>(),
+      getChecklist: vi.fn<ChatApi['getChecklist']>().mockResolvedValue(
+        ok({ workspaceId: 'demo', items: ['guidance', 'designations', 'regions', 'bottlenecks', 'ptrs-inputs', 'hta-handover'].map((item) => ({ item: item as never, state: 'not_checked' as const, reason: null, changedAt: null, changedBy: null, acceptedFindings: 0 })) }),
+      ),
+      submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
+    };
+    render(
+      <DataRoomProvider client={client}>
+        <FindingsProvider client={client}>
+          <ChecklistProvider client={client}>
+            <SelectionProvider client={client}>
+              <DdSetupProvider client={client}>
+                <WorkspaceHome agents={ROSTER} client={client} />
+              </DdSetupProvider>
+            </SelectionProvider>
+          </ChecklistProvider>
+        </FindingsProvider>
+      </DataRoomProvider>,
+    );
+
+    const dataRoom = screen.getByRole('heading', { name: 'Data room' });
+    const findings = screen.getByRole('heading', { name: 'Findings' });
+    const checklist = screen.getByRole('heading', { name: 'Checklist' });
+    const chat = screen.getByRole('heading', { name: 'Team chat' });
+    const before = (first: HTMLElement, second: HTMLElement) => Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(before(dataRoom, findings)).toBe(true);
+    expect(before(findings, checklist)).toBe(true);
+    expect(before(checklist, chat)).toBe(true);
+    expect(await screen.findByText('0 checked, 0 not applicable, 0 could not check, 6 not checked (of 6).')).toBeInTheDocument();
+  });
+});
 
 describe('WorkspaceHome', () => {
   it('has one heading, one place to set up the DD, and no illustrative screens or tab row', () => {

@@ -13,6 +13,9 @@ function renderSummary(result: ApiResult<FindingsResponse> | Promise<ApiResult<F
   const client = {
     getFindings: vi.fn<ChatApi['getFindings']>().mockImplementation(() => Promise.resolve(result)),
     submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
+    submitFindingTag: vi.fn<ChatApi['submitFindingTag']>(),
+    getChecklist: vi.fn<ChatApi['getChecklist']>(),
+    submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
   };
   return render(
     <FindingsProvider client={client}>
@@ -25,6 +28,7 @@ const register = (findings: FindingsResponse['findings'], openQuestions: Finding
   workspaceId: 'demo',
   findings,
   openQuestions,
+  tags: [],
 });
 
 describe('FindingsSummary', () => {

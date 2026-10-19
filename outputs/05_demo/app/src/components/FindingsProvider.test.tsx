@@ -15,12 +15,15 @@ const failure = <T,>(message: string, status = 400, correlationId: string | null
   message,
 });
 
-const register = (findings: FindingsResponse['findings'] = [], openQuestions: FindingsResponse['openQuestions'] = []): FindingsResponse => ({ workspaceId: 'demo', findings, openQuestions });
+const register = (findings: FindingsResponse['findings'] = [], openQuestions: FindingsResponse['openQuestions'] = []): FindingsResponse => ({ workspaceId: 'demo', findings, openQuestions, tags: [] });
 
 function clientWith(initial: FindingsResponse = register()) {
   return {
     getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue(ok(initial)),
     submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
+    submitFindingTag: vi.fn<ChatApi['submitFindingTag']>(),
+    getChecklist: vi.fn<ChatApi['getChecklist']>(),
+    submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
   };
 }
 
@@ -87,17 +90,17 @@ describe('FindingsProvider: deciding', () => {
   it('replaces the finding with what the server saved, sends only the decision and the note', async () => {
     const client = clientWith(register([finding('F-001'), finding('F-002')]));
     const saved = finding('F-001', { status: 'accepted', decidedBy: 'person (local, not authenticated)', decidedAt: '2026-10-12T09:00:00.000Z' });
-    client.submitFindingDecision.mockResolvedValue(ok<FindingDecisionResponse>({ finding: saved }));
+    client.submitFindingDecision.mockResolvedValue(ok<FindingDecisionResponse>({ finding: saved, tag: null }));
     const { result } = mount(client);
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
     let accepted = false;
     await act(async () => {
-      accepted = await result.current.decide('F-001', 'accept', 'Checked.');
+      accepted = await result.current.decide('F-001', 'accept', 'Checked.', { checklistItem: 'regions', category: 'risk' });
     });
 
     expect(accepted).toBe(true);
-    expect(client.submitFindingDecision).toHaveBeenCalledWith('F-001', 'accept', 'Checked.');
+    expect(client.submitFindingDecision).toHaveBeenCalledWith('F-001', 'accept', 'Checked.', { checklistItem: 'regions', category: 'risk' });
     expect(result.current.findings?.map((entry) => [entry.id, entry.status])).toEqual([['F-001', 'accepted'], ['F-002', 'draft']]);
     expect(result.current.deciding).toBeNull();
   });
@@ -122,7 +125,7 @@ describe('FindingsProvider: deciding', () => {
     expect(second).toBe(false);
     expect(client.submitFindingDecision).toHaveBeenCalledTimes(1);
     await act(async () => {
-      finish(ok({ finding: finding('F-001', { status: 'rejected' }) }));
+      finish(ok({ finding: finding('F-001', { status: 'rejected' }), tag: null }));
       await first;
     });
     expect(result.current.deciding).toBeNull();
@@ -155,7 +158,7 @@ describe('FindingsProvider: deciding', () => {
     });
     expect(result.current.decideError).not.toBeNull();
 
-    client.submitFindingDecision.mockResolvedValueOnce(ok({ finding: finding('F-001', { status: 'accepted' }) }));
+    client.submitFindingDecision.mockResolvedValueOnce(ok({ finding: finding('F-001', { status: 'accepted' }), tag: null }));
     await act(async () => {
       await result.current.decide('F-001', 'accept');
     });
@@ -164,10 +167,97 @@ describe('FindingsProvider: deciding', () => {
   });
 });
 
+describe('FindingsProvider: tags', () => {
+  const TAG = { findingId: 'F-001', checklistItem: 'regions', category: 'risk', taggedAt: '2026-10-12T09:00:00.000Z', taggedBy: 'person (local, not authenticated)' } as const;
+
+  it('keeps the tag a decision came back with, and starts with the tags the register has', async () => {
+    const client = clientWith({ ...register([finding('F-001'), finding('F-002', { status: 'accepted', decidedBy: 'x', decidedAt: '2026-10-12T09:00:00.000Z' })]), tags: [{ ...TAG, findingId: 'F-002', category: 'neutral' }] });
+    client.submitFindingDecision.mockResolvedValue(ok<FindingDecisionResponse>({ finding: finding('F-001', { status: 'accepted', decidedBy: 'x', decidedAt: '2026-10-12T09:00:00.000Z' }), tag: TAG }));
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.tags?.map((entry) => entry.findingId)).toEqual(['F-002']);
+
+    await act(async () => {
+      await result.current.decide('F-001', 'accept', undefined, { checklistItem: 'regions', category: 'risk' });
+    });
+
+    expect(result.current.tags?.map((entry) => [entry.findingId, entry.checklistItem])).toEqual([['F-002', 'regions'], ['F-001', 'regions']]);
+  });
+
+  it('tags a finding accepted without one, one action at a time, and reports a refusal against that finding', async () => {
+    const client = clientWith(register([finding('F-001', { status: 'accepted', decidedBy: 'x', decidedAt: '2026-10-12T09:00:00.000Z' })]));
+    client.submitFindingTag.mockResolvedValueOnce({ ok: false, status: 409, error: { error: 'finding_tagged', message: 'This finding already has its tag. A tag is set once.', correlationId: 'c-4' }, message: 'This finding already has its tag. A tag is set once.' });
+    client.submitFindingTag.mockResolvedValueOnce(ok({ tag: TAG }));
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    let first = true;
+    await act(async () => {
+      first = await result.current.tag('F-001', { checklistItem: 'regions', category: 'risk' });
+    });
+    expect(first).toBe(false);
+    expect(result.current.decideError).toEqual({ findingId: 'F-001', message: 'This finding already has its tag. A tag is set once.', correlationId: 'c-4' });
+
+    let second = false;
+    await act(async () => {
+      second = await result.current.tag('F-001', { checklistItem: 'regions', category: 'risk' });
+    });
+    expect(second).toBe(true);
+    expect(result.current.decideError).toBeNull();
+    expect(result.current.tags).toEqual([TAG]);
+  });
+});
+
+describe('FindingsProvider: tagging one at a time, and after a refusal', () => {
+  const ACCEPTED = (id: string) => finding(id, { status: 'accepted', decidedBy: 'x', decidedAt: '2026-10-12T09:00:00.000Z' });
+
+  it('ignores a second tag while one is being saved', async () => {
+    const client = clientWith(register([ACCEPTED('F-001'), ACCEPTED('F-002')]));
+    let finish: (value: ApiResult<{ tag: never }>) => void = () => undefined;
+    client.submitFindingTag.mockImplementation(() => new Promise((resolve) => (finish = resolve as never)));
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    let first: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      first = result.current.tag('F-001', { checklistItem: 'regions', category: 'risk' });
+    });
+    expect(result.current.deciding).toBe('F-001');
+    let second = true;
+    await act(async () => {
+      second = await result.current.tag('F-002', { checklistItem: 'regions', category: 'risk' });
+    });
+
+    expect(second).toBe(false);
+    expect(client.submitFindingTag).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish({ ok: false, status: 400, error: null, message: 'x' });
+      await first;
+    });
+    expect(result.current.deciding).toBeNull();
+  });
+
+  it('reads the register again after a refused tag (409), so the screen shows what is saved', async () => {
+    const client = clientWith(register([ACCEPTED('F-001')]));
+    client.submitFindingTag.mockResolvedValue({ ok: false, status: 409, error: null, message: 'This finding already has its tag.' });
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    client.getFindings.mockClear();
+    client.getFindings.mockResolvedValue({ ok: true, data: { ...register([ACCEPTED('F-001')]), tags: [{ findingId: 'F-001', checklistItem: 'guidance', category: 'neutral', taggedAt: 'x', taggedBy: 'y' }] } });
+
+    await act(async () => {
+      await result.current.tag('F-001', { checklistItem: 'regions', category: 'risk' });
+    });
+
+    await waitFor(() => expect(client.getFindings).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.tags?.[0]?.checklistItem).toBe('guidance'));
+  });
+});
+
 describe('FindingsProvider: a read that started before a decision', () => {
   it('does not overwrite the decision with the older state it read', async () => {
     const client = clientWith(register([finding('F-001')]));
-    client.submitFindingDecision.mockResolvedValue(ok<FindingDecisionResponse>({ finding: finding('F-001', { status: 'accepted', decidedBy: 'person (local, not authenticated)', decidedAt: '2026-10-12T09:00:00.000Z' }) }));
+    client.submitFindingDecision.mockResolvedValue(ok<FindingDecisionResponse>({ finding: finding('F-001', { status: 'accepted', decidedBy: 'person (local, not authenticated)', decidedAt: '2026-10-12T09:00:00.000Z' }), tag: null }));
     const { result } = mount(client);
     await waitFor(() => expect(result.current.status).toBe('ready'));
 

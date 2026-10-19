@@ -6,7 +6,9 @@ import type {
   ChatErrorCode,
   ClassificationId,
   ContributionRole,
+  ChecklistState,
   FindingBasis,
+  FindingCategory,
   FindingConfidence,
   FindingStatus,
   ProposalTrace,
@@ -132,6 +134,21 @@ export const FINDING_STATUS_LABELS: Record<FindingStatus, string> = {
   draft: 'Draft: no person has decided',
   accepted: 'Accepted by a person',
   rejected: 'Rejected by a person',
+};
+
+/** The four checklist states, kept apart in words as in the database. */
+export const CHECKLIST_STATE_LABELS: Record<ChecklistState, string> = {
+  not_checked: 'Not checked',
+  checked: 'Checked',
+  not_applicable: 'Checked: not applicable',
+  could_not_check: 'Could not check',
+};
+
+/** What kind of finding it is, as a person tagged it. */
+export const FINDING_CATEGORY_LABELS: Record<FindingCategory, string> = {
+  positive: 'Positive',
+  risk: 'Risk',
+  neutral: 'Neutral',
 };
 
 /** What a finding stands on. A seller's own document is attributed to the seller and never becomes verified fact. */
