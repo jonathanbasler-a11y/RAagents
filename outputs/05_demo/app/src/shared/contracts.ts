@@ -825,6 +825,27 @@ export interface Store {
    * a withdrawn document returns it unchanged.
    */
   withdrawDocument(workspaceId: WorkspaceId, documentId: string, reason: string): DataRoomDocument;
+  /** Findings of the workspace by id, drafts and decided ones. */
+  listFindings(workspaceId: WorkspaceId): Finding[];
+  listOpenQuestions(workspaceId: WorkspaceId): OpenQuestion[];
+  /** The audit trail, oldest first. */
+  listFindingEvents(workspaceId: WorkspaceId): FindingEvent[];
+  /**
+   * Puts an agent's checked claims in the register as drafts and its refused claims in the open questions, in ONE
+   * transaction (all or nothing), with a 'proposed' event for each draft. The register checks each claim again against
+   * the room: the document must exist, not be withdrawn and be dated on or before the as-of date, and the quote must be
+   * in it. The basis, date and title come from the document. There is no way to set a status here: this is the only
+   * way an agent's claim enters the register, and it always enters as a draft. Throws NoDataRoomError, or RangeError
+   * (nothing saved) for a claim it refuses or a turn that does not exist.
+   */
+  proposeFindings(workspaceId: WorkspaceId, input: ProposeFindingsInput): { findings: Finding[]; openQuestions: OpenQuestion[] };
+  /**
+   * A person's decision on a draft, recorded once with the time, LOCAL_PERSON and an optional note (up to 300
+   * characters), plus an audit event. The ONLY writer of a finding's status. Throws FindingNotFoundError,
+   * FindingAlreadyDecidedError, FindingSourceWithdrawnError (accepting a finding whose document was withdrawn; rejecting
+   * it is allowed) or RangeError (a decision other than accepted or rejected, or a long note).
+   */
+  decideFinding(workspaceId: WorkspaceId, findingId: string, decision: 'accepted' | 'rejected', note: string | null): Finding;
   close(): void;
 }
 
@@ -1134,3 +1155,148 @@ export interface WithdrawDocumentRequest {
   action: 'withdraw';
   reason: string;
 }
+
+// ---------------------------------------------------------------------------
+// Findings register: what agents propose from the data room and what a person decides.
+// Rules in src/shared/findings.ts. "No source, no finding": a claim without a verbatim quote
+// from a document the agent was shown is never a finding; it becomes an open question.
+// ---------------------------------------------------------------------------
+
+export const FINDING_CONFIDENCE_LEVELS = ['high', 'medium', 'low'] as const;
+export type FindingConfidence = (typeof FINDING_CONFIDENCE_LEVELS)[number];
+
+/** draft: proposed by an agent, nobody has acted. accepted and rejected: a person decided, once. */
+export const FINDING_STATUSES = ['draft', 'accepted', 'rejected'] as const;
+export type FindingStatus = (typeof FINDING_STATUSES)[number];
+
+/**
+ * Worked out from the document's source type, never chosen by the agent:
+ * - attributed: the document is a company disclosure, so the finding is what the seller states, never verified fact.
+ * - primary-record: an agency record, a registry entry or a publication.
+ */
+export const FINDING_BASES = ['attributed', 'primary-record'] as const;
+export type FindingBasis = (typeof FINDING_BASES)[number];
+
+/** Why a proposed claim did not become a finding. */
+export const PROPOSAL_REFUSAL_CODES = [
+  'not_an_object',
+  'claim_missing',
+  'claim_too_long',
+  'document_missing',
+  'document_unknown',
+  'document_not_shown',
+  'document_withdrawn',
+  'document_after_as_of',
+  'quote_missing',
+  'quote_too_short',
+  'quote_too_long',
+  'quote_not_in_document',
+  'confidence_invalid',
+  'confidence_reason_missing',
+  'assumptions_invalid',
+  'too_many',
+  'declared_unsupported',
+] as const;
+export type ProposalRefusalCode = (typeof PROPOSAL_REFUSAL_CODES)[number];
+
+/** A claim that passed every check of src/shared/findings.ts, in the form the register stores. */
+export interface CheckedFinding {
+  claim: string;
+  quote: string;
+  documentId: string;
+  documentTitle: string;
+  sourceType: DocumentSourceType;
+  basis: FindingBasis;
+  publishedAt: string;
+  confidence: FindingConfidence;
+  confidenceReason: string;
+  assumptions: string[];
+}
+
+/** A claim that did not become a finding, and why. */
+export interface RefusedClaim {
+  claim: string;
+  code: ProposalRefusalCode;
+  message: string;
+  documentId: string | null;
+}
+
+/** What a proposal turn hands the register. The agent never sets a status: the register writes drafts only. */
+export interface ProposeFindingsInput {
+  turnId: string;
+  agent: { agentId: AgentId; agentName: string; agentVersion: string; model: string | null; promptHash: string | null };
+  /** A human role: the drafting agent's owner. */
+  owner: string;
+  findings: CheckedFinding[];
+  refused: RefusedClaim[];
+}
+
+export interface Finding {
+  /** F-001, F-002 ...: stable, per workspace, never reused. */
+  id: string;
+  workspaceId: WorkspaceId;
+  claim: string;
+  /** Verbatim from the document (up to whitespace, quote marks and dashes). */
+  quote: string;
+  documentId: string;
+  documentTitle: string;
+  sourceType: DocumentSourceType;
+  basis: FindingBasis;
+  /** The document's date, and the data room's as-of date when the finding was proposed. */
+  publishedAt: string;
+  asOf: string;
+  confidence: FindingConfidence;
+  confidenceReason: string;
+  assumptions: string[];
+  /** A human role: the drafting agent's owner. */
+  owner: string;
+  status: FindingStatus;
+  draftedBy: { agentId: AgentId; agentName: string; agentVersion: string; model: string | null; promptHash: string | null; turnId: string };
+  createdAt: string;
+  decidedAt: string | null;
+  /** Who decided. Today the app has no login, so this says so. */
+  decidedBy: string | null;
+  decisionNote: string | null;
+}
+
+/** A claim that did not become a finding, with the reason. Never evidence. */
+export interface OpenQuestion {
+  /** Q-001, Q-002 ...: stable, per workspace. */
+  id: string;
+  workspaceId: WorkspaceId;
+  claim: string;
+  reasonCode: ProposalRefusalCode;
+  reason: string;
+  documentId: string | null;
+  raisedBy: { agentId: AgentId; agentName: string; turnId: string };
+  createdAt: string;
+}
+
+export type FindingEventKind = 'proposed' | 'accepted' | 'rejected';
+
+/** The append-only audit trail of the register. */
+export interface FindingEvent {
+  id: number;
+  findingId: string;
+  kind: FindingEventKind;
+  at: string;
+  by: string;
+  note: string | null;
+}
+
+/** What the person who decides is recorded as, while the app has no login. */
+export const LOCAL_PERSON = 'person (local, not authenticated)';
+
+/** GET /api/findings */
+export interface FindingsResponse {
+  workspaceId: WorkspaceId;
+  findings: Finding[];
+  openQuestions: OpenQuestion[];
+}
+
+/** POST /api/findings/[id]: the decision of a person. Anything else is refused. */
+export interface FindingDecisionRequest {
+  decision: 'accept' | 'reject';
+  note?: string;
+}
+

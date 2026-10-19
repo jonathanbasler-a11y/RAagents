@@ -8,6 +8,8 @@ import type {
   DataRoom,
   DataRoomDocument,
   DdSetup,
+  Finding,
+  FindingEvent,
   FinishTurnInput,
   InterruptTurnInput,
   LlmMessage,
@@ -16,7 +18,9 @@ import type {
   MessageStatus,
   NewDocument,
   NewThreadResult,
+  OpenQuestion,
   Provenance,
+  ProposeFindingsInput,
   ReconcileOptions,
   RoomId,
   StartTurnResult,
@@ -28,7 +32,9 @@ import type {
   TurnTrace,
   WorkspaceId,
 } from '@/shared/contracts';
-import { CLASSIFICATION_IDS, DEVELOPMENT_STAGES } from '@/shared/contracts';
+import { CLASSIFICATION_IDS, DEVELOPMENT_STAGES, LOCAL_PERSON } from '@/shared/contracts';
+import { neutraliseUntrusted } from '@/server/prompts/fence';
+import { checkProposedFinding, type ProposalContext } from '@/shared/findings';
 import { MAX_REASON_CHARS, checkAsOf, checkNewDocument, compareDocumentIds, nextDocumentId } from '@/shared/data-room';
 import { immediateTransaction, migrateChatSchema } from './schema';
 
@@ -106,6 +112,38 @@ export class DocumentNotFoundError extends Error {
     this.name = 'DocumentNotFoundError';
   }
 }
+
+/** Thrown by decideFinding for a finding the register does not have. The API answers 404 finding_not_found. */
+export class FindingNotFoundError extends Error {
+  readonly code = 'finding_not_found' as const;
+
+  constructor(findingId: string) {
+    super(`the register has no finding ${findingId}`);
+    this.name = 'FindingNotFoundError';
+  }
+}
+
+/** Thrown by decideFinding for a finding a person already decided. The API answers 409 finding_decided. */
+export class FindingAlreadyDecidedError extends Error {
+  readonly code = 'finding_decided' as const;
+
+  constructor(findingId: string, status: string) {
+    super(`finding ${findingId} is already ${status}; a decision is made once`);
+    this.name = 'FindingAlreadyDecidedError';
+  }
+}
+
+/** Thrown by decideFinding when accepting a finding whose document was withdrawn. The API answers 409 finding_source_withdrawn. */
+export class FindingSourceWithdrawnError extends Error {
+  readonly code = 'finding_source_withdrawn' as const;
+
+  constructor(findingId: string, documentId: string) {
+    super(`finding ${findingId} cannot be accepted: ${documentId} has been withdrawn`);
+    this.name = 'FindingSourceWithdrawnError';
+  }
+}
+
+const MAX_DECISION_NOTE_CHARS = 300;
 
 // Row shapes as stored. The tables are STRICT, so SQLite guarantees these column types.
 interface ThreadRow {
@@ -209,6 +247,66 @@ function toDocument(row: DocumentRow): DataRoomDocument {
     addedAt: row.added_at,
     withdrawnAt: row.withdrawn_at,
     withdrawnReason: row.withdrawn_reason,
+  };
+}
+
+interface FindingRow {
+  workspace_id: string;
+  id: string;
+  claim: string;
+  quote: string;
+  document_id: string;
+  document_title: string;
+  source_type: string;
+  basis: string;
+  published_at: string;
+  as_of: string;
+  confidence: string;
+  confidence_reason: string;
+  assumptions: string;
+  owner: string;
+  status: string;
+  agent_id: string;
+  agent_name: string;
+  agent_version: string;
+  model: string | null;
+  prompt_hash: string | null;
+  turn_id: string;
+  created_at: string;
+  decided_at: string | null;
+  decided_by: string | null;
+  decision_note: string | null;
+}
+
+function toFinding(row: FindingRow): Finding {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    claim: row.claim,
+    quote: row.quote,
+    documentId: row.document_id,
+    documentTitle: row.document_title,
+    sourceType: row.source_type as Finding['sourceType'],
+    basis: row.basis as Finding['basis'],
+    publishedAt: row.published_at,
+    asOf: row.as_of,
+    confidence: row.confidence as Finding['confidence'],
+    confidenceReason: row.confidence_reason,
+    assumptions: JSON.parse(row.assumptions) as string[],
+    owner: row.owner,
+    status: row.status as Finding['status'],
+    draftedBy: {
+      agentId: row.agent_id,
+      agentName: row.agent_name,
+      agentVersion: row.agent_version,
+      model: row.model,
+      promptHash: row.prompt_hash,
+      turnId: row.turn_id,
+    },
+    createdAt: row.created_at,
+    decidedAt: row.decided_at,
+    decidedBy: row.decided_by,
+    decisionNote: row.decision_note,
   };
 }
 
@@ -428,6 +526,35 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       `UPDATE data_room_documents SET withdrawn_at = :now, withdrawn_reason = :reason
        WHERE workspace_id = :workspace_id AND id = :id AND withdrawn_at IS NULL`,
     ),
+    findingsOf: db.prepare(
+      `SELECT f.*, d.title AS document_title FROM findings f
+       JOIN data_room_documents d ON d.workspace_id = f.workspace_id AND d.id = f.document_id
+       WHERE f.workspace_id = ? ORDER BY CAST(SUBSTR(f.id, 3) AS INTEGER)`,
+    ),
+    findingById: db.prepare(
+      `SELECT f.*, d.title AS document_title FROM findings f
+       JOIN data_room_documents d ON d.workspace_id = f.workspace_id AND d.id = f.document_id
+       WHERE f.workspace_id = ? AND f.id = ?`,
+    ),
+    nextFindingNumber: db.prepare("SELECT COALESCE(MAX(CAST(SUBSTR(id, 3) AS INTEGER)), 0) + 1 AS next FROM findings WHERE workspace_id = ?"),
+    insertFinding: db.prepare(
+      `INSERT INTO findings (workspace_id, id, claim, quote, document_id, source_type, basis, published_at, as_of, confidence, confidence_reason,
+         assumptions, owner, status, agent_id, agent_name, agent_version, model, prompt_hash, turn_id, created_at)
+       VALUES (:workspace_id, :id, :claim, :quote, :document_id, :source_type, :basis, :published_at, :as_of, :confidence, :confidence_reason,
+         :assumptions, :owner, 'draft', :agent_id, :agent_name, :agent_version, :model, :prompt_hash, :turn_id, :created_at)`,
+    ),
+    decideFinding: db.prepare(
+      `UPDATE findings SET status = :status, decided_at = :at, decided_by = :by, decision_note = :note
+       WHERE workspace_id = :workspace_id AND id = :id AND status = 'draft'`,
+    ),
+    insertFindingEvent: db.prepare('INSERT INTO finding_events (workspace_id, finding_id, kind, at, actor, note) VALUES (?, ?, ?, ?, ?, ?)'),
+    findingEventsOf: db.prepare('SELECT id, finding_id, kind, at, actor, note FROM finding_events WHERE workspace_id = ? ORDER BY id'),
+    openQuestionsOf: db.prepare("SELECT * FROM open_questions WHERE workspace_id = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER)"),
+    nextQuestionNumber: db.prepare("SELECT COALESCE(MAX(CAST(SUBSTR(id, 3) AS INTEGER)), 0) + 1 AS next FROM open_questions WHERE workspace_id = ?"),
+    insertOpenQuestion: db.prepare(
+      `INSERT INTO open_questions (workspace_id, id, claim, reason_code, reason, document_id, turn_id, agent_id, agent_name, created_at)
+       VALUES (:workspace_id, :id, :claim, :reason_code, :reason, :document_id, :turn_id, :agent_id, :agent_name, :created_at)`,
+    ),
     messageById: db.prepare('SELECT * FROM messages WHERE id = ?'),
     questionOfTurn: db.prepare("SELECT * FROM messages WHERE turn_id = ? AND author = 'human'"),
     messagesOfThread: db.prepare('SELECT * FROM messages WHERE thread_id = ? ORDER BY seq'),
@@ -551,6 +678,24 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       added_at: at,
     });
   }
+
+  const toQuestion = (row: Record<string, unknown>): OpenQuestion => ({
+    id: row.id as string,
+    workspaceId: row.workspace_id as string,
+    claim: row.claim as string,
+    reasonCode: row.reason_code as OpenQuestion['reasonCode'],
+    reason: row.reason as string,
+    documentId: (row.document_id as string | null) ?? null,
+    raisedBy: { agentId: row.agent_id as string, agentName: row.agent_name as string, turnId: row.turn_id as string },
+    createdAt: row.created_at as string,
+  });
+
+  const readFinding = (workspaceId: WorkspaceId, id: string): Finding | null => {
+    const row = sql.findingById.get(workspaceId, id) as FindingRow | undefined;
+    return row ? toFinding(row) : null;
+  };
+
+  const numbered = (prefix: string, next: unknown) => `${prefix}-${String(Number(next)).padStart(3, '0')}`;
 
   function readDdSetup(workspaceId: WorkspaceId): DdSetup | null {
     const row = sql.ddSetupOf.get(workspaceId) as { stage: string; classifications: string } | undefined;
@@ -860,6 +1005,143 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
         if (document.withdrawnAt !== null) return document;
         sql.withdrawDocument.run({ workspace_id: workspaceId, id: documentId, now: at, reason: why });
         return mustExist(readDocument(workspaceId, documentId) ?? undefined, 'the document just withdrawn');
+      });
+    },
+
+    listFindings(workspaceId) {
+      requireNonEmpty('workspaceId', workspaceId);
+      return (sql.findingsOf.all(workspaceId) as unknown as FindingRow[]).map(toFinding);
+    },
+
+    listOpenQuestions(workspaceId) {
+      requireNonEmpty('workspaceId', workspaceId);
+      return (sql.openQuestionsOf.all(workspaceId) as Record<string, unknown>[]).map(toQuestion);
+    },
+
+    listFindingEvents(workspaceId) {
+      requireNonEmpty('workspaceId', workspaceId);
+      return (sql.findingEventsOf.all(workspaceId) as Array<Record<string, unknown>>).map(
+        (row): FindingEvent => ({
+          id: Number(row.id),
+          findingId: row.finding_id as string,
+          kind: row.kind as FindingEvent['kind'],
+          at: row.at as string,
+          by: row.actor as string,
+          note: (row.note as string | null) ?? null,
+        }),
+      );
+    },
+
+    proposeFindings(workspaceId, input) {
+      requireNonEmpty('workspaceId', workspaceId);
+      requireNonEmpty('owner', input.owner);
+      requireNonEmpty('agent.agentId', input.agent.agentId);
+      requireNonEmpty('agent.agentName', input.agent.agentName);
+      requireNonEmpty('agent.agentVersion', input.agent.agentVersion);
+      const at = timestamp();
+      // One transaction: every draft, every open question and every event, or nothing.
+      return immediateTransaction(db, () => {
+        const room = readDataRoom(workspaceId);
+        if (room === null) throw new NoDataRoomError(workspaceId);
+        if (!sql.turnById.get(input.turnId)) throw new RangeError(`turn ${input.turnId} does not exist`);
+
+        // The second wall: the same checker the proposal turn used, against the room as it is now. Every document
+        // of the room counts as shown here; which ones the agent really saw was decided by the turn.
+        const context: ProposalContext = {
+          asOf: room.asOf,
+          documents: new Map(
+            room.documents.map((document) => [
+              document.id,
+              {
+                sourceType: document.sourceType,
+                title: document.title,
+                publishedAt: document.publishedAt,
+                withdrawn: document.withdrawnAt !== null,
+                texts: document.text === null ? [] : [document.text, neutraliseUntrusted(document.text)],
+              },
+            ]),
+          ),
+          shownIds: new Set(room.documents.map((document) => document.id)),
+        };
+
+        const findingIds: string[] = [];
+        let next = Number((sql.nextFindingNumber.get(workspaceId) as { next: number }).next);
+        for (const proposed of input.findings) {
+          const result = checkProposedFinding(proposed, context);
+          if (!result.ok) throw new RangeError(`${proposed.documentId}: ${result.message}`);
+          const finding = result.finding;
+          const id = numbered('F', next);
+          next += 1;
+          sql.insertFinding.run({
+            workspace_id: workspaceId,
+            id,
+            claim: finding.claim,
+            quote: finding.quote,
+            document_id: finding.documentId,
+            source_type: finding.sourceType,
+            basis: finding.basis,
+            published_at: finding.publishedAt,
+            as_of: room.asOf,
+            confidence: finding.confidence,
+            confidence_reason: finding.confidenceReason,
+            assumptions: JSON.stringify(finding.assumptions),
+            owner: input.owner.trim(),
+            agent_id: input.agent.agentId,
+            agent_name: input.agent.agentName,
+            agent_version: input.agent.agentVersion,
+            model: input.agent.model,
+            prompt_hash: input.agent.promptHash,
+            turn_id: input.turnId,
+            created_at: at,
+          });
+          sql.insertFindingEvent.run(workspaceId, id, 'proposed', at, `agent:${input.agent.agentId}`, null);
+          findingIds.push(id);
+        }
+
+        const questionIds: string[] = [];
+        let nextQuestion = Number((sql.nextQuestionNumber.get(workspaceId) as { next: number }).next);
+        for (const refusal of input.refused) {
+          const id = numbered('Q', nextQuestion);
+          nextQuestion += 1;
+          sql.insertOpenQuestion.run({
+            workspace_id: workspaceId,
+            id,
+            claim: refusal.claim.trim().slice(0, 600) || '(no claim given)',
+            reason_code: refusal.code,
+            reason: refusal.message.trim().slice(0, 300) || 'No reason was given.',
+            document_id: refusal.documentId,
+            turn_id: input.turnId,
+            agent_id: input.agent.agentId,
+            agent_name: input.agent.agentName,
+            created_at: at,
+          });
+          questionIds.push(id);
+        }
+
+        const questions = (sql.openQuestionsOf.all(workspaceId) as Record<string, unknown>[]).map(toQuestion);
+        return {
+          findings: findingIds.map((id) => mustExist(readFinding(workspaceId, id) ?? undefined, `finding ${id}`)),
+          openQuestions: questions.filter((question) => questionIds.includes(question.id)),
+        };
+      });
+    },
+
+    decideFinding(workspaceId, findingId, decision, note) {
+      requireNonEmpty('workspaceId', workspaceId);
+      if (decision !== 'accepted' && decision !== 'rejected') throw new RangeError('a decision is accepted or rejected');
+      const trimmed = typeof note === 'string' ? note.trim() : '';
+      if (trimmed.length > MAX_DECISION_NOTE_CHARS) throw new RangeError(`the note is longer than ${MAX_DECISION_NOTE_CHARS} characters`);
+      const at = timestamp();
+      return immediateTransaction(db, () => {
+        const finding = readFinding(workspaceId, findingId);
+        if (finding === null) throw new FindingNotFoundError(findingId);
+        if (finding.status !== 'draft') throw new FindingAlreadyDecidedError(findingId, finding.status);
+        if (decision === 'accepted' && readDocument(workspaceId, finding.documentId)?.withdrawnAt) {
+          throw new FindingSourceWithdrawnError(findingId, finding.documentId);
+        }
+        sql.decideFinding.run({ workspace_id: workspaceId, id: findingId, status: decision, at, by: LOCAL_PERSON, note: trimmed === '' ? null : trimmed });
+        sql.insertFindingEvent.run(workspaceId, findingId, decision, at, LOCAL_PERSON, trimmed === '' ? null : trimmed);
+        return mustExist(readFinding(workspaceId, findingId) ?? undefined, `finding ${findingId}`);
       });
     },
 

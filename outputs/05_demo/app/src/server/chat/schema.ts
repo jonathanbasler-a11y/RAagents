@@ -1,5 +1,9 @@
 import 'server-only';
 import type { SqliteDatabase } from '@/server/db/sqlite';
+import { PROPOSAL_REFUSAL_CODES } from '@/shared/contracts';
+
+// The reasons an open question can carry come from the contract, so the list in the database cannot drift from it.
+const REASON_CODES_SQL = PROPOSAL_REFUSAL_CODES.map((code) => `'${code}'`).join(', ');
 
 /**
  * The chat schema, one entry per version: entry i takes a database from version i to
@@ -190,6 +194,130 @@ export const CHAT_MIGRATIONS: readonly string[] = [
   BEFORE DELETE ON data_rooms
   BEGIN
     SELECT RAISE(ABORT, 'a data room cannot be deleted');
+  END;
+  `,
+  // Version 4: the findings register. An agent's claim enters only as a draft; a person decides it once; a finding is
+  // never edited or deleted; every proposal and decision is an event in an append-only trail. A claim that did not
+  // become a finding is an open question. Accepting a finding whose document has been withdrawn is refused by a trigger.
+  `
+  CREATE TABLE findings (
+    workspace_id TEXT NOT NULL REFERENCES data_rooms (workspace_id),
+    id TEXT NOT NULL CHECK (id GLOB 'F-[0-9][0-9][0-9]*'),
+    claim TEXT NOT NULL CHECK (length(claim) BETWEEN 1 AND 600),
+    quote TEXT NOT NULL CHECK (length(quote) BETWEEN 15 AND 600),
+    document_id TEXT NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('company-disclosure', 'agency-record', 'registry', 'publication')),
+    basis TEXT NOT NULL CHECK (basis IN ('attributed', 'primary-record')),
+    published_at TEXT NOT NULL CHECK (published_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+    as_of TEXT NOT NULL CHECK (as_of GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+    confidence TEXT NOT NULL CHECK (confidence IN ('high', 'medium', 'low')),
+    confidence_reason TEXT NOT NULL CHECK (length(confidence_reason) BETWEEN 1 AND 300),
+    assumptions TEXT NOT NULL CHECK (json_valid(assumptions) AND json_type(assumptions) = 'array'),
+    owner TEXT NOT NULL CHECK (length(owner) BETWEEN 1 AND 200),
+    status TEXT NOT NULL CHECK (status IN ('draft', 'accepted', 'rejected')),
+    agent_id TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    agent_version TEXT NOT NULL,
+    model TEXT,
+    prompt_hash TEXT,
+    turn_id TEXT NOT NULL REFERENCES turns (id),
+    created_at TEXT NOT NULL,
+    decided_at TEXT,
+    decided_by TEXT,
+    decision_note TEXT CHECK (decision_note IS NULL OR length(decision_note) BETWEEN 1 AND 300),
+    PRIMARY KEY (workspace_id, id),
+    FOREIGN KEY (workspace_id, document_id) REFERENCES data_room_documents (workspace_id, id),
+    CHECK ((basis = 'attributed') = (source_type = 'company-disclosure')),
+    CHECK (
+      (status = 'draft' AND decided_at IS NULL AND decided_by IS NULL AND decision_note IS NULL)
+      OR (status <> 'draft' AND decided_at IS NOT NULL AND decided_by IS NOT NULL)
+    )
+  ) STRICT;
+
+  CREATE TRIGGER findings_only_drafts
+  BEFORE INSERT ON findings
+  WHEN NEW.status <> 'draft'
+  BEGIN
+    SELECT RAISE(ABORT, 'only a draft can be put in the register: a person decides a finding');
+  END;
+
+  CREATE TRIGGER findings_decide_once
+  BEFORE UPDATE ON findings
+  WHEN NOT (
+    OLD.status = 'draft' AND NEW.status IN ('accepted', 'rejected')
+    AND NEW.workspace_id IS OLD.workspace_id AND NEW.id IS OLD.id AND NEW.claim IS OLD.claim AND NEW.quote IS OLD.quote
+    AND NEW.document_id IS OLD.document_id AND NEW.source_type IS OLD.source_type AND NEW.basis IS OLD.basis
+    AND NEW.published_at IS OLD.published_at AND NEW.as_of IS OLD.as_of AND NEW.confidence IS OLD.confidence
+    AND NEW.confidence_reason IS OLD.confidence_reason AND NEW.assumptions IS OLD.assumptions AND NEW.owner IS OLD.owner
+    AND NEW.agent_id IS OLD.agent_id AND NEW.agent_name IS OLD.agent_name AND NEW.agent_version IS OLD.agent_version
+    AND NEW.model IS OLD.model AND NEW.prompt_hash IS OLD.prompt_hash AND NEW.turn_id IS OLD.turn_id
+    AND NEW.created_at IS OLD.created_at
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'a finding cannot be changed, only decided once');
+  END;
+
+  CREATE TRIGGER findings_not_accepted_when_withdrawn
+  BEFORE UPDATE ON findings
+  WHEN NEW.status = 'accepted'
+    AND (SELECT withdrawn_at FROM data_room_documents WHERE workspace_id = NEW.workspace_id AND id = NEW.document_id) IS NOT NULL
+  BEGIN
+    SELECT RAISE(ABORT, 'a finding whose document was withdrawn cannot be accepted');
+  END;
+
+  CREATE TRIGGER findings_no_delete
+  BEFORE DELETE ON findings
+  BEGIN
+    SELECT RAISE(ABORT, 'a finding cannot be deleted');
+  END;
+
+  CREATE TABLE finding_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id TEXT NOT NULL,
+    finding_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('proposed', 'accepted', 'rejected')),
+    at TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    note TEXT,
+    FOREIGN KEY (workspace_id, finding_id) REFERENCES findings (workspace_id, id)
+  ) STRICT;
+
+  CREATE TRIGGER finding_events_no_update
+  BEFORE UPDATE ON finding_events
+  BEGIN
+    SELECT RAISE(ABORT, 'a finding event cannot be changed');
+  END;
+
+  CREATE TRIGGER finding_events_no_delete
+  BEFORE DELETE ON finding_events
+  BEGIN
+    SELECT RAISE(ABORT, 'a finding event cannot be deleted');
+  END;
+
+  CREATE TABLE open_questions (
+    workspace_id TEXT NOT NULL REFERENCES data_rooms (workspace_id),
+    id TEXT NOT NULL CHECK (id GLOB 'Q-[0-9][0-9][0-9]*'),
+    claim TEXT NOT NULL CHECK (length(claim) BETWEEN 1 AND 600),
+    reason_code TEXT NOT NULL CHECK (reason_code IN (${REASON_CODES_SQL})),
+    reason TEXT NOT NULL CHECK (length(reason) BETWEEN 1 AND 300),
+    document_id TEXT,
+    turn_id TEXT NOT NULL REFERENCES turns (id),
+    agent_id TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (workspace_id, id)
+  ) STRICT;
+
+  CREATE TRIGGER open_questions_no_update
+  BEFORE UPDATE ON open_questions
+  BEGIN
+    SELECT RAISE(ABORT, 'an open question cannot be changed');
+  END;
+
+  CREATE TRIGGER open_questions_no_delete
+  BEFORE DELETE ON open_questions
+  BEGIN
+    SELECT RAISE(ABORT, 'an open question cannot be deleted');
   END;
   `,
 ];
