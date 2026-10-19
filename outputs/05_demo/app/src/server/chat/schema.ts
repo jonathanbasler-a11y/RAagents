@@ -119,6 +119,79 @@ export const CHAT_MIGRATIONS: readonly string[] = [
     updated_at TEXT NOT NULL
   ) STRICT;
   `,
+  // Version 3: the data room. One room per workspace with a fixed as-of date; documents that never change
+  // (only a withdrawal, once, with a reason). SQLite cannot compare dates across tables in a CHECK, so a
+  // trigger refuses a document dated after the room's as-of date; the store checks the same rule first, to
+  // give a readable message. The text is capped at 12000 characters here as well as in the app.
+  `
+  CREATE TABLE data_rooms (
+    workspace_id TEXT PRIMARY KEY,
+    as_of TEXT NOT NULL CHECK (as_of GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+    created_at TEXT NOT NULL
+  ) STRICT;
+
+  CREATE TABLE data_room_documents (
+    workspace_id TEXT NOT NULL REFERENCES data_rooms (workspace_id),
+    id TEXT NOT NULL CHECK (id GLOB 'DR-[0-9][0-9]' OR id GLOB 'DR-[0-9][0-9][0-9]'),
+    title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 200),
+    source_type TEXT NOT NULL CHECK (source_type IN ('company-disclosure', 'agency-record', 'registry', 'publication')),
+    published_at TEXT CHECK (published_at IS NULL OR published_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+    url TEXT CHECK (url IS NULL OR length(url) <= 500),
+    provided INTEGER NOT NULL CHECK (provided IN (0, 1)),
+    origin TEXT NOT NULL CHECK (origin IN ('practice-pack', 'added')),
+    body TEXT,
+    added_at TEXT NOT NULL,
+    withdrawn_at TEXT,
+    withdrawn_reason TEXT,
+    PRIMARY KEY (workspace_id, id),
+    CHECK (
+      (provided = 1 AND body IS NOT NULL AND published_at IS NOT NULL AND length(body) BETWEEN 1 AND 12000)
+      OR (provided = 0 AND body IS NULL)
+    ),
+    CHECK (
+      (withdrawn_at IS NULL AND withdrawn_reason IS NULL)
+      OR (withdrawn_at IS NOT NULL AND withdrawn_reason IS NOT NULL AND length(withdrawn_reason) BETWEEN 1 AND 300)
+    )
+  ) STRICT;
+
+  CREATE TRIGGER data_room_documents_as_of
+  BEFORE INSERT ON data_room_documents
+  WHEN NEW.published_at IS NOT NULL
+    AND NEW.published_at > (SELECT as_of FROM data_rooms WHERE workspace_id = NEW.workspace_id)
+  BEGIN
+    SELECT RAISE(ABORT, 'a document dated after the data room as-of date cannot be added');
+  END;
+
+  CREATE TRIGGER data_room_documents_no_update
+  BEFORE UPDATE ON data_room_documents
+  WHEN NOT (
+    OLD.withdrawn_at IS NULL AND NEW.withdrawn_at IS NOT NULL
+    AND NEW.workspace_id IS OLD.workspace_id AND NEW.id IS OLD.id AND NEW.title IS OLD.title
+    AND NEW.source_type IS OLD.source_type AND NEW.published_at IS OLD.published_at AND NEW.url IS OLD.url
+    AND NEW.provided IS OLD.provided AND NEW.origin IS OLD.origin AND NEW.body IS OLD.body AND NEW.added_at IS OLD.added_at
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'a data room document cannot be changed, only withdrawn');
+  END;
+
+  CREATE TRIGGER data_room_documents_no_delete
+  BEFORE DELETE ON data_room_documents
+  BEGIN
+    SELECT RAISE(ABORT, 'a data room document cannot be deleted');
+  END;
+
+  CREATE TRIGGER data_rooms_no_update
+  BEFORE UPDATE ON data_rooms
+  BEGIN
+    SELECT RAISE(ABORT, 'a data room cannot be changed');
+  END;
+
+  CREATE TRIGGER data_rooms_no_delete
+  BEFORE DELETE ON data_rooms
+  BEGIN
+    SELECT RAISE(ABORT, 'a data room cannot be deleted');
+  END;
+  `,
 ];
 
 /**

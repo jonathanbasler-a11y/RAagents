@@ -5,6 +5,8 @@ import type {
   AgentId,
   AppendResult,
   ChatErrorCode,
+  DataRoom,
+  DataRoomDocument,
   DdSetup,
   FinishTurnInput,
   InterruptTurnInput,
@@ -12,6 +14,7 @@ import type {
   Message,
   MessageAuthor,
   MessageStatus,
+  NewDocument,
   NewThreadResult,
   Provenance,
   ReconcileOptions,
@@ -26,6 +29,7 @@ import type {
   WorkspaceId,
 } from '@/shared/contracts';
 import { CLASSIFICATION_IDS, DEVELOPMENT_STAGES } from '@/shared/contracts';
+import { MAX_REASON_CHARS, checkAsOf, checkNewDocument, compareDocumentIds, nextDocumentId } from '@/shared/data-room';
 import { immediateTransaction, migrateChatSchema } from './schema';
 
 // Chat persistence (contract: Store in src/shared/contracts.ts). The database holds the
@@ -60,6 +64,46 @@ export class ServerBusyError extends Error {
     this.name = 'ServerBusyError';
     this.running = running;
     this.limit = limit;
+  }
+}
+
+/** Thrown by createDataRoom when the workspace already has a data room. The API answers 409 data_room_exists. */
+export class DataRoomExistsError extends Error {
+  readonly code = 'data_room_exists' as const;
+
+  constructor(workspaceId: string) {
+    super(`workspace ${workspaceId} already has a data room`);
+    this.name = 'DataRoomExistsError';
+  }
+}
+
+/** Thrown by addDocument and withdrawDocument when the workspace has no data room. The API answers 409 no_data_room. */
+export class NoDataRoomError extends Error {
+  readonly code = 'no_data_room' as const;
+
+  constructor(workspaceId: string) {
+    super(`workspace ${workspaceId} has no data room`);
+    this.name = 'NoDataRoomError';
+  }
+}
+
+/** Thrown by addDocument when the id is taken. */
+export class DuplicateDocumentError extends Error {
+  readonly code = 'duplicate_document' as const;
+
+  constructor(documentId: string) {
+    super(`the data room already has a document ${documentId}`);
+    this.name = 'DuplicateDocumentError';
+  }
+}
+
+/** Thrown by withdrawDocument for an id the data room does not have. The API answers 404 document_not_found. */
+export class DocumentNotFoundError extends Error {
+  readonly code = 'document_not_found' as const;
+
+  constructor(documentId: string) {
+    super(`the data room has no document ${documentId}`);
+    this.name = 'DocumentNotFoundError';
   }
 }
 
@@ -134,6 +178,37 @@ function toThread(row: ThreadRow): Thread {
     status: row.archived_at === null ? 'active' : 'archived',
     createdAt: row.created_at,
     archivedAt: row.archived_at,
+  };
+}
+
+interface DocumentRow {
+  workspace_id: string;
+  id: string;
+  title: string;
+  source_type: string;
+  published_at: string | null;
+  url: string | null;
+  provided: number;
+  origin: string;
+  body: string | null;
+  added_at: string;
+  withdrawn_at: string | null;
+  withdrawn_reason: string | null;
+}
+
+function toDocument(row: DocumentRow): DataRoomDocument {
+  return {
+    id: row.id,
+    title: row.title,
+    sourceType: row.source_type as DataRoomDocument['sourceType'],
+    publishedAt: row.published_at,
+    url: row.url,
+    provided: row.provided === 1,
+    origin: row.origin as DataRoomDocument['origin'],
+    text: row.body,
+    addedAt: row.added_at,
+    withdrawnAt: row.withdrawn_at,
+    withdrawnReason: row.withdrawn_reason,
   };
 }
 
@@ -341,6 +416,18 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
        ON CONFLICT (workspace_id) DO UPDATE
          SET stage = excluded.stage, classifications = excluded.classifications, updated_at = excluded.updated_at`,
     ),
+    dataRoomOf: db.prepare('SELECT as_of, created_at FROM data_rooms WHERE workspace_id = ?'),
+    insertDataRoom: db.prepare('INSERT INTO data_rooms (workspace_id, as_of, created_at) VALUES (?, ?, ?)'),
+    documentsOf: db.prepare('SELECT * FROM data_room_documents WHERE workspace_id = ?'),
+    documentById: db.prepare('SELECT * FROM data_room_documents WHERE workspace_id = ? AND id = ?'),
+    insertDocument: db.prepare(
+      `INSERT INTO data_room_documents (workspace_id, id, title, source_type, published_at, url, provided, origin, body, added_at)
+       VALUES (:workspace_id, :id, :title, :source_type, :published_at, :url, :provided, :origin, :body, :added_at)`,
+    ),
+    withdrawDocument: db.prepare(
+      `UPDATE data_room_documents SET withdrawn_at = :now, withdrawn_reason = :reason
+       WHERE workspace_id = :workspace_id AND id = :id AND withdrawn_at IS NULL`,
+    ),
     messageById: db.prepare('SELECT * FROM messages WHERE id = ?'),
     questionOfTurn: db.prepare("SELECT * FROM messages WHERE turn_id = ? AND author = 'human'"),
     messagesOfThread: db.prepare('SELECT * FROM messages WHERE thread_id = ? ORDER BY seq'),
@@ -434,6 +521,37 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
   }
 
   /** The saved setup. Classification ids the code does not know (a hand-edited file) are left out. */
+  function readDataRoom(workspaceId: WorkspaceId): DataRoom | null {
+    const room = sql.dataRoomOf.get(workspaceId) as { as_of: string; created_at: string } | undefined;
+    if (!room) return null;
+    const documents = (sql.documentsOf.all(workspaceId) as unknown as DocumentRow[]).map(toDocument).sort(compareDocumentIds);
+    return { workspaceId, asOf: room.as_of, createdAt: room.created_at, documents };
+  }
+
+  function readDocument(workspaceId: WorkspaceId, documentId: string): DataRoomDocument | null {
+    const row = sql.documentById.get(workspaceId, documentId) as DocumentRow | undefined;
+    return row ? toDocument(row) : null;
+  }
+
+  /** Checks one document against the room's as-of date and writes it. The caller holds the transaction. */
+  function writeDocument(workspaceId: WorkspaceId, asOf: string, input: NewDocument, id: string, at: string): void {
+    const checked = checkNewDocument({ ...input, id }, asOf, input.origin ?? 'added');
+    if (!checked.ok) throw new RangeError(`${id}: ${checked.message}`);
+    const document = checked.document;
+    sql.insertDocument.run({
+      workspace_id: workspaceId,
+      id,
+      title: document.title,
+      source_type: document.sourceType,
+      published_at: document.publishedAt,
+      url: document.url,
+      provided: document.provided ? 1 : 0,
+      origin: document.origin,
+      body: document.text,
+      added_at: at,
+    });
+  }
+
   function readDdSetup(workspaceId: WorkspaceId): DdSetup | null {
     const row = sql.ddSetupOf.get(workspaceId) as { stage: string; classifications: string } | undefined;
     if (!row) return null;
@@ -685,6 +803,63 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
         sql.upsertDdSetup.run({ workspace_id: workspaceId, stage: setup.stage, classifications: JSON.stringify(setup.classifications), now });
         writeSelection(workspaceId, next.selection, now);
         return { setup, selection: [...new Set(next.selection)] };
+      });
+    },
+
+    getDataRoom(workspaceId) {
+      requireNonEmpty('workspaceId', workspaceId);
+      return readDataRoom(workspaceId);
+    },
+
+    createDataRoom(workspaceId, input) {
+      requireNonEmpty('workspaceId', workspaceId);
+      const asOf = checkAsOf(input.asOf);
+      if (!asOf.ok) throw new RangeError(asOf.message);
+      const at = timestamp();
+      // One transaction: the room and all its documents are saved together or not at all.
+      return immediateTransaction(db, () => {
+        if (sql.dataRoomOf.get(workspaceId)) throw new DataRoomExistsError(workspaceId);
+        const given = input.documents.flatMap((document) => (document.id === undefined ? [] : [document.id]));
+        if (new Set(given).size !== given.length) throw new RangeError('documents lists the same id twice');
+        sql.insertDataRoom.run(workspaceId, asOf.asOf, at);
+        const used = [...given];
+        for (const document of input.documents) {
+          const id = document.id ?? nextDocumentId(used);
+          if (document.id === undefined) used.push(id);
+          writeDocument(workspaceId, asOf.asOf, document, id, at);
+        }
+        return mustExist(readDataRoom(workspaceId) ?? undefined, 'the data room just created');
+      });
+    },
+
+    addDocument(workspaceId, input) {
+      requireNonEmpty('workspaceId', workspaceId);
+      const at = timestamp();
+      return immediateTransaction(db, () => {
+        const room = sql.dataRoomOf.get(workspaceId) as { as_of: string } | undefined;
+        if (!room) throw new NoDataRoomError(workspaceId);
+        const existing = (sql.documentsOf.all(workspaceId) as unknown as DocumentRow[]).map((row) => row.id);
+        const id = input.id ?? nextDocumentId(existing);
+        if (existing.includes(id)) throw new DuplicateDocumentError(id);
+        writeDocument(workspaceId, room.as_of, input, id, at);
+        return mustExist(readDocument(workspaceId, id) ?? undefined, 'the document just added');
+      });
+    },
+
+    withdrawDocument(workspaceId, documentId, reason) {
+      requireNonEmpty('workspaceId', workspaceId);
+      const why = typeof reason === 'string' ? reason.trim() : '';
+      if (why === '' || why.length > MAX_REASON_CHARS) {
+        throw new RangeError(`the reason must be 1 to ${MAX_REASON_CHARS} characters`);
+      }
+      const at = timestamp();
+      return immediateTransaction(db, () => {
+        if (!sql.dataRoomOf.get(workspaceId)) throw new NoDataRoomError(workspaceId);
+        const document = readDocument(workspaceId, documentId);
+        if (!document) throw new DocumentNotFoundError(documentId);
+        if (document.withdrawnAt !== null) return document;
+        sql.withdrawDocument.run({ workspace_id: workspaceId, id: documentId, now: at, reason: why });
+        return mustExist(readDocument(workspaceId, documentId) ?? undefined, 'the document just withdrawn');
       });
     },
 
