@@ -1,12 +1,14 @@
 import 'server-only';
 import type { AgentId, ChatLimits, Message, RouteDecision, Store, TurnTrace } from '@/shared/contracts';
 import { runAgent, toAgentOutcome, toReplyMessage, type RunAgentDeps, type RunAgentResult } from './run-agent';
+import { dataRoomMaterial } from '@/server/prompts/data-room';
 import { toPromptHistory, type PromptHistory } from './store';
 import type { RoomExecutor, TurnOutcome } from './turn-runner';
 
 // The 1:1 room: the room's agent answers alone, with the last valid messages of the
 // room's active thread as history (the server owns history; the browser sends only the
-// question). Runs through runAgent, the one execution path.
+// question). Runs through runAgent, the one execution path. When the workspace has a data room, its index and
+// documents go in front of the agent on every turn (read again each time, so an added or withdrawn document counts at once).
 
 export const ONE_TO_ONE_HISTORY_MESSAGES: ChatLimits['oneToOneHistoryMessages'] = 20;
 
@@ -37,8 +39,10 @@ export function oneToOneExecutor(agentId: AgentId, deps: OneToOneDeps): RoomExec
   return async (run): Promise<TurnOutcome> => {
     const { store } = deps;
     const route: RouteDecision = { source: 'direct', primary: agentId, secondaries: [], notConsulted: [], notes: [], synthesis: false };
+    const material = dataRoomMaterial(store.getDataRoom(run.turn.workspaceId));
+    const dataRoom = material.trace === null ? {} : { dataRoom: material.trace };
     run.emit({ type: 'route', route });
-    store.saveTurnTrace(run.turn.id, { route, agents: [] });
+    store.saveTurnTrace(run.turn.id, { route, agents: [], ...dataRoom });
 
     const history = historyForTurn(store.listMessages(run.thread.id), run.userMessage);
     let result: RunAgentResult | undefined;
@@ -52,6 +56,8 @@ export function oneToOneExecutor(agentId: AgentId, deps: OneToOneDeps): RoomExec
           role: 'solo',
           history: history.messages,
           omitted: history.omitted,
+          roomContext: material.roomContext,
+          instructions: material.instructions,
           timeZone: run.timeZone,
           signal: run.signal,
           emit: run.emit,
@@ -63,7 +69,7 @@ export function oneToOneExecutor(agentId: AgentId, deps: OneToOneDeps): RoomExec
       if (result !== undefined) store.appendAgentMessage(toReplyMessage(run.turn.id, result));
     }
 
-    const trace: TurnTrace = { route, agents: [toAgentOutcome(result)] };
+    const trace: TurnTrace = { route, agents: [toAgentOutcome(result)], ...dataRoom };
     return {
       status: TURN_STATUS[result.status],
       trace,

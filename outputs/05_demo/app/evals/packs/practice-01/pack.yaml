@@ -5,19 +5,21 @@ id: practice-01
 title: Practice case 01, asset PRC-204 (fictional)
 as_of: '2026-10-12'
 
+# source: what kind of source each document is (company-disclosure, agency-record, registry or publication).
+# DR-02 is an agency record found in the licensor's data room; everything else is the licensor's own text.
 documents:
-  - { id: DR-00, title: Data room index, file: dr-00-index.md, dated: '2026-08-01' }
-  - { id: DR-01, title: Licensor overview, file: dr-01-overview.md, dated: '2026-07-14' }
-  - { id: DR-02, title: Agency pre-submission meeting minutes, file: dr-02-agency-minutes.md, dated: '2026-03-20' }
-  - { id: DR-03, title: Designations history, file: dr-03-designations.md, dated: '2026-06-02' }
-  - { id: DR-04, title: Clinical summary and topline table, file: dr-04-clinical-summary.md, dated: '2026-07-30' }
-  - { id: DR-05, title: CMC summary, file: dr-05-cmc-summary.md, dated: '2026-06-20' }
-  - { id: DR-06, title: Manufacturing sites and inspection record, file: dr-06-sites-inspections.md, dated: '2026-07-05' }
-  - { id: DR-07, title: Draft labeling and target product profile claims, file: dr-07-draft-labeling.md, dated: '2026-07-20' }
-  - { id: DR-08, title: Safety summary, file: dr-08-safety-summary.md, dated: '2026-07-25' }
+  - { id: DR-00, title: Data room index, file: dr-00-index.md, dated: '2026-08-01', source: company-disclosure }
+  - { id: DR-01, title: Licensor overview, file: dr-01-overview.md, dated: '2026-07-14', source: company-disclosure }
+  - { id: DR-02, title: Agency pre-submission meeting minutes, file: dr-02-agency-minutes.md, dated: '2026-03-20', source: agency-record }
+  - { id: DR-03, title: Designations history, file: dr-03-designations.md, dated: '2026-06-02', source: company-disclosure }
+  - { id: DR-04, title: Clinical summary and topline table, file: dr-04-clinical-summary.md, dated: '2026-07-30', source: company-disclosure }
+  - { id: DR-05, title: CMC summary, file: dr-05-cmc-summary.md, dated: '2026-06-20', source: company-disclosure }
+  - { id: DR-06, title: Manufacturing sites and inspection record, file: dr-06-sites-inspections.md, dated: '2026-07-05', source: company-disclosure }
+  - { id: DR-07, title: Draft labeling and target product profile claims, file: dr-07-draft-labeling.md, dated: '2026-07-20', source: company-disclosure }
+  - { id: DR-08, title: Safety summary, file: dr-08-safety-summary.md, dated: '2026-07-25', source: company-disclosure }
   # Listed in the index, deliberately not in the pack: an agent must say "not found in the data room".
-  - { id: DR-09, title: Paediatric study plan, provided: false }
-  - { id: DR-10, title: Licensing term sheet excerpt, file: dr-10-term-sheet.md, dated: '2026-07-28' }
+  - { id: DR-09, title: Paediatric study plan, provided: false, source: company-disclosure }
+  - { id: DR-10, title: Licensing term sheet excerpt, file: dr-10-term-sheet.md, dated: '2026-07-28', source: company-disclosure }
 
 issues:
   - id: PI-01

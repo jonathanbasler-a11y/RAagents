@@ -650,6 +650,146 @@ details.rail-group > summary {
 .dd-error {
   color: var(--red);
 }
+/* ===== Data room ===== */
+.data-room-card {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px 24px;
+  margin-bottom: 16px;
+}
+.data-room-card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.data-room .screen-head {
+  margin-bottom: 16px;
+}
+.dr-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.dr-choices .sheet > h2,
+.dr-form > h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.dr-choices .sheet > p {
+  margin-bottom: 12px;
+  max-width: 60ch;
+}
+.dr-choices .btn {
+  margin-top: 8px;
+}
+.dr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.dr-field > span {
+  font-weight: 600;
+  color: var(--graphite);
+}
+.dr-error {
+  color: var(--red);
+  font-size: 13px;
+  margin: 8px 0;
+}
+.dr-asof {
+  margin-bottom: 8px;
+}
+/* position: relative keeps the visually hidden header text (position: absolute) inside the table's scroll area, not the page's. */
+.dr-table {
+  position: relative;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 20px;
+  font-size: 13px;
+  background: var(--sheet);
+  border: 1px solid var(--line);
+}
+.dr-table th,
+.dr-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.dr-table thead th {
+  font-size: 12px;
+  color: var(--graphite);
+  font-weight: 600;
+}
+.dr-table tbody th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dr-table td:nth-child(4) {
+  white-space: nowrap;
+}
+.dr-table .is-withdrawn td,
+.dr-table .is-withdrawn th {
+  color: var(--graphite);
+}
+.dr-url {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.dr-reason {
+  display: block;
+  margin-top: 2px;
+}
+.dr-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+.dr-detail > td {
+  background: var(--ink-wash);
+}
+.dr-text {
+  margin: 0;
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 13px/1.5 var(--f-data);
+}
+.dr-buttons {
+  display: flex;
+  gap: 8px;
+}
+.dr-form {
+  margin-top: 8px;
+}
+.dr-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 16px;
+}
+.dr-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.dr-textarea {
+  font-family: var(--f-data);
+  font-size: 13px;
+  resize: vertical;
+}
+@media (max-width: 900px) {
+  .dr-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
 .team-overview {
   margin-top: 24px;
 }

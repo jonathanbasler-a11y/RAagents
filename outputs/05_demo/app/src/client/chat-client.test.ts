@@ -290,6 +290,76 @@ describe('JSON helpers', () => {
     expect(saved).toEqual({ ok: true, data: reply });
   });
 
+  it('reads the data room and a document, and encodes the document id in the path', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { ok: 1 }));
+    const chat = client(fetchImpl);
+
+    await chat.getDataRoom();
+    await chat.getDocument('DR-07');
+    await chat.getDocument('a/b?c');
+
+    expect(fetchImpl.mock.calls.map(([path, init]) => [path, init?.method ?? 'GET'])).toEqual([
+      ['/api/data-room', 'GET'],
+      ['/api/data-room/documents/DR-07', 'GET'],
+      ['/api/data-room/documents/a%2Fb%3Fc', 'GET'],
+    ]);
+  });
+
+  it('starts the data room with exactly the body it is given', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { ok: 1 }));
+    const chat = client(fetchImpl);
+
+    await chat.startDataRoom({ practice: true });
+    await chat.startDataRoom({ asOf: '2026-10-12' });
+
+    const [practice, empty] = fetchImpl.mock.calls;
+    expect(practice[0]).toBe('/api/data-room');
+    expect(practice[1]?.method).toBe('POST');
+    expect(headerOf(practice, 'content-type')).toBe('application/json');
+    expect(bodyOf(practice)).toEqual({ practice: true });
+    expect(bodyOf(empty)).toEqual({ asOf: '2026-10-12' });
+  });
+
+  it('adds a document with the known fields only, and withdraws with the action and the reason', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { ok: 1 }));
+    const chat = client(fetchImpl);
+
+    await chat.addDocument({
+      title: 'Overview',
+      sourceType: 'company-disclosure',
+      publishedAt: '2026-07-14',
+      url: null,
+      provided: true,
+      text: 'Text.',
+      id: 'DR-99',
+    } as never);
+    await chat.withdrawDocument('DR-07', 'wrong file');
+
+    const [added, withdrawn] = fetchImpl.mock.calls;
+    expect(added[0]).toBe('/api/data-room/documents');
+    expect(bodyOf(added)).toEqual({ title: 'Overview', sourceType: 'company-disclosure', publishedAt: '2026-07-14', url: null, provided: true, text: 'Text.' });
+    expect(withdrawn[0]).toBe('/api/data-room/documents/DR-07');
+    expect(withdrawn[1]?.method).toBe('POST');
+    expect(bodyOf(withdrawn)).toEqual({ action: 'withdraw', reason: 'wrong file' });
+  });
+
+  it('encodes the document id in a withdrawal too', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { ok: 1 }));
+
+    await client(fetchImpl).withdrawDocument('a/b?c', 'why');
+
+    expect(fetchImpl.mock.calls[0][0]).toBe('/api/data-room/documents/a%2Fb%3Fc');
+  });
+
+  it('returns the error body for a refused document (400)', async () => {
+    const body = { error: 'invalid_request', message: 'The title is required.', correlationId: 'c-3' };
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(400, body));
+
+    const result = await client(fetchImpl).addDocument({ title: '', sourceType: 'registry', publishedAt: '2026-01-01', url: null, provided: true, text: 'x' });
+
+    expect(result).toEqual({ ok: false, status: 400, error: body, message: body.message });
+  });
+
   it('returns the error body for a refused setup (400)', async () => {
     const body = { error: 'invalid_request', message: 'The stage must be one of Phase 1, Phase 2, Phase 3, Filed.', correlationId: 'c-2' };
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(400, body));

@@ -6,6 +6,7 @@ import type { ApiResult, ChatApi } from '@/client/chat-client';
 import { ROSTER } from '@/client/test-fixtures';
 import type { DdSetup, DdSetupResponse, HealthResponse, SelectionResponse } from '@/shared/contracts';
 import { selectionAfterSetupChange } from '@/shared/dd-setup';
+import { DataRoomProvider } from './DataRoomProvider';
 import { DdSetupProvider } from './DdSetupProvider';
 import { SelectionProvider } from './SelectionProvider';
 import { WorkspaceHome } from './WorkspaceHome';
@@ -40,17 +41,24 @@ function api(selected: string[], setup: DdSetup = SETUP) {
       return reply('saved');
     }),
     getHealth: vi.fn<ChatApi['getHealth']>().mockResolvedValue(ok<HealthResponse>({ status: 'stub' })),
+    getDataRoom: vi.fn<ChatApi['getDataRoom']>().mockResolvedValue(ok({ workspaceId: 'demo', dataRoom: null, practiceAvailable: true, limits: { documentChars: 12000, turnChars: 48000 } })),
+    getDocument: vi.fn<ChatApi['getDocument']>(),
+    startDataRoom: vi.fn<ChatApi['startDataRoom']>(),
+    addDocument: vi.fn<ChatApi['addDocument']>(),
+    withdrawDocument: vi.fn<ChatApi['withdrawDocument']>(),
   };
 }
 
 function renderHome(selected: string[] = SELECTED) {
   const client = api(selected);
   render(
-    <SelectionProvider client={client}>
-      <DdSetupProvider client={client}>
-        <WorkspaceHome agents={ROSTER} client={client} />
-      </DdSetupProvider>
-    </SelectionProvider>,
+    <DataRoomProvider client={client}>
+      <SelectionProvider client={client}>
+        <DdSetupProvider client={client}>
+          <WorkspaceHome agents={ROSTER} client={client} />
+        </DdSetupProvider>
+      </SelectionProvider>
+    </DataRoomProvider>,
   );
   return client;
 }
@@ -67,16 +75,26 @@ describe('WorkspaceHome', () => {
     expect(screen.queryByRole('link', { name: /workspace/i })).not.toBeInTheDocument();
   });
 
-  it('orders the page: DD setup, the team chat entry, the status, then the team overview with every card', () => {
+  it('says what the agents can read: no documents while there is no data room, and not a word about it before it is known', async () => {
+    renderHome();
+
+    expect(screen.getByText(/The agents have no tools\./)).toBeInTheDocument();
+    expect(await screen.findByText(/the agents have no documents and no tools/)).toBeInTheDocument();
+    expect(await screen.findByText(/No data room yet\. The agents have no documents to work from\./)).toBeInTheDocument();
+  });
+
+  it('orders the page: DD setup, the data room, the team chat entry, the status, then the team overview with every card', () => {
     renderHome();
 
     const before = (first: HTMLElement, second: HTMLElement) =>
       Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
     const setup = screen.getByRole('heading', { name: 'DD setup' });
+    const dataRoom = screen.getByRole('heading', { name: 'Data room' });
     const chat = screen.getByRole('heading', { name: 'Team chat' });
     const overview = screen.getByRole('heading', { name: 'Team overview' });
     const firstGroup = screen.getByRole('heading', { name: /Regulatory function/ });
-    expect(before(setup, chat)).toBe(true);
+    expect(before(setup, dataRoom)).toBe(true);
+    expect(before(dataRoom, chat)).toBe(true);
     expect(before(chat, overview)).toBe(true);
     expect(before(overview, firstGroup)).toBe(true);
     expect(screen.getAllByRole('article')).toHaveLength(ROSTER.length);

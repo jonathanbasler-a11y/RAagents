@@ -479,6 +479,8 @@ export interface TurnTrace {
   route: RouteDecision;
   /** Every agent the route named (consulted or not), plus the synthesiser if it ran. */
   agents: AgentOutcome[];
+  /** Which data-room documents the agents saw in this turn. Left out when the workspace has no data room. */
+  dataRoom?: DataRoomTrace;
 }
 
 // ---------------------------------------------------------------------------
@@ -804,6 +806,25 @@ export interface Store {
     workspaceId: WorkspaceId,
     change: (current: { setup: DdSetup | null; selection: AgentId[] | null }) => { setup: DdSetup; selection: AgentId[] },
   ): { setup: DdSetup; selection: AgentId[] };
+  /** The workspace's data room with every document (withdrawn ones too), or null when none was started. */
+  getDataRoom(workspaceId: WorkspaceId): DataRoom | null;
+  /**
+   * Starts the workspace's data room with the documents given, in ONE transaction. A workspace has at most
+   * one data room: throws DataRoomExistsError when it already has one. Throws RangeError (nothing saved) for an
+   * invalid as-of date or document, including a provided document dated after the as-of date.
+   */
+  createDataRoom(workspaceId: WorkspaceId, input: { asOf: string; documents: NewDocument[] }): DataRoom;
+  /**
+   * Adds one document, with the next free id when none is given. Throws NoDataRoomError, DuplicateDocumentError
+   * (the id exists) or RangeError (invalid, or dated after the as-of date). A saved document's text never changes.
+   */
+  addDocument(workspaceId: WorkspaceId, input: NewDocument): DataRoomDocument;
+  /**
+   * Withdraws a document: agents stop seeing it, the list still shows it with the reason. The only change a saved
+   * document can ever have. Throws NoDataRoomError, DocumentNotFoundError or RangeError (empty reason). Withdrawing
+   * a withdrawn document returns it unchanged.
+   */
+  withdrawDocument(workspaceId: WorkspaceId, documentId: string, reason: string): DataRoomDocument;
   close(): void;
 }
 
@@ -850,12 +871,16 @@ export const API_ERROR_CODES = [
   'room_busy',
   'server_busy',
   'locked_agent',
+  'data_room_exists',
+  'no_data_room',
+  'document_not_found',
   'llm_not_configured',
   'internal',
 ] as const;
 /**
  * HTTP status: invalid_request 400, forbidden 403, not_found 404, room_busy 409, server_busy 429,
- * locked_agent 409, llm_not_configured 503, internal 500.
+ * locked_agent 409, data_room_exists 409, no_data_room 409, document_not_found 404, llm_not_configured 503,
+ * internal 500.
  * server_busy: two turns already run on this server (the most it runs at once); nothing was written.
  */
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
@@ -1000,3 +1025,112 @@ export interface DdSetupResponse {
 
 /** POST /api/dd-setup: the whole setup, not a patch. 400 for an unknown stage or classification. */
 export type DdSetupUpdateRequest = DdSetup;
+
+// ---------------------------------------------------------------------------
+// Data room: the documents a DD works from. Rules in src/shared/data-room.ts.
+// ---------------------------------------------------------------------------
+
+/**
+ * What kind of source a document is, which decides how agents word it:
+ * - company-disclosure: written by the company or licensor. What it says is an attributed claim.
+ * - agency-record: a regulator's own record (minutes, letters, review documents).
+ * - registry: an entry of a public registry.
+ * - publication: a published paper or similar.
+ */
+export const DOCUMENT_SOURCE_TYPES = ['company-disclosure', 'agency-record', 'registry', 'publication'] as const;
+export type DocumentSourceType = (typeof DOCUMENT_SOURCE_TYPES)[number];
+
+/** practice-pack: loaded from the fictional practice case. added: put in by a person. */
+export const DOCUMENT_ORIGINS = ['practice-pack', 'added'] as const;
+export type DocumentOrigin = (typeof DOCUMENT_ORIGINS)[number];
+
+export interface DataRoomDocument {
+  /** DR-00 to DR-999. Stable; never reused. */
+  id: string;
+  title: string;
+  sourceType: DocumentSourceType;
+  /** YYYY-MM-DD. Null only for a document that is listed but not provided. */
+  publishedAt: string | null;
+  /** Where it came from, shown as text. Never fetched. */
+  url: string | null;
+  /** false: the index lists it but nobody has given it (for example "Paediatric study plan"). */
+  provided: boolean;
+  origin: DocumentOrigin;
+  /** Null when not provided. */
+  text: string | null;
+  addedAt: string;
+  withdrawnAt: string | null;
+  withdrawnReason: string | null;
+}
+
+export interface DataRoom {
+  workspaceId: WorkspaceId;
+  /** YYYY-MM-DD. No document dated after it can be in the room, and none is ever shown to an agent. */
+  asOf: string;
+  createdAt: string;
+  /** By id. */
+  documents: DataRoomDocument[];
+}
+
+/** A document to put in. Left out: `id` (the next free one), `origin` ('added'). */
+export interface NewDocument {
+  id?: string;
+  title: string;
+  sourceType: DocumentSourceType;
+  publishedAt: string | null;
+  url?: string | null;
+  provided: boolean;
+  text: string | null;
+  origin?: DocumentOrigin;
+}
+
+/**
+ * Why a listed document was not shown to the agents in a turn:
+ * - not_provided: listed in the index, never given.
+ * - withdrawn: a person withdrew it.
+ * - after_as_of: dated after the as-of date (the store refuses such a document; this is the second wall).
+ * - too_large: it did not fit the room left in the prompt.
+ */
+export const NOT_SHOWN_REASONS = ['not_provided', 'withdrawn', 'after_as_of', 'too_large'] as const;
+export type NotShownReason = (typeof NOT_SHOWN_REASONS)[number];
+
+/** What the agents of one turn saw of the data room; stored in the turn's trace. */
+export interface DataRoomTrace {
+  asOf: string;
+  /** Document ids, in the order they were put in the prompt. */
+  shown: string[];
+  notShown: Array<{ id: string; reason: NotShownReason }>;
+}
+
+/** A document without its text, for lists. */
+export interface DataRoomDocumentSummary extends Omit<DataRoomDocument, 'text'> {
+  /** Length of the text; 0 when not provided. */
+  chars: number;
+}
+
+/** GET /api/data-room */
+export interface DataRoomResponse {
+  workspaceId: WorkspaceId;
+  /** Null: no data room was started in this workspace. */
+  dataRoom: { asOf: string; createdAt: string; documents: DataRoomDocumentSummary[] } | null;
+  /** Whether the fictional practice data room can be loaded here. */
+  practiceAvailable: boolean;
+  limits: { documentChars: number; turnChars: number };
+}
+
+/** GET /api/data-room/documents/[id], and the reply to adding or withdrawing one. */
+export interface DataRoomDocumentResponse {
+  document: DataRoomDocument;
+}
+
+/** POST /api/data-room: start the data room. Either with an as-of date, or with the fictional practice case. */
+export type DataRoomStartRequest = { asOf: string } | { practice: true };
+
+/** POST /api/data-room/documents */
+export type AddDocumentRequest = Pick<NewDocument, 'title' | 'sourceType' | 'publishedAt' | 'url' | 'provided' | 'text'>;
+
+/** POST /api/data-room/documents/[id] */
+export interface WithdrawDocumentRequest {
+  action: 'withdraw';
+  reason: string;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AGENT_TRIGGERS } from '@/shared/contracts';
-import { CLASSIFICATION_LABELS, GROUP_INFO, PRACTICE_REPLY_LABEL, describeChatError, selectionReasonText, teamChangeText, triggerText } from './labels';
+import { CLASSIFICATION_LABELS, DOCUMENT_STATE_LABELS, GROUP_INFO, dataRoomTraceText, evidenceBannerText, homeLedeText, phaseLineText, PRACTICE_REPLY_LABEL, describeChatError, selectionReasonText, teamChangeText, triggerText } from './labels';
 
 describe('practice mode label', () => {
   it('says a practice reply is not AI and not sourced', () => {
@@ -11,6 +11,82 @@ describe('practice mode label', () => {
 describe('team roles group note', () => {
   it('does not claim every team role answers in every DD: some join only by rule or by @mention', () => {
     expect(GROUP_INFO.role.note).toBe('Always on in every DD. Oskar and Sofia join by rule; Emeka, Saskia and Ruben answer when @mentioned.');
+  });
+});
+
+describe('what the wording says about documents', () => {
+  const MODEL = 'Agent replies are model output, not sources.';
+  const STAND_IN = 'Replies in practice mode are stand-in text, not model output and not sources.';
+
+  it('keeps the old line when no documents are connected', () => {
+    expect(phaseLineText('none', 'live', 0)).toBe(`In this phase no documents and no tools are connected. ${MODEL}`);
+    expect(phaseLineText('none', 'practice', 0)).toBe(`In this phase no documents and no tools are connected. ${STAND_IN}`);
+  });
+
+  it('says a data room is connected, with how many documents the agents see, and still no tools', () => {
+    expect(phaseLineText('connected', 'live', 9)).toBe(`A data room is connected (9 documents shown to the agents). No tools are. ${MODEL}`);
+    expect(phaseLineText('connected', 'live', 1)).toBe(`A data room is connected (1 document shown to the agents). No tools are. ${MODEL}`);
+    expect(phaseLineText('connected', 'practice', 2)).toBe(`A data room is connected (2 documents shown to the agents). No tools are. ${STAND_IN}`);
+  });
+
+  it('claims nothing about documents while it is not known whether there is a data room', () => {
+    expect(phaseLineText('unknown', 'live', 0)).toBe(`No tools are connected. ${MODEL}`);
+    expect(phaseLineText('unknown', 'practice', 0)).toBe(`No tools are connected. ${STAND_IN}`);
+    expect(phaseLineText('unknown', 'live', 0)).not.toMatch(/document/i);
+  });
+
+  it('says the same three things on the home page', () => {
+    expect(homeLedeText('none')).toMatch(/the agents have no documents and no tools/);
+    expect(homeLedeText('connected')).toMatch(/read the documents of the data room and cite them by id; they have no tools/);
+    expect(homeLedeText('connected')).not.toMatch(/no documents/);
+    expect(homeLedeText('unknown')).not.toMatch(/document/i);
+    for (const kind of ['none', 'connected', 'unknown'] as const) expect(homeLedeText(kind)).toMatch(/model output, not a source/);
+  });
+
+  it('tells the evidence checker\'s room what he can and cannot check', () => {
+    expect(evidenceBannerText('none', 'Emeka')).toBe(
+      'No documents are connected yet, so Emeka cannot verify anything. He can explain what evidence a claim would need.',
+    );
+    expect(evidenceBannerText('connected', 'Emeka')).toBe(
+      'Emeka can check a claim against the documents of the data room and name the document that shows it. He has no tools, so he cannot look anything up outside it.',
+    );
+    expect(evidenceBannerText('unknown', 'Emeka')).toBe('Emeka has no tools, so he cannot look anything up himself.');
+  });
+});
+
+describe('dataRoomTraceText', () => {
+  it('says what the agents of a turn saw of the data room, and what they did not and why', () => {
+    expect(
+      dataRoomTraceText({
+        asOf: '2026-10-12',
+        shown: ['DR-01', 'DR-02'],
+        notShown: [
+          { id: 'DR-03', reason: 'too_large' },
+          { id: 'DR-09', reason: 'not_provided' },
+          { id: 'DR-10', reason: 'withdrawn' },
+          { id: 'DR-11', reason: 'after_as_of' },
+        ],
+      }),
+    ).toBe(
+      'As of 2026-10-12. Shown: DR-01, DR-02. Not shown: DR-03 (did not fit), DR-09 (listed, not provided), DR-10 (withdrawn), DR-11 (dated after the as-of date).',
+    );
+  });
+
+  it('leaves out the part that has nothing in it, and says "none" when nothing was shown', () => {
+    expect(dataRoomTraceText({ asOf: '2026-10-12', shown: ['DR-01'], notShown: [] })).toBe('As of 2026-10-12. Shown: DR-01.');
+    expect(dataRoomTraceText({ asOf: '2026-10-12', shown: [], notShown: [] })).toBe('As of 2026-10-12. Shown: none.');
+  });
+});
+
+describe('DOCUMENT_STATE_LABELS', () => {
+  it('says in plain words what the agents do with each document', () => {
+    expect(DOCUMENT_STATE_LABELS).toEqual({
+      shown: 'Agents see it',
+      not_provided: 'Listed, not provided',
+      withdrawn: 'Withdrawn',
+      after_as_of: 'Not shown: dated after the as-of date',
+      too_large: 'Not shown: it did not fit',
+    });
   });
 });
 

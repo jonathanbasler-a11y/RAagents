@@ -13,6 +13,9 @@ const STATUS: Record<ApiErrorCode, number> = {
   room_busy: 409,
   server_busy: 429,
   locked_agent: 409,
+  data_room_exists: 409,
+  no_data_room: 409,
+  document_not_found: 404,
   llm_not_configured: 503,
   internal: 500,
 };
@@ -24,6 +27,9 @@ const MESSAGE: Record<ApiErrorCode, string> = {
   room_busy: 'Another turn is running in this room.',
   server_busy: 'Two turns are already running on this server, the most it runs at once. Your question was not sent; try again when one ends.',
   locked_agent: 'Team roles are always on; their switch cannot be turned off.',
+  data_room_exists: 'This workspace already has a data room.',
+  no_data_room: 'This workspace has no data room yet. Start one first.',
+  document_not_found: 'There is no such document in the data room.',
   llm_not_configured: 'The model connection is not set up, so nothing was sent.',
   internal: 'Something went wrong on the server. The server log has the details under this correlation id.',
 };

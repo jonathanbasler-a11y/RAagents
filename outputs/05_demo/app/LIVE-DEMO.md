@@ -22,8 +22,8 @@ In this phase no documents are connected and the agents have no tools. Every rep
 
 The times are estimates: confirm them in your rehearsal with the real model. Turns that end with Sofia's summary (steps 3 and 4) make three model calls in a row, so they take longest: talk while they stream.
 
-- **3 minutes:** steps 1, 3, 5, 6, 7 and 9.
-- **5 minutes:** steps 1 to 9. Without step 8, about 4.5 minutes. The optional part of step 4 adds about 45 s.
+- **3 minutes:** steps 1, 3, 5, 6, 7 and 10.
+- **5 minutes:** steps 1 to 8 and 10. Without step 8, about 4.5 minutes. The optional part of step 4 adds about 45 s, step 1b about 40 s and the data room (step 9) about 90 s.
 
 ### 1. The DD workspace (about 30 s)
 
@@ -152,13 +152,35 @@ Point out:
 - Look for three parts: the **draft question**, then what she removed (such as the asset code and the year), then what she generalised (such as the trial phase or the site detail, and how).
 - She only drafts, and the app cannot send anything. In the intended process, nothing leaves the workspace until the RA DD lead approves the redaction.
 
-### 9. Close (about 15 s)
+### 9. The data room (optional, about 90 s; do it after step 8, because a data room stays once it is started)
+
+Click **Data room** in the left rail. With no room started it offers two things: the fictional practice case, and an empty room with an as-of date. Click **Load the practice data room**.
+
+Point out:
+
+- The header line changes to "A data room is connected (10 documents shown to the agents). No tools are." The agents now read the documents on every turn.
+- The page says **As of 2026-10-12**: no document dated after that day can be in the room, and an agent never sees one.
+- The table lists the eleven documents with their source type, date and size. **DR-09, the paediatric study plan, is "Listed, not provided"**: the licensor's index names it, nobody has given it. **Read** opens a document's text. Everything in this room is invented (the case is "PRC-204"); nothing in it is real.
+
+Click **Rosa** in the rail. Type this in the box and press Enter (these two are not demo-prompt buttons on purpose: they would show up as starters in Rosa's room even when there is no data room):
+
+> Does the draft labeling in DR-07 claim anything that the clinical summary in DR-04 does not show? Cite the document ids.
+
+Rosa answers from the two documents and cites DR-07 and DR-04 by id. Open **How this turn ran**: the **Data room** row says which documents she saw. Then type:
+
+> What does the data room say about the paediatric study plan?
+
+She says it is listed in the index as not provided (DR-09) and was "not found in the data room". She does not describe what it probably contains. That is the rule for anything a document would cover.
+
+If a document should not be there, **Withdraw** it with a reason: the agents stop seeing it at once and the list keeps it, greyed, with the reason. A document cannot be edited; withdraw it and add it again.
+
+### 10. Close (about 15 s)
 
 Say:
 
-- No documents are connected yet. Every reply you saw is unsourced model output, and the app labels each one "Model output · not sourced".
+- Unless you showed the data room in step 9: no documents are connected yet. Every reply you saw is unsourced model output, and the app labels each one "Model output · not sourced". If you did: the agents cited the fictional documents by id, and a seller's statement is still only a claim, never a checked fact.
 - People own every agent and every decision. Deal-breakers, the overall assessment and the recommendation are theirs. The agents explain, challenge and flag what needs checking. They do not decide.
-- A later phase is planned to connect public sources, such as EPARs, FDA review documents and ClinicalTrials.gov. Then a claim could carry its document, version and quote, and "No source, no finding" could be enforced in code.
+- A later phase is planned to connect public sources, such as EPARs, FDA review documents and ClinicalTrials.gov. The findings register comes next: a claim will carry its document, its quote and its date, code will check that the quote is really in the document, and a person will accept or reject each finding. "No source, no finding" is enforced there, in code, not in a prompt. It is not enforced yet.
 
 ## If something goes wrong
 
@@ -177,6 +199,8 @@ Say:
 | "The live connection dropped. The turn continues on the server…" | The browser lost the stream, for example after a Wi-Fi blip or a sleeping laptop. | Wait. The saved replies appear when the turn ends. Do not send the question again. |
 | "@… is not the name of an agent, so it brought nobody in.", "… is not selected for this DD", or the wrong teammates answer | A typo in a typed prompt, or a teammate is switched off. | Use the demo prompt instead of typing. Switch the teammate on in the Team overview (a section of the DD workspace page), or set the stage or classification that brings them in. |
 | A reply states something as checked, gives figures or dates, or makes a call | The model slipped from its brief. | Say so: that is why every reply is labelled "Model output · not sourced" and people decide. |
+| An agent says "not found in the data room" for something you can see on the Data room page | The document is withdrawn, dated after the as-of date, listed but not provided, or did not fit in the 48,000 characters the agents read per turn. | Open **How this turn ran**: its Data room row names every document the agents saw and every one they did not, with the reason. |
+| **Load the practice data room** is greyed out, or a second start is refused | The practice case is not installed in this copy (the page says so), or this workspace already has a data room. A room cannot be removed. | In development, stop the app and delete the database file named by `CHAT_DB_PATH` to start again. In the stable demo copy, a new version starts with an empty history. |
 
 ## Rehearse without the VPN
 

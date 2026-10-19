@@ -444,7 +444,7 @@ describe('npm run eval: case packs', () => {
     expect(code).toBe(1); // one repetition is a trial, never PASS; the point is that it ran and saved
     const sent = JSON.stringify(calls.find((call) => call.body.stream === true)?.body.messages);
     expect(sent).toContain('The licensor says the pivotal study met its endpoint.');
-    expect(sent).toContain('Case document DR-01');
+    expect(sent).toContain('Data room document DR-01');
     expect(savedRuns(target)).toHaveLength(1);
     expect(JSON.parse(readFileSync(path.join(target.outDir, savedRuns(target)[0]), 'utf8')).fingerprint.packSetHash).toMatch(/^[0-9a-f]{64}$/);
   });

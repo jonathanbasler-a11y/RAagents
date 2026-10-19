@@ -14,6 +14,8 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseDocument } from 'yaml';
 import type { UntrustedBlock } from '@/server/prompts';
+import { dataRoomMaterial } from '@/server/prompts/data-room';
+import { DOCUMENT_SOURCE_TYPES, type DataRoom, type DocumentSourceType } from '@/shared/contracts';
 import { DOCUMENT_ID_PATTERN, EvalCaseError, isCalendarDate, ISSUE_ID_PATTERN, PACK_ID_PATTERN, type CaseIssue, type EvalCase } from './cases';
 
 export const ISSUE_KINDS = [
@@ -43,6 +45,8 @@ export interface PackDocument {
   dated?: string;
   /** The file's text; set for a provided document. */
   text?: string;
+  /** What kind of source it is; a company disclosure when the pack does not say. */
+  source: DocumentSourceType;
 }
 
 /** One entry of the answer key. */
@@ -84,7 +88,7 @@ type Fields = Record<string, unknown>;
 const isMapping = (value: unknown): value is Fields => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const PACK_KEYS: ReadonlySet<string> = new Set(['id', 'title', 'as_of', 'documents', 'issues']);
-const DOCUMENT_KEYS: ReadonlySet<string> = new Set(['id', 'title', 'file', 'dated', 'provided']);
+const DOCUMENT_KEYS: ReadonlySet<string> = new Set(['id', 'title', 'file', 'dated', 'provided', 'source']);
 const ISSUE_KEYS: ReadonlySet<string> = new Set(['id', 'kind', 'severity', 'planted_in', 'right_response', 'wrong_response', 'failure_mode']);
 
 /** A document must say it is fictional within its first lines. */
@@ -152,6 +156,10 @@ export function loadPack(dir: string): { pack?: CasePack; issues: string[] } {
       if (!nonEmptyString(entry.title)) problem(`${at}: title is missing`);
       const title = nonEmptyString(entry.title) ? entry.title.trim() : docId;
       const provided = entry.provided === undefined ? true : entry.provided;
+      if (entry.source !== undefined && !(DOCUMENT_SOURCE_TYPES as readonly unknown[]).includes(entry.source)) {
+        problem(`${at}: source must be one of ${DOCUMENT_SOURCE_TYPES.join(', ')}`);
+      }
+      const source: DocumentSourceType = (DOCUMENT_SOURCE_TYPES as readonly unknown[]).includes(entry.source) ? (entry.source as DocumentSourceType) : 'company-disclosure';
       if (typeof provided !== 'boolean') {
         problem(`${at}: provided must be true or false`);
         return;
@@ -159,7 +167,7 @@ export function loadPack(dir: string): { pack?: CasePack; issues: string[] } {
 
       if (!provided) {
         if (entry.file !== undefined) problem(`${at}: provided: false means the document is withheld, so it has no file`);
-        documents.push({ id: docId, title, provided: false, ...(typeof entry.dated === 'string' ? { dated: entry.dated } : {}) });
+        documents.push({ id: docId, title, provided: false, source, ...(typeof entry.dated === 'string' ? { dated: entry.dated } : {}) });
         return;
       }
 
@@ -191,7 +199,7 @@ export function loadPack(dir: string): { pack?: CasePack; issues: string[] } {
       if (!FICTION_NOTICE.test(text.split('\n').slice(0, NOTICE_LINES).join('\n'))) {
         problem(`${at}: ${file} must say it is fictional in its first ${NOTICE_LINES} lines`);
       }
-      documents.push({ id: docId, title, provided: true, dated, text });
+      documents.push({ id: docId, title, provided: true, source, dated, text });
     });
   }
 
@@ -269,7 +277,7 @@ export function loadPack(dir: string): { pack?: CasePack; issues: string[] } {
     id,
     title: (raw.title as string).trim(),
     asOf,
-    documents: documents.map((doc) => ({ id: doc.id, title: doc.title, provided: doc.provided, dated: doc.dated ?? null, text: doc.text ?? null })),
+    documents: documents.map((doc) => ({ id: doc.id, title: doc.title, provided: doc.provided, source: doc.source, dated: doc.dated ?? null, text: doc.text ?? null })),
     issues: issueList,
   };
   return { pack: { ...(content as Omit<CasePack, 'hash' | 'source'>), hash: sha256(JSON.stringify(content)), source }, issues };
@@ -357,19 +365,6 @@ export function bindPacks(cases: readonly EvalCase[], packs: ReadonlyMap<string,
   if (problems.length > 0) throw new EvalCaseError(problems);
 }
 
-/**
- * The lines that ride on a case turn, written by code. They lift one rule for these documents
- * only and name what stays (BUILD-LEARNINGS Part 5: an exemption names the rule it lifts). A
- * rare-situation rule belongs on the turn, never in a persona or the shared rules.
- */
-export const MATERIAL_INSTRUCTIONS: readonly string[] = [
-  'Practice case: the fenced blocks under Room context are fictional case documents, written for this exercise and provided by the app. Using them is expected, and they are not a confidentiality problem.',
-  'For this turn only, this lifts the statement in your brief and in the shared rules that no documents are connected, for these documents and nothing else. You still have no tools: you cannot search, browse, open other files or save anything.',
-  'Cite the document id (for example DR-03) for every fact about the asset, company, site or study that comes from a document. A document shows what its author claims: when a company statement and an agency record differ, show both side by side and do not pick one.',
-  'The data room index lists some documents as not provided. For anything that a missing or unlisted document would cover, say it was "not found in the data room"; never describe what it probably contains, and never say it does not exist.',
-  'Keep fact (what a document says), inference (what you conclude) and recommendation apart, and leave the decisions reserved for people to them.',
-];
-
 export interface CaseMaterial {
   /** The fenced context blocks, one per shown document. */
   roomContext: UntrustedBlock[];
@@ -379,16 +374,37 @@ export interface CaseMaterial {
   hash: string | null;
 }
 
-/** What a case adds to the agent's prompt: its documents as fenced blocks, and the turn instructions. */
+/**
+ * What a case adds to the agent's prompt: the case's data room, built by the same code the app uses for a workspace's
+ * data room (src/server/prompts/data-room.ts), so an evaluation measures what ships. The room holds the documents the
+ * case shows and the pack's withheld ones (listed, not provided); a pack document the case does not show is not in it.
+ */
 export function caseMaterial(evalCase: EvalCase, pack: CasePack | undefined): CaseMaterial {
   if (evalCase.pack === undefined || pack === undefined) return { roomContext: [], instructions: [], hash: null };
   const shown = visibleDocuments(evalCase, pack);
-  return {
-    roomContext: shown.map((doc) => ({
-      label: `Case document ${doc.id}: ${doc.title} (fictional practice document, dated ${doc.dated})`,
-      text: doc.text ?? '',
+  const listed = [...shown, ...pack.documents.filter((doc) => !doc.provided)];
+  const room: DataRoom = {
+    workspaceId: 'eval',
+    asOf: evalCase.asOf,
+    createdAt: evalCase.asOf,
+    documents: listed.map((doc) => ({
+      id: doc.id,
+      title: doc.title,
+      sourceType: doc.source,
+      publishedAt: doc.dated ?? null,
+      url: null,
+      provided: doc.provided,
+      origin: 'practice-pack',
+      text: doc.text ?? null,
+      addedAt: evalCase.asOf,
+      withdrawnAt: null,
+      withdrawnReason: null,
     })),
-    instructions: [...MATERIAL_INSTRUCTIONS],
+  };
+  const material = dataRoomMaterial(room);
+  return {
+    roomContext: material.roomContext,
+    instructions: material.instructions,
     hash: sha256(`${pack.hash}\n${shown.map((doc) => doc.id).join(',')}`),
   };
 }

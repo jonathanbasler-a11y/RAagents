@@ -4,7 +4,8 @@ import { runAgent } from '@/server/chat/run-agent';
 import { LlmError } from '@/server/llm';
 import type { LlmClient, LlmRequest } from '@/shared/contracts';
 import { JUDGE_SYSTEM_PROMPT, judgePromptHash } from '../evals/lib/judge';
-import { MATERIAL_INSTRUCTIONS, type CasePack } from '../evals/lib/packs';
+import { DATA_ROOM_INSTRUCTIONS } from '@/server/prompts/data-room';
+import type { CasePack } from '../evals/lib/packs';
 import { EVAL_FENCE_MARKER, EvalAbortedError, EvalSetupError, judgeFamilyProblem, runEval, type EvalRunDeps, type GitState } from '../evals/lib/run';
 import {
   AGENTS_MODEL,
@@ -109,8 +110,8 @@ const TEST_PACK: CasePack = {
   title: 'Practice case 01',
   asOf: '2026-10-08',
   documents: [
-    { id: 'DR-01', title: 'Overview', provided: true, dated: '2026-07-01', text: '# Overview\n\nFictional practice document.\n\nThe licensor says the study met its endpoint.' },
-    { id: 'DR-02', title: 'Paediatric plan', provided: false },
+    { id: 'DR-01', title: 'Overview', provided: true, source: 'company-disclosure', dated: '2026-07-01', text: '# Overview\n\nFictional practice document.\n\nThe licensor says the study met its endpoint.' },
+    { id: 'DR-02', title: 'Paediatric plan', provided: false, source: 'company-disclosure' },
   ],
   issues: [{ id: 'PI-01', kind: 'claim-vs-record', severity: 'high', plantedIn: ['DR-01'], rightResponse: 'r', wrongResponse: 'w', failureMode: 'f' }],
   hash: 'p'.repeat(64),
@@ -145,10 +146,11 @@ describe('runEval: case documents (a pack)', () => {
     const { seen, judge, record } = await runWithRealRunAgent([packCase()], new Map([[TEST_PACK.id, TEST_PACK]]));
 
     const system = seen[0].messages[0].content;
-    expect(system).toContain(`BEGIN UNTRUSTED TEXT ${EVAL_FENCE_MARKER} (from: Case document DR-01: Overview (fictional practice document, dated 2026-07-01))`);
+    expect(system).toContain(`BEGIN UNTRUSTED TEXT ${EVAL_FENCE_MARKER} (from: Data room document DR-01: Overview (fictional practice document, company disclosure, dated 2026-07-01))`);
     expect(system).toContain('The licensor says the study met its endpoint.');
-    for (const line of MATERIAL_INSTRUCTIONS) expect(system).toContain(line);
-    expect(system).not.toContain('Paediatric plan');
+    for (const line of DATA_ROOM_INSTRUCTIONS) expect(system).toContain(line);
+    // The withheld document is listed in the index by its title, as "not provided"; there is no text to show.
+    expect(system).toContain('DR-02 | Paediatric plan | listed, not provided');
     // The run did not abort on a hash mismatch, and the judge read the same documents.
     expect(record.results[0].judge).toMatchObject({ ok: true });
     expect(judge.requests[0].messages[1].content).toContain('The licensor says the study met its endpoint.');

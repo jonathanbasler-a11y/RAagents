@@ -1,5 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
+import { dataRoomMaterial } from '@/server/prompts/data-room';
 import type { UntrustedBlock } from '@/server/prompts';
 import type {
   AgentId,
@@ -140,6 +141,9 @@ export function teamExecutor(deps: TeamDeps): RoomExecutor {
     const nameOf = (id: AgentId) => rosterAgent(id)?.name ?? id;
 
     const route = routeTeamTurn({ question: run.question, agents: deps.agents, selected: deps.selected });
+    // The data room as the agents see it this turn: read once, so every agent of the turn sees the same documents.
+    const material = dataRoomMaterial(store.getDataRoom(run.turn.workspaceId));
+    const dataRoom = material.trace === null ? {} : { dataRoom: material.trace };
     run.emit({ type: 'route', route });
 
     // The synthesiser, when it may run, is traced by what it did, not by a mention.
@@ -155,7 +159,7 @@ export function teamExecutor(deps: TeamDeps): RoomExecutor {
       }));
     const consulted: AgentOutcome[] = [];
     let summary: AgentOutcome | undefined;
-    const trace = (): TurnTrace => ({ route, agents: [...consulted, ...notConsulted, ...(summary ? [summary] : [])] });
+    const trace = (): TurnTrace => ({ route, agents: [...consulted, ...notConsulted, ...(summary ? [summary] : [])], ...dataRoom });
     const saveProgress = () => store.saveTurnTrace(run.turn.id, trace());
     saveProgress();
     /** Every missing piece of planned text, in the order it happened: the turn reports the first. */
@@ -204,7 +208,17 @@ export function teamExecutor(deps: TeamDeps): RoomExecutor {
       const mates = route.secondaries.map((id) => `${nameOf(id)} (${rosterAgent(id)?.capability ?? 'teammate'})`);
       primaryInstructions.push(`Teammates who add to your answer in this turn: ${mates.join(', ')}. Leave their remits to them.`);
     }
-    const primary = await runAgent(route.primary, { ...common, role: 'primary', roomContext: earlier, instructions: primaryInstructions, emit: run.emit }, deps);
+    const primary = await runAgent(
+      route.primary,
+      {
+        ...common,
+        role: 'primary',
+        roomContext: [...material.roomContext, ...earlier],
+        instructions: [...material.instructions, ...primaryInstructions],
+        emit: run.emit,
+      },
+      deps,
+    );
     store.appendAgentMessage(toReplyMessage(run.turn.id, primary));
     consulted.push(toAgentOutcome(primary));
     recordFailure(primary);
@@ -235,8 +249,8 @@ export function teamExecutor(deps: TeamDeps): RoomExecutor {
             {
               ...common,
               role: 'secondary',
-              roomContext: [...earlier, primaryBlock],
-              instructions,
+              roomContext: [...material.roomContext, ...earlier, primaryBlock],
+              instructions: [...material.instructions, ...instructions],
               // A secondary arrives whole: its start shows at once, its text when it is complete.
               emit: (event) => {
                 if (event.type === 'agent_start') run.emit(event);
