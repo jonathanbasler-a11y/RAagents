@@ -108,7 +108,7 @@ function FindingCard({ finding, withdrawn }: { finding: Finding; withdrawn: bool
       </p>
       {decided ? (
         <p className="fd-stamp">
-          {finding.status === 'accepted' ? 'Accepted' : 'Rejected'} by {finding.decidedBy ?? LOCAL_PERSON} on {when(finding.decidedAt)}.
+          {finding.status === 'accepted' ? 'Accepted' : 'Rejected'} by {finding.decidedBy ?? 'someone not recorded'} on {when(finding.decidedAt)}.
           {finding.decisionNote && <> Note: {finding.decisionNote}</>}
         </p>
       ) : (

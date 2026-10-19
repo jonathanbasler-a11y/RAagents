@@ -164,6 +164,31 @@ describe('FindingsProvider: deciding', () => {
   });
 });
 
+describe('FindingsProvider: a read that started before a decision', () => {
+  it('does not overwrite the decision with the older state it read', async () => {
+    const client = clientWith(register([finding('F-001')]));
+    client.submitFindingDecision.mockResolvedValue(ok<FindingDecisionResponse>({ finding: finding('F-001', { status: 'accepted', decidedBy: 'person (local, not authenticated)', decidedAt: '2026-10-12T09:00:00.000Z' }) }));
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    let finishRead: (value: ApiResult<FindingsResponse>) => void = () => undefined;
+    client.getFindings.mockImplementationOnce(() => new Promise((resolve) => (finishRead = resolve)));
+    let reading: Promise<void> = Promise.resolve();
+    act(() => {
+      reading = result.current.refresh();
+    });
+    await act(async () => {
+      await result.current.decide('F-001', 'accept');
+    });
+    await act(async () => {
+      finishRead(ok(register([finding('F-001')])));
+      await reading;
+    });
+
+    expect(result.current.findings?.[0].status).toBe('accepted');
+  });
+});
+
 describe('useFindings without a provider', () => {
   it('is unavailable, shows nothing and decides nothing', async () => {
     const { result } = renderHook(() => useFindings());

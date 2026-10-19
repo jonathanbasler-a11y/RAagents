@@ -1354,6 +1354,12 @@ details.spec .kv {
   font-size: 14px;
   font-weight: 600;
 }
+/* The basis badge is a whole sentence, so it wraps instead of pushing the page sideways on a narrow screen. */
+.fd-head .badge {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .fd-claim {
   color: var(--graphite);
   font-weight: 600;

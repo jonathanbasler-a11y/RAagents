@@ -43,6 +43,17 @@ const AFTER_REQUEST: RoomMessagesResponse = roomData(
   'reglead',
 );
 
+/** The room after the person's question and an agent reply that did not finish. */
+const unfinished = (status: 'partial' | 'error'): RoomMessagesResponse =>
+  roomData(
+    [
+      makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'A question.', seq: 1 }),
+      makeMessage({ id: 'a1', turnId: 't1', author: 'agent', agentId: 'reglead', agentName: 'Rosa', text: 'Part of an', seq: 2, status, ...(status === 'partial' ? { truncated: true } : { errorCode: 'internal' as const }) }),
+    ],
+    [makeTurn({ id: 't1' })],
+    'reglead',
+  );
+
 const LIMITS = { documentChars: 12_000, turnChars: 48_000 };
 const roomWith = (provided: boolean): DataRoomResponse => ({
   workspaceId: 'demo',
@@ -91,12 +102,13 @@ function api(messages: RoomMessagesResponse, room: DataRoomResponse) {
   } satisfies ChatApi;
 }
 
-function renderRoom(roomId: string, client: ChatApi, providers = true) {
+function renderRoom(roomId: string, client: ChatApi, providers: boolean | 'data-room-only' = true) {
   const room = (
     <SelectionProvider client={client}>
       <ChatRoom roomId={roomId} agents={ROSTER} client={client} />
     </SelectionProvider>
   );
+  if (providers === 'data-room-only') return render(<DataRoomProvider client={client}>{room}</DataRoomProvider>);
   return render(
     providers ? (
       <DataRoomProvider client={client}>
@@ -117,6 +129,20 @@ describe('ChatRoom: propose findings', () => {
     expect(await screen.findByRole('button', BUTTON)).toBeEnabled();
     expect(screen.getByText(/nothing is a finding until you accept it/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Findings page' })).toHaveAttribute('href', '/findings');
+  });
+
+  it('is disabled while the model connection cannot be used', async () => {
+    const notConfigured: HealthReport = {
+      ...HEALTHY,
+      status: 'degraded',
+      checks: { ...HEALTHY.checks, llm: 'not_configured' },
+      llm: { configured: false, missing: ['LLM_API_KEY'], message: 'The model connection is not set up. Set LLM_API_KEY.' },
+    };
+    const client = { ...api(ANSWERED, roomWith(true)), getHealth: vi.fn<ChatApi['getHealth']>().mockResolvedValue(ok<HealthResponse>(notConfigured)) };
+    renderRoom('reglead', client);
+
+    await screen.findByText('The model connection is not set up. Set LLM_API_KEY.');
+    expect(screen.getByRole('button', BUTTON)).toBeDisabled();
   });
 
   it('sends the intent with the request text and reads the register again when the turn is saved', async () => {
@@ -145,7 +171,10 @@ describe('ChatRoom: propose findings', () => {
     ['with no data room', () => renderRoom('reglead', api(ANSWERED, NO_ROOM))],
     ['when no document can be shown to the agent', () => renderRoom('reglead', api(ANSWERED, roomWith(false)))],
     ['before the agent has answered', () => renderRoom('reglead', api(roomData([], [], 'reglead'), roomWith(true)))],
-    ['without the findings register', () => renderRoom('reglead', api(ANSWERED, roomWith(true)), false)],
+    ['without the findings register', () => renderRoom('reglead', api(ANSWERED, roomWith(true)), 'data-room-only')],
+    ['without the data room or the register', () => renderRoom('reglead', api(ANSWERED, roomWith(true)), false)],
+    ['after an answer that was cut off', () => renderRoom('reglead', api(unfinished('partial'), roomWith(true)))],
+    ['after an answer that failed', () => renderRoom('reglead', api(unfinished('error'), roomWith(true)))],
   ])('is not offered %s', async (_label, mount) => {
     mount();
 

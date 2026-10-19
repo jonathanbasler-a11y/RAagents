@@ -124,7 +124,6 @@ export function ChatRoom({ roomId, agents, client = chatClient }: ChatRoomProps)
   const lastAgent = [...room.timeline].reverse().find((item) => item.kind === 'agent');
   const lastHuman = [...room.timeline].reverse().find((item) => item.kind === 'human');
   const canPropose =
-    !isTeam &&
     agent !== undefined &&
     documentsConnected.documents === 'connected' &&
     register.status !== 'unavailable' &&

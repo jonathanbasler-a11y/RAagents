@@ -141,6 +141,20 @@ describe('FindingsPanel', () => {
     expect(screen.getByRole('article', { name: 'F-002' })).toBeInTheDocument();
   });
 
+  it('limits the note to 300 characters, as the server does', async () => {
+    setup(register([finding('F-001')]));
+
+    expect(await screen.findByLabelText('Note (optional)')).toHaveAttribute('maxlength', '300');
+  });
+
+  it('does not guess who decided when the register holds no name', async () => {
+    setup(register([finding('F-001', { status: 'accepted', decidedAt: '2026-10-12T09:00:00.000Z', decidedBy: null })]));
+
+    const card = await screen.findByRole('article', { name: 'F-001' });
+    expect(card).toHaveTextContent('Accepted by someone not recorded on 2026-10-12.');
+    expect(card).not.toHaveTextContent('local');
+  });
+
   it('rejects without a note', async () => {
     const client = setup(register([finding('F-001')]));
     client.submitFindingDecision.mockResolvedValue(ok({ finding: finding('F-001', { status: 'rejected', decidedAt: '2026-10-12T09:30:00.000Z', decidedBy: LOCAL_PERSON }) }));

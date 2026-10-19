@@ -53,6 +53,13 @@ describe('FindingsSummary', () => {
     expect(screen.getByRole('link', { name: 'Open the findings' })).toHaveAttribute('href', '/findings');
   });
 
+  it('does not call the register empty when only open questions are in it', async () => {
+    renderSummary(ok(register([], [question('Q-001')])));
+
+    expect(await screen.findByText('0 drafts waiting for a person, 0 decided, 1 open question.')).toBeInTheDocument();
+    expect(screen.queryByText(/No findings yet/)).not.toBeInTheDocument();
+  });
+
   it('counts the drafts waiting for a person, the decided findings and the open questions', async () => {
     renderSummary(
       ok(
