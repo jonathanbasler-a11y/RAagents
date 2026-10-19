@@ -543,7 +543,7 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
        VALUES (:workspace_id, :id, :claim, :quote, :document_id, :source_type, :basis, :published_at, :as_of, :confidence, :confidence_reason,
          :assumptions, :owner, 'draft', :agent_id, :agent_name, :agent_version, :model, :prompt_hash, :turn_id, :created_at)`,
     ),
-    decideFinding: db.prepare(
+    updateFindingDecision: db.prepare(
       `UPDATE findings SET status = :status, decided_at = :at, decided_by = :by, decision_note = :note
        WHERE workspace_id = :workspace_id AND id = :id AND status = 'draft'`,
     ),
@@ -1139,7 +1139,7 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
         if (decision === 'accepted' && readDocument(workspaceId, finding.documentId)?.withdrawnAt) {
           throw new FindingSourceWithdrawnError(findingId, finding.documentId);
         }
-        sql.decideFinding.run({ workspace_id: workspaceId, id: findingId, status: decision, at, by: LOCAL_PERSON, note: trimmed === '' ? null : trimmed });
+        sql.updateFindingDecision.run({ workspace_id: workspaceId, id: findingId, status: decision, at, by: LOCAL_PERSON, note: trimmed === '' ? null : trimmed });
         sql.insertFindingEvent.run(workspaceId, findingId, decision, at, LOCAL_PERSON, trimmed === '' ? null : trimmed);
         return mustExist(readFinding(workspaceId, findingId) ?? undefined, `finding ${findingId}`);
       });

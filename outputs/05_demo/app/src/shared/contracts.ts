@@ -481,6 +481,21 @@ export interface TurnTrace {
   agents: AgentOutcome[];
   /** Which data-room documents the agents saw in this turn. Left out when the workspace has no data room. */
   dataRoom?: DataRoomTrace;
+  /** Set on a findings proposal turn (see TURN_INTENTS). */
+  intent?: TurnIntent;
+  /** What a findings proposal turn put in the register: ids of the drafts and of the open questions, or why it put nothing. */
+  proposal?: ProposalTrace;
+}
+
+export const TURN_INTENTS = ['propose-findings'] as const;
+/** propose-findings: the person asks an agent, in its own room, to propose findings from the data room. */
+export type TurnIntent = (typeof TURN_INTENTS)[number];
+
+export interface ProposalTrace {
+  findingIds: string[];
+  questionIds: string[];
+  /** Why nothing was added, when the reply could not be used. */
+  problem: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -895,13 +910,16 @@ export const API_ERROR_CODES = [
   'data_room_exists',
   'no_data_room',
   'document_not_found',
+  'finding_not_found',
+  'finding_decided',
+  'finding_source_withdrawn',
   'llm_not_configured',
   'internal',
 ] as const;
 /**
  * HTTP status: invalid_request 400, forbidden 403, not_found 404, room_busy 409, server_busy 429,
- * locked_agent 409, data_room_exists 409, no_data_room 409, document_not_found 404, llm_not_configured 503,
- * internal 500.
+ * locked_agent 409, data_room_exists 409, no_data_room 409, document_not_found 404, finding_not_found 404, finding_decided 409,
+ * finding_source_withdrawn 409, llm_not_configured 503, internal 500.
  * server_busy: two turns already run on this server (the most it runs at once); nothing was written.
  */
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
@@ -986,6 +1004,8 @@ export interface PostTurnRequest {
   clientTurnId: string;
   /** The browser's IANA time zone, e.g. "Europe/Paris". */
   tz: string;
+  /** Only in an agent's own room, and only with a data room that has documents; the server then uses its own question text. */
+  intent?: TurnIntent;
 }
 
 export interface TurnDuplicateResponse {
