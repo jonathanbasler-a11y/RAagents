@@ -6,9 +6,10 @@
 
 ## How to read this
 
-Every point in the nine boxes carries one of two markers.
+Every point in the nine boxes carries one of these markers.
 
-- **(team)** The team's own point, from its canvas draft and the recording. I tightened the wording, merged duplicates and kept the team's voice. A dagger (†) means the point is in the recording but was missing from the written draft, so I added it back. Nothing the team said was dropped.
+- **(team)** The team's own point, from its canvas draft and the recording. I tightened the wording, merged duplicates and kept the team's voice. A dagger (†) means the point is in the recording but was missing from the written draft, so I added it back. We tried to keep everything the team said.
+- **(decided)** A decision already recorded in the project brief (`CLAUDE.md`). It is not a point from the canvas discussion, and it is shown so the scope is clear.
 - **(suggested, not agreed)** An addition from the project brief, from me, or from reading the other team's material. The team has not seen or agreed it. It stays out of the canvas unless the team adopts it.
 
 Two further kinds of line are not content points:
@@ -35,7 +36,7 @@ Two further kinds of line are not content points:
 - **It can scale.** Inspections, disaster response (for example, a new impurity found in manufacturing) and rapid response to unexpected questions are shown as examples of how the framework abstracts out of DD. They are concepts, not builds. (team)
 - **Note on inspections.** The team named the risk that inspections "step on Quality's toes". (team)
 - **Suggested wording:** inspections are positioned as working with Quality, not taking over its remit. (suggested, not agreed; open question 6)
-- **Out of scope for DD:** valuation, commercial and market access. Reimbursement and HTA risks are flagged and handed to the right partners, not assessed. (suggested, not agreed)
+- **Out of scope for DD:** valuation, commercial and market access. Reimbursement and HTA risks are flagged and handed to the right partners, not assessed. (decided)
 - **Not a verdict.** The output is a structured briefing, not "buy" or "don't buy". (team; this is the team's own line in Box 8 discussion, repeated here so the scope is clear)
 
 **Where we are, 2026-10-19.** The DD workspace is built. It is the app's landing page. Its DD setup (stage and asset classification) decides which of the 25 agents are on the team, and the team chat uses the same team. The inspections, disaster and rapid-response playbooks are concepts only; nothing for them is built. The set of 6 to 8 agents the MVP builds in depth is not chosen (open question 12).
@@ -137,12 +138,13 @@ Two further kinds of line are not content points:
 - **Agents are maintained continuously,** not only when a DD arrives: knowledge and feedback are added, and performance is checked. (team)
 - **A framework to monitor agent performance,** so we know the agents perform as expected. The team did not yet know what it looks like. (team)
 - **Feedback loops from successful and unsuccessful DDs** improve the agents. Each agent has an owner who maintains it. (team)
-- **Smaller human teams,** for example from 4 people to 2, with the rest hybrid. The team immediately added the honest counterpoint: count the effort to maintain the agents, because that effort lands on a person. (team)
+- **Smaller human teams,** for example from 4 people to 2, with the rest hybrid. The team immediately added the honest counterpoint: count the effort to maintain the agents, because that effort lands on a person. (team; "4 to 2" was the team's off-the-cuff example, caveated at once, not a target, and the concept and deck treat it the same way)
 - **Everyone brought into a DD is trained** to use, trust and interact with the agents, and to take information from them. (team)
 
 **Capabilities**
 
-- **The layered architecture.** The team called it "five layers" but listed six: trust (decision rights, audit trails, data rules); evidence and knowledge; the agent library (agents with skills, workflows and personas); orchestration; playbooks; and the human layer (agent owner, playbook owner, decision owner, the person who activates the team). The count is open (question 4); the proposal is five layers plus a human frame. Agents are built apart from playbooks, so one agent can serve many playbooks. (team)
+- **The layered architecture.** The team called it "five layers" but listed six: trust (decision rights, audit trails, data rules); evidence and knowledge; the agent library (agents with skills, workflows and personas); orchestration; playbooks; and the human layer (agent owner, playbook owner, decision owner, the person who activates the team). Agents are built apart from playbooks, so one agent can serve many playbooks. (team)
+- **Layer count.** The count is open (question 4). The drafter's proposal is five layers plus a human frame. (suggested, not agreed)
 - **Controlled sharing of information.** A new capability that does not exist in today's digital workforce: each agent and person sees only what the people working on the DD are cleared for. (team)
 - **Stakeholder identification.** The playbook suggests which functions and experts to bring in, within the data walls. (team)
 - **The playbook as a checklist,** so nothing is missed, updated as new guidance appears. (team)
@@ -155,14 +157,15 @@ Two further kinds of line are not content points:
 
 | Capability | Status |
 |---|---|
+| Data room and findings register | **Built (demo version 8).** Both are merged to `main`. Accepting or rejecting a draft finding is **not authenticated**: the app has no login, so each decision is stamped "person (local, not authenticated)". |
 | Agent library | **Built (as specifications and a chat app).** 25 named agents, each with a role, planned sources, guardrails, a human owner (a role, never a person) and an autonomy level. They have no tools and no public sources connected. |
 | Orchestration | **Partly built.** The app routes a question to agents by @mention or topic, an orchestrator answers when nobody fits, and a synthesiser summarises. The full workflow (plan, assign, assess, challenge, combine, escalate, decide, learn) is **not built** as a workflow. |
 | Playbook layer | **Partly built.** The DD setup (stage and asset classification) decides who is on the team. The checklist, with "checked", "checked: not applicable", "not checked" and "could not check" kept apart, is **not built**. |
-| Evidence and knowledge | **Partly built.** The data room is built: a fictional practice case or an empty room, an as-of date that is enforced, documents that never change and can only be withdrawn, and documents shown to the agents as attributed claims. The **findings register is not built**: "no source, no finding" is not enforced in code yet. No public sources are connected. |
-| Trust layer | **Partly built.** Every reply is labelled as unsourced model output. The app is a confidential workspace and agents never promise secrecy or deletion. Per-person decision rights and an audit trail of human decisions are **not built**. |
+| Evidence and knowledge | **Partly built.** The data room is built: a fictional practice case or an empty room, an as-of date that is enforced, documents that never change and can only be withdrawn, and documents shown to the agents as attributed claims. The **findings register is built** (merged to `main`, pull request 19, and in demo version 8). A person asks an agent, in its own room, to propose findings; code keeps a claim only if it carries a quote word for word from a document the agent was shown, and the rest become open questions; a person accepts or rejects each draft once. "No source, no finding" is therefore enforced in code for the register, at document level. The check proves a quote is real, not that the claim follows from it, so the person still judges. No public sources are connected. |
+| Trust layer | **Partly built.** Every reply is labelled as unsourced model output. The app is a confidential workspace and agents never promise secrecy or deletion. Per-person decision rights are **not built** (no login). The findings register keeps an append-only trail of accept and reject decisions, but they are unauthenticated. |
 | Controlled sharing (data walls) | **Planned, not built.** The only related pieces are the data room's as-of date and a sanitiser agent that drafts a cleaned-up question for a cleared expert. It only drafts; nothing is sent. |
 | Stakeholder identification | **Partly.** The setup chooses which specialist agents join. Naming the human functions to involve is not built. |
-| Briefing, gates, recorded human decisions | **Not built.** They are the next steps (open question 22). Agents' briefs say they make no decision reserved for people; no recorded human decision exists yet. |
+| Briefing, gates, recorded human decisions | **Briefing and gates not built.** They are the next steps (open question 22). Agents' briefs say they make no decision reserved for people. Only accept and reject on draft findings are recorded, and they are unauthenticated; no gate with an authenticated decision exists yet. |
 | Monitoring agent performance | **Partly.** An evaluation harness exists (cases, a judge from a different model family, case-by-case comparison against the noise). There is no ongoing monitoring routine and no owner for it (questions 14 and 15). |
 | Feedback loops, smaller teams, training | **Not built, not tested.** |
 
@@ -176,7 +179,7 @@ Two further kinds of line are not content points:
 - **Identity shift.** You are the person who pilots, tests and uses technology to open things up. (team)
 - **"No one decides alone."** (suggested, not agreed)
 - **"Confidentiality through governance, not exclusion."** The answer to a secret DD is controlled access with a named owner, not a smaller circle. (suggested, not agreed)
-- **"Specialist teammates under expert direction"** rather than "interns" for the agents. The team asked whether agents are equals or interns who grow into the role; it did not settle this on tape. Autonomy levels (1 Assist, 2 Collaborate, 3 Delegate under oversight, with agents earning more over time) are the brief's proposed answer, not the team's decision (question 11). (suggested, not agreed)
+- **"Specialist teammates under expert direction"** rather than "interns" for the agents. The team asked whether agents are equals or interns who grow into the role; it did not settle this on tape. Autonomy levels (1 Assist, 2 Collaborate, 3 Delegate under oversight, with agents earning more over time) are the answer the project brief records as agreed in principle: DD starts at level 2, inspections at level 1. The owner still has to confirm this (question 11). (decided in principle; owner to confirm)
 - **"The machine said so" is not a reason.** A recommendation needs a human's reasoning. (suggested, not agreed; from the other team's material)
 
 **Where we are, 2026-10-19.** The app already shows trust-but-verify in practice: every agent reply is labelled "Model output, not sourced", agents mark uncertain points "to verify", and a seller's statement is treated as a claim, not a fact. These are habits of the tool, not yet a measured change in people's mindsets.
@@ -227,7 +230,7 @@ For a slide. Team content only, in short form. A plus sign (+) marks the main su
 | 8. New mindsets | Trust but verify; curiosity when the AI fails; use it by default; AI amplifies people and a person makes the call. (+) No one decides alone; confidentiality through governance, not exclusion. |
 | 9. How | **Individual:** Digital Accelerator identity; validate on past DDs. **Team:** agents as partners; side-by-side comparison. **Organization:** standardise, then tailor; best practice without "not invented here"; change management first. (+) Governance partners; staged path to trust. |
 
-**Honest status line for the slide (2026-10-19):** the agents, the DD setup and a fictional data room exist and run. The findings register, checklist, briefing, gates and controlled sharing do not exist yet.
+**Honest status line for the slide (2026-10-19):** the agents, the DD setup, a fictional data room and the findings register exist and run (demo version 8). A person accepts or rejects each draft finding, but the app has no login, so those decisions are not authenticated. The checklist, briefing, gates, per-person decision rights and controlled sharing (data walls) do not exist yet.
 
 ---
 
