@@ -374,16 +374,12 @@ export interface CaseMaterial {
   hash: string | null;
 }
 
-/**
- * What a case adds to the agent's prompt: the case's data room, built by the same code the app uses for a workspace's
- * data room (src/server/prompts/data-room.ts), so an evaluation measures what ships. The room holds the documents the
- * case shows and the pack's withheld ones (listed, not provided); a pack document the case does not show is not in it.
- */
-export function caseMaterial(evalCase: EvalCase, pack: CasePack | undefined): CaseMaterial {
-  if (evalCase.pack === undefined || pack === undefined) return { roomContext: [], instructions: [], hash: null };
+/** The data room a case's documents form: the shown documents and the pack's withheld ones. Null for a case with no pack. */
+export function caseRoom(evalCase: EvalCase, pack: CasePack | undefined): DataRoom | null {
+  if (evalCase.pack === undefined || pack === undefined) return null;
   const shown = visibleDocuments(evalCase, pack);
   const listed = [...shown, ...pack.documents.filter((doc) => !doc.provided)];
-  const room: DataRoom = {
+  return {
     workspaceId: 'eval',
     asOf: evalCase.asOf,
     createdAt: evalCase.asOf,
@@ -401,6 +397,17 @@ export function caseMaterial(evalCase: EvalCase, pack: CasePack | undefined): Ca
       withdrawnReason: null,
     })),
   };
+}
+
+/**
+ * What a case adds to the agent's prompt: the case's data room, built by the same code the app uses for a workspace's
+ * data room (src/server/prompts/data-room.ts), so an evaluation measures what ships. The room holds the documents the
+ * case shows and the pack's withheld ones (listed, not provided); a pack document the case does not show is not in it.
+ */
+export function caseMaterial(evalCase: EvalCase, pack: CasePack | undefined): CaseMaterial {
+  const room = caseRoom(evalCase, pack);
+  if (room === null || pack === undefined) return { roomContext: [], instructions: [], hash: null };
+  const shown = visibleDocuments(evalCase, pack);
   const material = dataRoomMaterial(room);
   return {
     roomContext: material.roomContext,
