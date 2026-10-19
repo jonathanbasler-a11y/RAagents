@@ -9,6 +9,9 @@ import type {
   PostTurnRequest,
   RoomId,
   RoomMessagesResponse,
+  DdSetup,
+  DdSetupResponse,
+  DdSetupUpdateRequest,
   SelectionResponse,
   SelectionUpdateRequest,
   TurnDuplicateResponse,
@@ -107,6 +110,9 @@ export interface ChatApi {
   getHealth(): Promise<ApiResult<HealthResponse>>;
   getSelection(): Promise<ApiResult<SelectionResponse>>;
   setSelection(agentId: AgentId, selected: boolean): Promise<ApiResult<SelectionResponse>>;
+  getDdSetup(): Promise<ApiResult<DdSetupResponse>>;
+  /** Saves the whole DD setup; the reply carries the selection that follows from it. */
+  setDdSetup(setup: DdSetup): Promise<ApiResult<DdSetupResponse>>;
 }
 
 const UNREACHABLE_MESSAGE = 'Could not reach the server. Check the connection and try again.';
@@ -254,10 +260,13 @@ export function createChatClient(deps: ChatClientDeps = {}): ChatApi {
     getSelection: () => requestJson<SelectionResponse>('/api/selection', { headers: { Accept: 'application/json' } }),
     setSelection: (agentId, selected) =>
       postJson<SelectionResponse>('/api/selection', { agentId, selected } satisfies SelectionUpdateRequest),
+    getDdSetup: () => requestJson<DdSetupResponse>('/api/dd-setup', { headers: { Accept: 'application/json' } }),
+    setDdSetup: (setup) =>
+      postJson<DdSetupResponse>('/api/dd-setup', { stage: setup.stage, classifications: setup.classifications } satisfies DdSetupUpdateRequest),
   };
 }
 
 /** The app's client: global fetch, crypto and Intl, looked up when each call is made. */
 export const chatClient: ChatApi = createChatClient();
 
-export const { postTurn, getMessages, newConversation, getHealth, getSelection, setSelection } = chatClient;
+export const { postTurn, getMessages, newConversation, getHealth, getSelection, setSelection, getDdSetup, setDdSetup } = chatClient;

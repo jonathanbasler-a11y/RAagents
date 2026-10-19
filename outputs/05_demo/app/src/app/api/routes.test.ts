@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeChatRuntime } from '@/server/chat/boot';
 import { captureLogs } from '@/server/llm/test-support/fake-gateway';
 import * as agentsRoute from './agents/route';
+import * as ddSetupRoute from './dd-setup/route';
 import * as healthRoute from './health/route';
 import * as messagesRoute from './rooms/[room]/messages/route';
 import * as newRoute from './rooms/[room]/new/route';
@@ -17,6 +18,7 @@ import * as selectionRoute from './selection/route';
 
 const ROUTES = [
   ['agents', agentsRoute, ['GET']],
+  ['dd-setup', ddSetupRoute, ['GET', 'POST']],
   ['health', healthRoute, ['GET']],
   ['rooms/[room]/messages', messagesRoute, ['GET']],
   ['rooms/[room]/new', newRoute, ['POST']],
@@ -48,6 +50,7 @@ describe('API route files', () => {
     ['rooms/[room]/turns', (request: Request) => turnsRoute.POST(request, { params: Promise.resolve({ room: 'reglead' }) })],
     ['rooms/[room]/new', (request: Request) => newRoute.POST(request, { params: Promise.resolve({ room: 'reglead' }) })],
     ['selection', (request: Request) => selectionRoute.POST(request)],
+    ['dd-setup', (request: Request) => ddSetupRoute.POST(request)],
   ])('%s refuses a cross-site POST with 403 before it opens the database', async (_name, post) => {
     captureLogs();
     const request = new Request('http://localhost/api/x', {

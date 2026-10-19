@@ -43,8 +43,9 @@ export type ClassificationId = (typeof CLASSIFICATION_IDS)[number];
 export const AGENT_TRIGGERS = [...CLASSIFICATION_IDS, 'late', 'filed'] as const;
 /**
  * What brings an agent into a DD: an asset classification, `late` (the development stage
- * is Phase 3 or Filed), or `filed` (the agent joins only when the asset is filed). Shown on
- * the profile; in this phase selection stays manual.
+ * is Phase 3 or Filed), or `filed` (the agent joins only when the asset is filed). The DD
+ * setup (stage and classifications) applies these rules when a person changes it; a person can
+ * still switch any unlocked agent on or off by hand.
  */
 export type AgentTrigger = (typeof AGENT_TRIGGERS)[number];
 
@@ -791,6 +792,18 @@ export interface Store {
   /** The saved selection, or null if this workspace never saved one (use the defaults). */
   getSelection(workspaceId: WorkspaceId): AgentId[] | null;
   setSelection(workspaceId: WorkspaceId, agentIds: AgentId[]): void;
+  /** The saved DD setup, or null if this workspace never saved one (use the default). */
+  getDdSetup(workspaceId: WorkspaceId): DdSetup | null;
+  /**
+   * Saves a new DD setup and the selection that goes with it in ONE transaction. `change` receives the
+   * saved setup and selection (null when never saved) and returns the new pair. It runs inside the
+   * transaction and must not call the store. Throws RangeError for an unknown stage or classification
+   * and TypeError for an empty agent id; either way nothing is saved.
+   */
+  updateDdSetup(
+    workspaceId: WorkspaceId,
+    change: (current: { setup: DdSetup | null; selection: AgentId[] | null }) => { setup: DdSetup; selection: AgentId[] },
+  ): { setup: DdSetup; selection: AgentId[] };
   close(): void;
 }
 
@@ -957,3 +970,33 @@ export interface SelectionUpdateRequest {
   agentId: AgentId;
   selected: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// DD setup (development stage and asset classifications)
+// ---------------------------------------------------------------------------
+
+/** The development stages of the asset, in order (mockup v2). */
+export const DEVELOPMENT_STAGES = ['Phase 1', 'Phase 2', 'Phase 3', 'Filed'] as const;
+export type DevelopmentStage = (typeof DEVELOPMENT_STAGES)[number];
+
+/**
+ * What the person says about the asset. The playbook uses it to bring agents in (see the agent
+ * `trigger`). `classifications` is unique and in CLASSIFICATION_IDS order.
+ */
+export interface DdSetup {
+  stage: DevelopmentStage;
+  classifications: ClassificationId[];
+}
+
+/** GET /api/dd-setup, and the reply to POST /api/dd-setup. */
+export interface DdSetupResponse {
+  workspaceId: WorkspaceId;
+  setup: DdSetup;
+  /** default: nothing saved for this workspace yet. */
+  source: 'default' | 'saved';
+  /** The selection after the change, so the page and the rail update from one reply. */
+  selection: SelectionResponse;
+}
+
+/** POST /api/dd-setup: the whole setup, not a patch. 400 for an unknown stage or classification. */
+export type DdSetupUpdateRequest = DdSetup;

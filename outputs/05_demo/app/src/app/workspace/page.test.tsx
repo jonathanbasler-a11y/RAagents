@@ -1,55 +1,34 @@
-// @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// The real hook follows the address bar; so does this stand-in.
-vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
+// next/navigation's redirect() throws to stop rendering; this stand-in does the same.
+const navigation = vi.hoisted(() => ({
+  redirect: vi.fn((target: string): never => {
+    throw new Error(`NEXT_REDIRECT ${target}`);
+  }),
+}));
+vi.mock('next/navigation', () => navigation);
 
-import WorkspacePage, { dynamic, metadata } from './page';
-
-const BANNER = 'Illustrative mockup: example data, not connected to the agents.';
-const LABELS = ['Request', 'Regulatory team', 'Run board', 'Findings and risks', 'Licensor requests', 'Briefing', 'Architecture'];
+import WorkspacePage from './page';
 
 beforeEach(() => {
-  window.history.replaceState(null, '', '/workspace');
+  // No return value: vitest would call a function returned from a hook as its cleanup.
+  navigation.redirect.mockClear();
 });
 
-describe('workspace page (/workspace)', () => {
-  it('says first, in a banner, that it is an illustrative mockup', () => {
-    render(<WorkspacePage />);
-
-    const banner = screen.getByText(BANNER);
-    expect(banner).toHaveAttribute('role', 'note');
-    const heading = screen.getByRole('heading', { level: 1 });
-    expect(banner.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+describe('/workspace (the old illustrative page)', () => {
+  it('sends anyone with the old address, a bookmark or a ?screen= link to the landing page', () => {
+    expect(() => WorkspacePage()).toThrow('NEXT_REDIRECT /');
+    expect(navigation.redirect).toHaveBeenCalledTimes(1);
+    expect(navigation.redirect).toHaveBeenCalledWith('/');
   });
 
-  it('shows the heading, all seven screen tabs and the framed mockup', () => {
-    render(<WorkspacePage />);
+  it('no longer serves the mockup or any other page below it', () => {
+    const folder = path.resolve(process.cwd(), 'src', 'app', 'workspace');
 
-    expect(screen.getByRole('heading', { level: 1, name: 'DD workspace (illustrative)' })).toBeInTheDocument();
-    const nav = screen.getByRole('navigation', { name: 'Mockup screens' });
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(LABELS);
-    expect(screen.getByTitle(/mockup/i)).toHaveAttribute('src', '/workspace/mockup#request');
-  });
-
-  it('links back to the live team chat', () => {
-    render(<WorkspacePage />);
-
-    expect(screen.getByRole('link', { name: 'Ask the team (live)' })).toHaveAttribute('href', '/team');
-  });
-
-  it('opens the screen a deep link names', () => {
-    window.history.replaceState(null, '', '/workspace?screen=findings');
-
-    render(<WorkspacePage />);
-
-    expect(screen.getByTitle(/mockup/i)).toHaveAttribute('src', '/workspace/mockup#findings');
-    expect(screen.getByRole('link', { name: 'Findings and risks' })).toHaveAttribute('aria-current', 'page');
-  });
-
-  it('is rendered per request and titled as illustrative', () => {
-    expect(dynamic).toBe('force-dynamic');
-    expect(metadata.title).toBe('DD workspace (illustrative)');
+    expect(existsSync(path.join(folder, 'page.tsx'))).toBe(true);
+    expect(existsSync(path.join(folder, 'mockup'))).toBe(false);
+    expect(existsSync(path.join(folder, '_lib'))).toBe(false);
   });
 });

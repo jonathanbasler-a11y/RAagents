@@ -2,10 +2,9 @@ import { createRequire } from 'node:module';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import nextConfig from '../../next.config';
 
-// Hardening: every route carries the same small set of security headers, and every route
-// except the mockup also carries a Content-Security-Policy. The mockup route (frame content of
-// /workspace) sends its own, stricter CSP (see src/app/workspace/_lib/mockup-html.ts); a second
-// CSP header would be intersected with it, so the rule below leaves that one route out.
+// Hardening: every route carries the same small set of security headers and the same
+// Content-Security-Policy. No route sends a policy of its own and the app frames nothing: the
+// old /workspace mockup, which did both, is gone.
 
 type HeaderRule = { source: string; headers: { key: string; value: string }[] };
 
@@ -44,7 +43,7 @@ const EXPECTED_CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "connect-src 'self'",
-  "frame-src 'self'",
+  "frame-src 'none'",
   "frame-ancestors 'self'",
   "object-src 'none'",
   "base-uri 'none'",
@@ -59,50 +58,43 @@ const BASE_HEADERS = {
 };
 
 describe('security headers', () => {
-  it('has one rule for every route with the four base headers, once each', async () => {
+  it('has one rule, for every route, with the four base headers and the policy, once each', async () => {
     const all = await rules();
-    const base = all.find((rule) => rule.source === ALL_ROUTES);
 
-    expect(base).toBeDefined();
+    expect(all).toHaveLength(1);
+    expect(all[0].source).toBe(ALL_ROUTES);
     // "/:path*" matches "/" and every nested path: pages, API routes and static files.
-    const keys = base!.headers.map((header) => header.key);
+    const keys = all[0].headers.map((header) => header.key);
     expect(new Set(keys).size).toBe(keys.length);
-    expect(await headersFor(ALL_ROUTES)).toEqual(BASE_HEADERS);
+    expect(await headersFor(ALL_ROUTES)).toEqual({ ...BASE_HEADERS, 'Content-Security-Policy': EXPECTED_CSP });
   });
 
-  it('sets the base headers on every kind of route, the mockup included', async () => {
-    for (const requestPath of ['/', '/team', '/chat/dara', '/workspace', '/workspace/mockup', '/api/health', '/_next/static/chunks/app.js', '/avatars/dara.svg']) {
+  it('sets the base headers on every kind of route', async () => {
+    for (const requestPath of ['/', '/team', '/chat/dara', '/workspace', '/api/health', '/_next/static/chunks/app.js', '/avatars/dara.svg']) {
       expect(await headersAt(requestPath)).toMatchObject(BASE_HEADERS);
     }
   });
 
-  it('keeps the frame policy loose enough for the workspace page, which frames the mockup from the same origin', async () => {
-    const headers = await headersAt('/workspace');
+  it('lets only the app itself frame the app, and lets the app frame nothing', async () => {
+    const headers = await headersAt('/');
 
     expect(headers['X-Frame-Options']).toBe('SAMEORIGIN');
-    expect(Object.values(headers).join(' ')).not.toMatch(/\bDENY\b/i);
-    expect(headers['Content-Security-Policy']).toContain("frame-src 'self'");
     expect(headers['Content-Security-Policy']).toContain("frame-ancestors 'self'");
+    expect(headers['Content-Security-Policy']).toContain("frame-src 'none'");
   });
 });
 
 describe('Content-Security-Policy', () => {
   it('is the agreed policy, as one header, on pages, API routes and static files', async () => {
-    for (const requestPath of ['/', '/team', '/chat/dara', '/workspace', '/workspace/other', '/api/health', '/api/rooms/team/turns', '/_next/static/chunks/app.js', '/avatars/dara.svg']) {
+    for (const requestPath of ['/', '/team', '/chat/dara', '/workspace', '/api/health', '/api/rooms/team/turns', '/_next/static/chunks/app.js', '/avatars/dara.svg']) {
       expect((await headersAt(requestPath))['Content-Security-Policy']).toBe(EXPECTED_CSP);
     }
-    const sources = (await rules()).filter((rule) => rule.headers.some((header) => header.key === 'Content-Security-Policy'));
-    expect(sources).toHaveLength(1);
-    expect(sources[0].headers).toHaveLength(1);
+    const carriers = (await rules()).flatMap((rule) => rule.headers.filter((header) => header.key === 'Content-Security-Policy'));
+    expect(carriers).toHaveLength(1);
   });
 
-  it('is left off /workspace/mockup (with and without a trailing slash), which sends its own', async () => {
-    expect(await headersAt('/workspace/mockup')).not.toHaveProperty('Content-Security-Policy');
-    expect(await headersAt('/workspace/mockup/')).not.toHaveProperty('Content-Security-Policy');
-  });
-
-  it('still covers look-alike paths of the mockup (positive control for the exclusion)', async () => {
-    for (const requestPath of ['/workspace/mockups', '/workspace/mockup-v2', '/workspace', '/mockup']) {
+  it('also covers the paths the old mockup used, with and without a trailing slash: no route is left out', async () => {
+    for (const requestPath of ['/workspace/mockup', '/workspace/mockup/', '/workspace/mockups', '/workspace/mockup-v2', '/mockup']) {
       expect((await headersAt(requestPath))['Content-Security-Policy']).toBe(EXPECTED_CSP);
     }
   });
@@ -112,6 +104,7 @@ describe('Content-Security-Policy', () => {
 
     expect(directives.get('default-src')).toEqual(["'self'"]);
     expect(directives.get('connect-src')).toEqual(["'self'"]);
+    expect(directives.get('frame-src')).toEqual(["'none'"]);
     expect(directives.get('frame-ancestors')).toEqual(["'self'"]);
     expect(directives.get('object-src')).toEqual(["'none'"]);
     expect(directives.get('base-uri')).toEqual(["'none'"]);

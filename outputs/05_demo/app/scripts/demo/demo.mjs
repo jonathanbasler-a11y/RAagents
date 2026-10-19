@@ -222,15 +222,14 @@ async function abort(message) {
 /** @param {number} port @param {boolean} open */
 function showPages(port, open) {
   const urls = demoUrls(port);
+  say(`  DD workspace:      ${urls.workspace}`);
   say(`  Team chat:         ${urls.team}`);
-  say(`  Workspace mockup:  ${urls.workspace}`);
-  say(`  Team overview:     ${urls.overview}`);
   if (!open) return;
   if (process.platform !== 'darwin') {
     say('Open those addresses in your browser.');
     return;
   }
-  const opener = spawn('open', [urls.team, urls.workspace], { stdio: 'ignore', detached: true });
+  const opener = spawn('open', [urls.workspace, urls.team], { stdio: 'ignore', detached: true });
   opener.on('error', () => say('Could not open the browser: open the addresses above yourself.'));
   opener.unref();
 }

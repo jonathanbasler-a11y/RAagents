@@ -595,6 +595,72 @@ details.rail-group > summary {
   font-size: 14px;
   margin-bottom: 8px;
 }
+
+/* ===== DD setup (the landing page) ===== */
+.dd-setup {
+  margin-bottom: 16px;
+}
+.dd-setup .note {
+  margin-bottom: 12px;
+  max-width: 72ch;
+}
+.dd-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+}
+.dd-group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.dd-group legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--graphite);
+}
+.dd-setup .chip {
+  cursor: pointer;
+}
+.dd-setup .chip input {
+  margin: 0;
+  accent-color: var(--sig);
+}
+.dd-setup .chip:has(input:checked) {
+  border-color: var(--ink);
+  background: var(--ink-wash);
+}
+.dd-setup .chip:has(input:focus-visible) {
+  outline: 2px solid var(--sig);
+  outline-offset: 2px;
+}
+.dd-groups[aria-busy='true'] .chip {
+  opacity: 0.6;
+  cursor: progress;
+}
+.dd-status {
+  margin-top: 12px;
+  min-height: 1.5em;
+  font-size: 13px;
+  color: var(--graphite);
+}
+.dd-error {
+  color: var(--red);
+}
+.team-overview {
+  margin-top: 24px;
+}
+.section-h {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.team-overview .group:first-of-type {
+  margin-top: 12px;
+}
 .group {
   margin-top: 24px;
 }

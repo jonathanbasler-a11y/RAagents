@@ -6,7 +6,6 @@ import { AGENT_GROUPS, type PublicAgent } from '@/shared/contracts';
 import { Avatar } from './Avatar';
 import { GROUP_INFO, shortCapability } from './labels';
 import { useSelection } from './SelectionProvider';
-import { WORKSPACE_PATH } from './workspace/screens';
 
 function currentAgentId(pathname: string): string | null {
   if (!pathname.startsWith('/chat/')) return null;
@@ -47,7 +46,7 @@ function RailAgent({ agent, current, selected }: { agent: PublicAgent; current: 
   );
 }
 
-/** The left rail: the team pages and the illustrative workspace, then every agent's 1:1 room by mockup v2 group. */
+/** The left rail: the DD workspace and the team chat, then every agent's 1:1 room by mockup v2 group. */
 export function AgentRail({ agents }: { agents: PublicAgent[] }) {
   const pathname = usePathname() ?? '';
   const selection = useSelection();
@@ -62,17 +61,12 @@ export function AgentRail({ agents }: { agents: PublicAgent[] }) {
       <ul className="rail-top">
         <li>
           <Link href="/" className="rail-link" aria-current={pathname === '/' ? 'page' : undefined}>
-            Team overview
+            DD workspace
           </Link>
         </li>
         <li>
           <Link href="/team" className="rail-link rail-team" aria-current={pathname === '/team' ? 'page' : undefined}>
             Team chat
-          </Link>
-        </li>
-        <li>
-          <Link href={WORKSPACE_PATH} className="rail-link" aria-current={pathname === WORKSPACE_PATH ? 'page' : undefined}>
-            Workspace (illustrative)
           </Link>
         </li>
       </ul>

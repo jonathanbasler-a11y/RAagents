@@ -108,6 +108,17 @@ export const CHAT_MIGRATIONS: readonly string[] = [
     saved_at TEXT NOT NULL
   ) STRICT;
   `,
+  // Version 2: the DD setup (development stage and asset classifications) per workspace. The stage is
+  // one of the four development stages. SQLite cannot check each element of the classification list
+  // against a table, so the store validates the ids and the database checks that it is a JSON array.
+  `
+  CREATE TABLE dd_setup (
+    workspace_id TEXT PRIMARY KEY,
+    stage TEXT NOT NULL CHECK (stage IN ('Phase 1', 'Phase 2', 'Phase 3', 'Filed')),
+    classifications TEXT NOT NULL CHECK (json_valid(classifications) AND json_type(classifications) = 'array'),
+    updated_at TEXT NOT NULL
+  ) STRICT;
+  `,
 ];
 
 /**

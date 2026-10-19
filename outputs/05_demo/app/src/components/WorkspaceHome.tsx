@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AGENT_GROUPS, type AgentGroup, type PublicAgent } from '@/shared/contracts';
 import type { ChatApi } from '@/client/chat-client';
+import { DdSetupPanel } from './DdSetupPanel';
 import { GROUP_INFO } from './labels';
 import { ProfileCard } from './ProfileCard';
 import { SelectionSummary } from './SelectionSummary';
@@ -22,9 +23,9 @@ function GroupSection({ group, members }: { group: AgentGroup; members: PublicAg
     return (
       <details className="group">
         <summary>
-          <h2 id={headingId} className="panel-h">
+          <h3 id={headingId} className="panel-h">
             {info.label} <small>{members.length} agents</small>
-          </h2>
+          </h3>
           <span className="note">{info.note}</span>
         </summary>
         {cards}
@@ -33,29 +34,34 @@ function GroupSection({ group, members }: { group: AgentGroup; members: PublicAg
   }
   return (
     <section className="group" aria-labelledby={headingId}>
-      <h2 id={headingId} className="panel-h">
+      <h3 id={headingId} className="panel-h">
         {info.label} <small>{members.length} agents</small>
-      </h2>
+      </h3>
       <p className="note group-note">{info.note}</p>
       {cards}
     </section>
   );
 }
 
-/** The team page ("/"): the team chat entry, the app's status, and every agent's profile by group. */
-export function TeamOverview({ agents, client }: { agents: PublicAgent[]; client?: Pick<ChatApi, 'getHealth'> }) {
+/**
+ * The landing page ("/"): the DD setup, the team chat entry, the app's status, and the team overview,
+ * every agent's profile by group. The setup decides who is on the team; the cards show it.
+ */
+export function WorkspaceHome({ agents, client }: { agents: PublicAgent[]; client?: Pick<ChatApi, 'getHealth'> }) {
   const roster = [...agents].sort((a, b) => a.order - b.order);
   const orchestrator = roster.find((agent) => agent.kind === 'orchestrator');
   return (
     <div className="team-page">
       <div className="screen-head">
-        <h1>Your hybrid team</h1>
+        <h1>DD workspace</h1>
         <p className="lede">
-          People own every decision and every agent. In this phase the agents have no documents and no tools: they
-          explain how they would assess something and mark what needs checking. What they write is model output, not a
-          source.
+          Set up the asset and the team follows. People own every decision and every agent. In this phase the agents
+          have no documents and no tools: they explain how they would assess something and mark what needs checking.
+          What they write is model output, not a source.
         </p>
       </div>
+
+      <DdSetupPanel agents={roster} />
 
       <section className="sheet team-entry" aria-labelledby="team-entry-title">
         <div>
@@ -71,12 +77,17 @@ export function TeamOverview({ agents, client }: { agents: PublicAgent[]; client
       </section>
 
       <StatusPanel client={client} />
-      <SelectionSummary agents={roster} />
 
-      {AGENT_GROUPS.map((group) => {
-        const members = roster.filter((agent) => agent.group === group);
-        return members.length > 0 ? <GroupSection key={group} group={group} members={members} /> : null;
-      })}
+      <section className="team-overview" aria-labelledby="team-overview-title">
+        <h2 id="team-overview-title" className="section-h">
+          Team overview
+        </h2>
+        <SelectionSummary agents={roster} />
+        {AGENT_GROUPS.map((group) => {
+          const members = roster.filter((agent) => agent.group === group);
+          return members.length > 0 ? <GroupSection key={group} group={group} members={members} /> : null;
+        })}
+      </section>
     </div>
   );
 }

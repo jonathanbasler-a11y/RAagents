@@ -1,14 +1,17 @@
 'use client';
 
 import type { PublicAgent } from '@/shared/contracts';
+import { useDdSetup } from './DdSetupProvider';
 import { useSelection } from './SelectionProvider';
 
 /**
  * "Selected for this DD" for one agent. Locked team roles show "Always on". While the
- * saved selection is unknown, no switch is shown: unknown is never shown as off.
+ * saved selection is unknown, no switch is shown: unknown is never shown as off. A switch
+ * waits while the DD setup is being saved, because that save rewrites the selection.
  */
 export function SelectionSwitch({ agent }: { agent: PublicAgent }) {
   const selection = useSelection();
+  const setupSaving = useDdSetup().saving;
 
   if (agent.locked) {
     return (
@@ -58,7 +61,7 @@ export function SelectionSwitch({ agent }: { agent: PublicAgent }) {
         role="switch"
         aria-checked={on}
         aria-busy={saving}
-        disabled={saving}
+        disabled={saving || setupSaving}
         className="switch"
         aria-label={`${agent.name}: selected for this DD`}
         onClick={() => void selection.setSelected(agent.id, !on)}

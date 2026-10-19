@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { loadRegistry } from '@/server/agents';
+import { DEFAULT_DD_SETUP, ruleWants, selectionAfterSetupChange } from '@/shared/dd-setup';
 
 // The real roster: outputs/04_agents/<id>.md and the avatars in the app's public folder.
 // Paths are relative to this file, so the test works in any checkout.
@@ -67,6 +68,29 @@ describe('real specs', () => {
       expect(agent.sections.guardrails, agent.id).toMatch(/never promises? secrecy or deletion/);
     }
     expect(registry.get('san')?.sections.guardrails).toMatch(/Works on what the person shares in this confidential workspace/);
+  });
+
+  // The DD setup rule must agree with the real specs: with the default setup (Phase 2, orphan and paediatric)
+  // it wants exactly the agents that are selected by default, so a workspace that never touched the setup
+  // looks the same as one that applied it.
+  it('wants, for the default DD setup, exactly the 14 agents that are selected by default', () => {
+    const registry = loadRegistry({ specsDir: REAL_SPECS_DIR, publicDir: APP_PUBLIC_DIR });
+    const wanted = registry.agents.filter((agent) => ruleWants(agent, DEFAULT_DD_SETUP)).map((agent) => agent.id);
+
+    expect(wanted).toEqual(registry.agents.filter((agent) => agent.defaultSelected).map((agent) => agent.id));
+    expect(wanted).toHaveLength(14);
+  });
+
+  it('brings in Olu, Mira and Rhea at Phase 3, Paolo once filed, and the classification specialists with their classification', () => {
+    const registry = loadRegistry({ specsDir: REAL_SPECS_DIR, publicDir: APP_PUBLIC_DIR });
+    const defaults = registry.agents.filter((agent) => agent.defaultSelected).map((agent) => agent.id);
+    const after = (stage: 'Phase 3' | 'Filed', classifications: Parameters<typeof selectionAfterSetupChange>[2]['classifications'] = DEFAULT_DD_SETUP.classifications) =>
+      selectionAfterSetupChange(registry.agents, DEFAULT_DD_SETUP, { stage, classifications }, defaults);
+    const added = (ids: string[]) => ids.filter((id) => !defaults.includes(id));
+
+    expect(added(after('Phase 3'))).toEqual(['ops', 'mw', 'sp-rm']);
+    expect(added(after('Filed'))).toEqual(['ops', 'mw', 'sp-rm', 'sp-promo']);
+    expect(added(after('Phase 3', ['orphan', 'paed', 'exp', 'combo', 'cdx']))).toEqual(['ops', 'mw', 'sp-exp', 'sp-combo', 'sp-cdx', 'sp-rm']); // in roster order
   });
 
   // The mockup decides when an agent joins by stage: 'late' at Phase 3 or once filed, 'filed' once

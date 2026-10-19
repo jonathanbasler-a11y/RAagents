@@ -40,7 +40,9 @@ Your model settings go in a git-ignored `.env.local` created with `install -m 60
 | `src/server/llm` | The model client: config from `LLM_*` only, streaming, bounded retries, redaction |
 | `src/server/prompts` | Shared rules, persona brief, date and time zone, fencing of text the current user did not write |
 | `src/proxy.ts`, `src/server/request-gate.ts` | Host-header and Origin checks (DNS rebinding, cross-site writes) |
-| `src/app`, `src/components`, `src/client` | Pages, API routes, UI, and the browser's chat state machine |
+| `src/app`, `src/components`, `src/client` | Pages, API routes, UI, and the browser's chat state machine. The landing page `/` is the DD workspace (`WorkspaceHome`): the DD setup panel, the team chat entry, the status and the team overview. `/workspace` only redirects to it |
+| `src/shared/dd-setup.ts` | The DD setup rule: stage and asset classification decide who is on the team. Pure, used by the API, the page and the tests. `GET`/`POST /api/dd-setup`; the setup and the selection it implies are saved in one transaction |
+| `outputs/05_demo/ux-mockup` | The design reference for the DD setup. Not part of the app; `tests/guards/mockup-rule-parity.test.ts` pins what the rule copies from it |
 | `evals/cases`, `scripts/eval.ts` | 59 evaluation cases for 14 agents and the runner (judge from a different model family) |
 | `scripts/demo`, `scripts/fake-llm.mjs` | The one-command launcher and the stand-in model used by practice mode and tests |
 | `tests/structure` | Tests of the architecture itself (who may write agent messages, security headers) |
@@ -58,11 +60,13 @@ These decide design arguments. Several are enforced by tests, which says so in t
 7. Tests run offline. Every guard has a test that fails when the guard is removed.
 8. This repository is public: no credentials, hosts, company names other than regulators, personal names or confidential material. A private release scan runs before every push; its deny-list is never committed.
 9. Measure before tuning. The judge is a different model family from the agents. Compare runs case by case, against the noise.
+10. The team the router uses is the saved selection, read on every turn. A setup change moves only the agents whose own rule changed: a switch a person flipped by hand survives, and a hand switch never changes the classification. Unknown (still loading, or failed to load) is never shown as off or as the default.
 
 ## Symptom, then first move
 
 | Symptom | First move |
 |---|---|
+| The team chat answers as if an agent were off, or a card disagrees with the setup | Open the page again (a stale tab refreshes only when it becomes visible). `GET /api/dd-setup` shows the saved setup and the selection it implies; `GET /api/selection` is what the router reads. |
 | Replies fail with a timeout or "fetch failed" | The company VPN is probably off. `npm run smoke` shows which route fails and why. Practice mode works without it. |
 | Setup banner and a disabled composer | A model setting is missing or refused. `npm run smoke` names it; compare with `env.example`. |
 | Yellow banner on every page | The server is in practice mode. That is intended; stop it with `npm run demo:stop` and run `npm run demo` for real answers. |
@@ -96,7 +100,7 @@ Prefer the command to the recorded value.
 | Agents' model and the judge's model | an Anthropic model for the agents, an OpenAI model for the judge | `npm run smoke` prints the resolved models and their families | 2026-10-12 |
 | Node | 24.x (the app requires 24 or later) | `node --version` | 2026-10-12 |
 | Next.js | 16.4.0 | `grep '"next"' outputs/05_demo/app/package.json` | 2026-10-12 |
-| Offline test baseline | 1817 passed, 1 skipped, after the confidential-workspace change (the skip is the name-protection test, which needs a local hash file) | `npm test` | 2026-10-16 |
+| Offline test baseline | 1938 passed, 1 skipped, after the landing-page change (the skip is the name-protection test, which needs a local hash file) | `npm test` | 2026-10-19 |
 | First live evaluation | overall 4.33 ± 0.11 over 177 answers; 128 of 177 "good"; the 4 critical hits were false positives of the checks | the saved run under `.eval-runs/` (local, git-ignored); `scripts/eval.ts` repeats it | 2026-10-12 |
 | Stable demo copy | version 4 (commit 6b820cd), outside the repository; versions 3, 2 and 1 are kept beside it for rollback | the `README-DEMO.md` in that folder | 2026-10-14 |
 | Demo auto-start | a user login job, label `com.raagents.demo`; no restart on exit; settings from the development tree's settings file | `launchctl print gui/501/com.raagents.demo` and the `promote-stable-demo` skill | 2026-10-15 |

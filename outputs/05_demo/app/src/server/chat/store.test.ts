@@ -1168,6 +1168,117 @@ describe('selection', () => {
   });
 });
 
+describe('DD setup', () => {
+  const PHASE_3 = { stage: 'Phase 3', classifications: ['orphan', 'paed'] } as const;
+  const asSetup = (value: { stage: string; classifications: readonly string[] }) => ({ stage: value.stage, classifications: [...value.classifications] }) as never;
+
+  it('has no saved setup for a workspace that never saved one, and each workspace has its own', () => {
+    const store = openStore();
+
+    expect(store.getDdSetup('demo')).toBeNull();
+    store.updateDdSetup('demo', () => ({ setup: asSetup(PHASE_3), selection: ['orc'] }));
+
+    expect(store.getDdSetup('demo')).toEqual(PHASE_3);
+    expect(store.getDdSetup('case-2')).toBeNull();
+  });
+
+  it('saves the setup and the selection together, and marks the selection saved', () => {
+    const store = openStore();
+
+    const saved = store.updateDdSetup('demo', () => ({ setup: asSetup(PHASE_3), selection: ['reglead', 'orc', 'clin'] }));
+
+    expect(saved).toEqual({ setup: PHASE_3, selection: ['reglead', 'orc', 'clin'] });
+    expect(store.getSelection('demo')).toEqual(['clin', 'orc', 'reglead']);
+  });
+
+  it('hands the callback nothing the first time and the saved values after', () => {
+    const store = openStore();
+    const seen: unknown[] = [];
+
+    store.updateDdSetup('demo', (current) => {
+      seen.push(current);
+      return { setup: asSetup(PHASE_3), selection: ['orc', 'clin'] };
+    });
+    store.updateDdSetup('demo', (current) => {
+      seen.push(current);
+      return { setup: asSetup({ stage: 'Filed', classifications: [] }), selection: ['orc'] };
+    });
+
+    expect(seen).toEqual([
+      { setup: null, selection: null },
+      { setup: PHASE_3, selection: ['clin', 'orc'] },
+    ]);
+    expect(store.getDdSetup('demo')).toEqual({ stage: 'Filed', classifications: [] });
+    expect(store.getSelection('demo')).toEqual(['orc']);
+  });
+
+  it('is one transaction: a selection the store refuses leaves the setup and the selection as they were', () => {
+    const store = openStore();
+    store.updateDdSetup('demo', () => ({ setup: asSetup(PHASE_3), selection: ['orc', 'clin'] }));
+
+    expect(() =>
+      store.updateDdSetup('demo', () => ({ setup: asSetup({ stage: 'Filed', classifications: ['exp'] }), selection: ['orc', ''] })),
+    ).toThrow(TypeError);
+
+    expect(store.getDdSetup('demo')).toEqual(PHASE_3);
+    expect(store.getSelection('demo')).toEqual(['clin', 'orc']);
+  });
+
+  it('is one transaction on the first save too: nothing is saved when the callback throws', () => {
+    const store = openStore();
+
+    expect(() =>
+      store.updateDdSetup('demo', () => {
+        throw new Error('boom');
+      }),
+    ).toThrow('boom');
+
+    expect(store.getDdSetup('demo')).toBeNull();
+    expect(store.getSelection('demo')).toBeNull();
+  });
+
+  it('refuses an unknown stage or classification, and a repeated one, without writing anything', () => {
+    const store = openStore();
+    const attempt = (setup: unknown) => () => store.updateDdSetup('demo', () => ({ setup: setup as never, selection: ['orc'] }));
+
+    expect(attempt({ stage: 'Phase 4', classifications: [] })).toThrow(RangeError);
+    expect(attempt({ stage: 'Phase 2', classifications: ['biosimilar'] })).toThrow(RangeError);
+    expect(attempt({ stage: 'Phase 2', classifications: ['orphan', 'orphan'] })).toThrow(RangeError);
+    expect(attempt({ stage: 'Phase 2', classifications: 'orphan' })).toThrow(RangeError);
+
+    expect(store.getDdSetup('demo')).toBeNull();
+    expect(store.getSelection('demo')).toBeNull();
+  });
+
+  it('refuses an empty workspace id', () => {
+    const store = openStore();
+
+    expect(() => store.getDdSetup('')).toThrow(TypeError);
+    expect(() => store.updateDdSetup(' ', () => ({ setup: asSetup(PHASE_3), selection: [] }))).toThrow(TypeError);
+  });
+
+  it('keeps the setup across connections and restarts', () => {
+    openStore().updateDdSetup('demo', () => ({ setup: asSetup({ stage: 'Filed', classifications: ['cdx', 'exp'] }), selection: ['orc'] }));
+
+    expect(openStore().getDdSetup('demo')).toEqual({ stage: 'Filed', classifications: ['cdx', 'exp'] });
+  });
+
+  it('upgrades a database made before the setup existed, and keeps its saved selection', () => {
+    const raw = openRaw();
+    migrateChatSchema(raw, CHAT_MIGRATIONS.slice(0, 1));
+    raw.prepare("INSERT INTO selection (workspace_id, agent_id, selected, updated_at) VALUES ('demo', 'clin', 1, ?)").run(START);
+    raw.prepare("INSERT INTO selection_saves (workspace_id, saved_at) VALUES ('demo', ?)").run(START);
+    expect(versionOf(raw)).toBe(1);
+
+    const store = openStore();
+
+    expect(versionOf(raw)).toBe(CHAT_MIGRATIONS.length);
+    expect(CHAT_MIGRATIONS.length).toBeGreaterThanOrEqual(2);
+    expect(store.getSelection('demo')).toEqual(['clin']);
+    expect(store.getDdSetup('demo')).toBeNull();
+  });
+});
+
 describe('toPromptHistory', () => {
   let seq = 0;
   /** A saved message as the store returns it, with every field filled in. */

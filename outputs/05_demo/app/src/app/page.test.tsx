@@ -6,7 +6,7 @@ import { ROSTER } from '@/client/test-fixtures';
 const registry = vi.hoisted(() => ({ listPublicAgents: vi.fn() }));
 vi.mock('@/server/agents', () => registry);
 
-import TeamPage from './page';
+import LandingPage from './page';
 
 let logged: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
@@ -15,13 +15,14 @@ beforeEach(() => {
 });
 afterEach(() => logged.mockRestore());
 
-describe('team page (/)', () => {
-  it('renders the team overview from the registry', () => {
+describe('landing page (/)', () => {
+  it('renders the DD workspace with the team overview from the registry', () => {
     registry.listPublicAgents.mockReturnValue(ROSTER);
 
-    render(<TeamPage />);
+    render(<LandingPage />);
 
-    expect(screen.getByRole('heading', { name: 'Your hybrid team' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'DD workspace' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Team overview' })).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'Rosa' })).toBeInTheDocument();
   });
 
@@ -30,7 +31,7 @@ describe('team page (/)', () => {
       throw new Error('not implemented: listPublicAgents');
     });
 
-    render(<TeamPage />);
+    render(<LandingPage />);
 
     expect(screen.getByRole('heading', { name: 'The agent roster could not be loaded' })).toBeInTheDocument();
     expect(screen.queryByRole('article')).not.toBeInTheDocument();

@@ -2,8 +2,10 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { openDatabase, type SqliteDatabase } from '@/server/db/sqlite';
 import type {
+  AgentId,
   AppendResult,
   ChatErrorCode,
+  DdSetup,
   FinishTurnInput,
   InterruptTurnInput,
   LlmMessage,
@@ -23,6 +25,7 @@ import type {
   TurnTrace,
   WorkspaceId,
 } from '@/shared/contracts';
+import { CLASSIFICATION_IDS, DEVELOPMENT_STAGES } from '@/shared/contracts';
 import { immediateTransaction, migrateChatSchema } from './schema';
 
 // Chat persistence (contract: Store in src/shared/contracts.ts). The database holds the
@@ -180,6 +183,22 @@ function requireNonEmpty(name: string, value: unknown): asserts value is string 
   }
 }
 
+/** A DD setup the store may save: a known stage and a list of unique, known classifications. */
+function checkDdSetup(value: DdSetup): DdSetup {
+  const { stage, classifications } = (value ?? {}) as Partial<DdSetup>;
+  if (typeof stage !== 'string' || !(DEVELOPMENT_STAGES as readonly string[]).includes(stage)) {
+    throw new RangeError(`stage must be one of ${DEVELOPMENT_STAGES.join(', ')}`);
+  }
+  if (!Array.isArray(classifications)) throw new RangeError('classifications must be a list');
+  for (const id of classifications) {
+    if (typeof id !== 'string' || !(CLASSIFICATION_IDS as readonly string[]).includes(id)) {
+      throw new RangeError(`unknown classification ${String(id)}`);
+    }
+  }
+  if (new Set(classifications).size !== classifications.length) throw new RangeError('classifications lists the same id twice');
+  return { stage, classifications: [...classifications] };
+}
+
 /** What the turn runner may finish a turn with. `interrupted` is reserved for reconcileStaleTurns. */
 const RUNNER_TERMINAL_STATUSES: readonly string[] = ['done', 'partial', 'error'] satisfies FinishTurnInput['status'][];
 
@@ -315,6 +334,13 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       `INSERT INTO selection_saves (workspace_id, saved_at) VALUES (:workspace_id, :now)
        ON CONFLICT (workspace_id) DO UPDATE SET saved_at = excluded.saved_at`,
     ),
+    ddSetupOf: db.prepare('SELECT stage, classifications FROM dd_setup WHERE workspace_id = ?'),
+    upsertDdSetup: db.prepare(
+      `INSERT INTO dd_setup (workspace_id, stage, classifications, updated_at)
+       VALUES (:workspace_id, :stage, :classifications, :now)
+       ON CONFLICT (workspace_id) DO UPDATE
+         SET stage = excluded.stage, classifications = excluded.classifications, updated_at = excluded.updated_at`,
+    ),
     messageById: db.prepare('SELECT * FROM messages WHERE id = ?'),
     questionOfTurn: db.prepare("SELECT * FROM messages WHERE turn_id = ? AND author = 'human'"),
     messagesOfThread: db.prepare('SELECT * FROM messages WHERE thread_id = ? ORDER BY seq'),
@@ -390,6 +416,32 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
   }
 
   const unchanged = (row: MessageRow): AppendResult => ({ message: toMessage(row), inserted: false });
+
+  /** The saved selection sorted by agent id, or null if the workspace never saved one. */
+  function readSelection(workspaceId: WorkspaceId): AgentId[] | null {
+    if (!sql.selectionSaved.get(workspaceId)) return null;
+    return (sql.selectedAgents.all(workspaceId) as unknown as { agent_id: string }[]).map((row) => row.agent_id);
+  }
+
+  /** Replaces the selection. Call inside a transaction. Validates every id before the first write. */
+  function writeSelection(workspaceId: WorkspaceId, agentIds: AgentId[], at: string): void {
+    if (!Array.isArray(agentIds)) throw new TypeError('agentIds must be an array');
+    agentIds.forEach((agentId, index) => requireNonEmpty(`agentIds[${index}]`, agentId));
+    const selected = [...new Set(agentIds)];
+    sql.switchOffOthers.run({ workspace_id: workspaceId, agent_ids: JSON.stringify(selected), now: at });
+    for (const agentId of selected) sql.switchOn.run({ workspace_id: workspaceId, agent_id: agentId, now: at });
+    sql.markSelectionSaved.run({ workspace_id: workspaceId, now: at });
+  }
+
+  /** The saved setup. Classification ids the code does not know (a hand-edited file) are left out. */
+  function readDdSetup(workspaceId: WorkspaceId): DdSetup | null {
+    const row = sql.ddSetupOf.get(workspaceId) as { stage: string; classifications: string } | undefined;
+    if (!row) return null;
+    const known = (JSON.parse(row.classifications) as unknown[]).filter((id): id is DdSetup['classifications'][number] =>
+      (CLASSIFICATION_IDS as readonly unknown[]).includes(id),
+    );
+    return { stage: row.stage as DdSetup['stage'], classifications: known };
+  }
 
   return {
     getActiveThread(workspaceId, roomId) {
@@ -608,21 +660,31 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       return Number(changes);
     },
 
-    getSelection(workspaceId) {
-      if (!sql.selectionSaved.get(workspaceId)) return null;
-      return (sql.selectedAgents.all(workspaceId) as unknown as { agent_id: string }[]).map((row) => row.agent_id);
-    },
+    getSelection: readSelection,
 
     setSelection(workspaceId, agentIds) {
       requireNonEmpty('workspaceId', workspaceId);
-      if (!Array.isArray(agentIds)) throw new TypeError('agentIds must be an array');
-      agentIds.forEach((agentId, index) => requireNonEmpty(`agentIds[${index}]`, agentId));
-      const selected = [...new Set(agentIds)];
       const now = timestamp();
-      immediateTransaction(db, () => {
-        sql.switchOffOthers.run({ workspace_id: workspaceId, agent_ids: JSON.stringify(selected), now });
-        for (const agentId of selected) sql.switchOn.run({ workspace_id: workspaceId, agent_id: agentId, now });
-        sql.markSelectionSaved.run({ workspace_id: workspaceId, now });
+      immediateTransaction(db, () => writeSelection(workspaceId, agentIds, now));
+    },
+
+    getDdSetup(workspaceId) {
+      requireNonEmpty('workspaceId', workspaceId);
+      return readDdSetup(workspaceId);
+    },
+
+    updateDdSetup(workspaceId, change) {
+      requireNonEmpty('workspaceId', workspaceId);
+      const now = timestamp();
+      // One transaction: the setup and the selection that goes with it are saved together or not at all.
+      // The setup is written first on purpose: a selection the store refuses must undo it, which only
+      // the transaction can do.
+      return immediateTransaction(db, () => {
+        const next = change({ setup: readDdSetup(workspaceId), selection: readSelection(workspaceId) });
+        const setup = checkDdSetup(next.setup);
+        sql.upsertDdSetup.run({ workspace_id: workspaceId, stage: setup.stage, classifications: JSON.stringify(setup.classifications), now });
+        writeSelection(workspaceId, next.selection, now);
+        return { setup, selection: [...new Set(next.selection)] };
       });
     },
 

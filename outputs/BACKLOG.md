@@ -3,6 +3,15 @@
 The order is the priority. Update it after every working session, next to `DECISIONS.md` and `OPEN_QUESTIONS.md`.
 Source for items 2 to 11: `outputs/01_concept/learnings-from-the-other-team.md` (section numbers in brackets).
 
+## The route to a proper MVP (owner, 2026-10-19)
+
+A. **DD workspace as the landing page, driving the real team.** Built on `feature/workspace-landing` (see `DECISIONS.md`).
+B. **Data room, findings register, checklist, briefing.** A fictional practice pack first, ready for public sources (URL and date; the as-of date enforced in code). Read-only document tools for the agents, which edits the shared rules, so it needs a fresh baseline and a measured run first. The findings register enforces "no source, no finding" in code; a person accepts or rejects each finding; the checklist keeps "checked", "checked: not applicable", "not checked" and "could not check" apart; the briefing is built from accepted findings with the inputs for the probability of technical and regulatory success. Also correct the claim in `learnings-from-the-other-team.md` that "no source, no finding" is enforced in code today (it is not).
+C. **Gates** (items 2 and 3 below): go ahead, pause, ask for more, stop; the recommended call and the evidence that would change it; a recorded human decision; the always-human list. Open question 22.
+D. **Concept, canvas and deck** (`outputs/01_concept`, `02_canvas`, `03_deck`): drafted alongside B and C, finished last.
+
+Not in the MVP: items 11, 13, 14 and 15 below, the Ona connection (question 19), the other team's files (question 20), and giving agents the DD setup in their prompt.
+
 ## Built, waiting for a measured baseline
 
 1. **Practice case with an answer key** (owner's choice, 2026-10-15). Built 2026-10-16: pack `practice-01` (11 fictional documents, 1 withheld on purpose, 11 planted issues of 8 kinds), 11 evaluation cases, and the machinery (documents ride on the turn as fenced blocks; the loader refuses a later-dated or non-fictional document). A live trial of the 11 cases is recorded in `DECISIONS.md`. Still to do: a full baseline of all cases on the setup that will actually be demoed (after open question 21 is settled, so the baseline describes the final prompt setup), then use the case as the live demo case.

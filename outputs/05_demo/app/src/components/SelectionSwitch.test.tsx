@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiResult, ChatApi } from '@/client/chat-client';
 import { EMEKA, LENA } from '@/client/test-fixtures';
-import type { SelectionResponse } from '@/shared/contracts';
+import type { DdSetupResponse, SelectionResponse } from '@/shared/contracts';
+import { DdSetupProvider, useDdSetup } from './DdSetupProvider';
 import { SelectionProvider } from './SelectionProvider';
 import { SelectionSwitch } from './SelectionSwitch';
 
@@ -143,5 +144,63 @@ describe('SelectionSwitch', () => {
 
     expect(await screen.findByRole('switch', { name: /Lena/ })).toHaveAttribute('aria-checked', 'true');
     expect(client.getSelection).toHaveBeenCalledTimes(2);
+  });
+
+  it('cannot be switched while the DD setup is being saved, and can be once it is saved', async () => {
+    const client = {
+      ...selectionClient(['label']),
+      getDdSetup: vi
+        .fn<ChatApi['getDdSetup']>()
+        .mockResolvedValue(
+          ok<DdSetupResponse>({
+            workspaceId: 'demo',
+            setup: { stage: 'Phase 2', classifications: ['orphan'] },
+            source: 'default',
+            selection: { workspaceId: 'demo', selected: ['label'], source: 'default' },
+          }),
+        ),
+      setDdSetup: vi.fn<ChatApi['setDdSetup']>(),
+    };
+    let release: () => void = () => undefined;
+    client.setDdSetup.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = () =>
+            resolve(
+              ok<DdSetupResponse>({
+                workspaceId: 'demo',
+                setup: { stage: 'Phase 3', classifications: ['orphan'] },
+                source: 'saved',
+                selection: { workspaceId: 'demo', selected: ['label'], source: 'saved' },
+              }),
+            );
+        }),
+    );
+    function Change() {
+      const setup = useDdSetup();
+      return (
+        <button type="button" onClick={() => void setup.change({ stage: 'Phase 3', classifications: ['orphan'] })}>
+          change setup
+        </button>
+      );
+    }
+    render(
+      <SelectionProvider client={client}>
+        <DdSetupProvider client={client}>
+          <Change />
+          <SelectionSwitch agent={LENA} />
+        </DdSetupProvider>
+      </SelectionProvider>,
+    );
+    const toggle = await screen.findByRole('switch', { name: /Lena/ });
+    expect(toggle).toBeEnabled();
+
+    act(() => screen.getByRole('button', { name: 'change setup' }).click());
+    expect(toggle).toBeDisabled();
+    act(() => toggle.click());
+    expect(client.setSelection).not.toHaveBeenCalled();
+
+    await act(async () => release());
+    expect(toggle).toBeEnabled();
   });
 });
