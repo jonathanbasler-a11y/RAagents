@@ -52,7 +52,7 @@ const refusal = (raw: unknown, ctx: ProposalContext = context()) => {
 
 describe('foldForMatch', () => {
   it('makes quote marks, dashes, spaces and line breaks the same', () => {
-    expect(foldForMatch('A “quote” – it’s here\n\n  now')).toBe('A "quote" - it\'s here now');
+    expect(foldForMatch('A “quote” – it’s\u00A0here\n\n  now')).toBe('A "quote" - it\'s here now');
     expect(foldForMatch('x — y − z')).toBe('x - y - z');
     expect(foldForMatch('‘single’')).toBe("'single'");
   });
