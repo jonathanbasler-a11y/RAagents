@@ -19,6 +19,10 @@ const STATUS: Record<ApiErrorCode, number> = {
   finding_not_found: 404,
   finding_decided: 409,
   finding_source_withdrawn: 409,
+  finding_not_accepted: 409,
+  finding_tagged: 409,
+  checklist_needs_finding: 409,
+  checklist_item_not_found: 404,
   llm_not_configured: 503,
   internal: 500,
 };
@@ -36,6 +40,10 @@ const MESSAGE: Record<ApiErrorCode, string> = {
   finding_not_found: 'There is no such finding.',
   finding_decided: 'This finding was already decided. A decision is made once.',
   finding_source_withdrawn: 'The document behind this finding was withdrawn, so it cannot be accepted. It can still be rejected.',
+  finding_not_accepted: 'Only an accepted finding can be tagged.',
+  finding_tagged: 'This finding already has its tag. A tag is set once.',
+  checklist_needs_finding: 'An item can be marked checked only when at least one accepted finding is tagged to it.',
+  checklist_item_not_found: 'There is no such checklist item.',
   llm_not_configured: 'The model connection is not set up, so nothing was sent.',
   internal: 'Something went wrong on the server. The server log has the details under this correlation id.',
 };

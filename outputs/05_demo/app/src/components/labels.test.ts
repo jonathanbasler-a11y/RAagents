@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AGENT_TRIGGERS } from '@/shared/contracts';
-import { CLASSIFICATION_LABELS, DOCUMENT_STATE_LABELS, FINDING_BASIS_LABELS, FINDING_STATUS_LABELS, GROUP_INFO, dataRoomTraceText, evidenceBannerText, proposalTraceText, homeLedeText, phaseLineText, PRACTICE_REPLY_LABEL, describeChatError, selectionReasonText, teamChangeText, triggerText } from './labels';
+import { CLASSIFICATION_LABELS, DOCUMENT_STATE_LABELS, CHECKLIST_STATE_LABELS, FINDING_BASIS_LABELS, FINDING_CATEGORY_LABELS, FINDING_STATUS_LABELS, GROUP_INFO, dataRoomTraceText, evidenceBannerText, proposalTraceText, homeLedeText, phaseLineText, PRACTICE_REPLY_LABEL, describeChatError, selectionReasonText, teamChangeText, triggerText } from './labels';
 
 describe('practice mode label', () => {
   it('says a practice reply is not AI and not sourced', () => {
@@ -101,6 +101,22 @@ describe('proposalTraceText', () => {
     expect(proposalTraceText({ findingIds: [], questionIds: [], problem: 'the reply was cut off.' })).toBe(
       'Nothing was added to the register: the reply was cut off.',
     );
+  });
+});
+
+describe('checklist labels', () => {
+  it('name the four states apart, in the words of the playbook', () => {
+    expect(CHECKLIST_STATE_LABELS).toEqual({
+      not_checked: 'Not checked',
+      checked: 'Checked',
+      not_applicable: 'Checked: not applicable',
+      could_not_check: 'Could not check',
+    });
+    expect(new Set(Object.values(CHECKLIST_STATE_LABELS)).size).toBe(4);
+  });
+
+  it('name the three kinds of finding', () => {
+    expect(FINDING_CATEGORY_LABELS).toEqual({ positive: 'Positive', risk: 'Risk', neutral: 'Neutral' });
   });
 });
 

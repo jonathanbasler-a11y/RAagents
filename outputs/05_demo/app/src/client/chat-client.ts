@@ -13,9 +13,14 @@ import type {
   DataRoomDocumentResponse,
   DataRoomResponse,
   DataRoomStartRequest,
+  ChecklistResponse,
+  ChecklistStateRequest,
   FindingDecisionRequest,
   FindingDecisionResponse,
   FindingsResponse,
+  FindingTagInput,
+  FindingTagRequest,
+  FindingTagResponse,
   DdSetup,
   DdSetupResponse,
   DdSetupUpdateRequest,
@@ -133,7 +138,13 @@ export interface ChatApi {
   withdrawDocument(documentId: string, reason: string): Promise<ApiResult<DataRoomDocumentResponse>>;
   getFindings(): Promise<ApiResult<FindingsResponse>>;
   /** A person's decision on one draft finding. The server records who decided; this sends only the decision and a note. */
-  submitFindingDecision(findingId: string, decision: FindingDecisionRequest['decision'], note?: string): Promise<ApiResult<FindingDecisionResponse>>;
+  /** A person's decision on one draft finding. Accepting needs the tag: which checklist item it supports, and what kind of finding it is. */
+  submitFindingDecision(findingId: string, decision: FindingDecisionRequest['decision'], note?: string, tag?: FindingTagInput): Promise<ApiResult<FindingDecisionResponse>>;
+  /** Tags a finding that was accepted without a tag. Once. */
+  submitFindingTag(findingId: string, tag: FindingTagInput): Promise<ApiResult<FindingTagResponse>>;
+  getChecklist(): Promise<ApiResult<ChecklistResponse>>;
+  /** A person moves one checklist item to one of the four states; the reply is the whole checklist. */
+  submitChecklistState(item: string, state: ChecklistStateRequest['state'], reason?: string): Promise<ApiResult<ChecklistResponse>>;
 }
 
 const UNREACHABLE_MESSAGE = 'Could not reach the server. Check the connection and try again.';
@@ -298,11 +309,17 @@ export function createChatClient(deps: ChatClientDeps = {}): ChatApi {
         text: request.text,
       } satisfies AddDocumentRequest),
     getFindings: () => requestJson<FindingsResponse>('/api/findings', { headers: { Accept: 'application/json' } }),
-    submitFindingDecision: (findingId, decision, note) =>
+    submitFindingDecision: (findingId, decision, note, tag) =>
       postJson<FindingDecisionResponse>(`/api/findings/${encodeURIComponent(findingId)}`, {
         decision,
         ...(note ? { note } : {}),
+        ...(tag ? { checklistItem: tag.checklistItem, category: tag.category } : {}),
       } satisfies FindingDecisionRequest),
+    submitFindingTag: (findingId, tag) =>
+      postJson<FindingTagResponse>(`/api/findings/${encodeURIComponent(findingId)}/tags`, { checklistItem: tag.checklistItem, category: tag.category } satisfies FindingTagRequest),
+    getChecklist: () => requestJson<ChecklistResponse>('/api/checklist', { headers: { Accept: 'application/json' } }),
+    submitChecklistState: (item, state, reason) =>
+      postJson<ChecklistResponse>(`/api/checklist/${encodeURIComponent(item)}`, { state, ...(reason ? { reason } : {}) } satisfies ChecklistStateRequest),
     withdrawDocument: (documentId, reason) =>
       postJson<DataRoomDocumentResponse>(`/api/data-room/documents/${encodeURIComponent(documentId)}`, { action: 'withdraw', reason } satisfies WithdrawDocumentRequest),
   };
@@ -327,4 +344,7 @@ export const {
   withdrawDocument,
   getFindings,
   submitFindingDecision,
+  submitFindingTag,
+  getChecklist,
+  submitChecklistState,
 } = chatClient;

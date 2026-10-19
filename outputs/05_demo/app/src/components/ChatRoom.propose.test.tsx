@@ -80,7 +80,7 @@ const roomWith = (provided: boolean): DataRoomResponse => ({
   limits: LIMITS,
 });
 const NO_ROOM: DataRoomResponse = { workspaceId: 'demo', dataRoom: null, practiceAvailable: true, limits: LIMITS };
-const EMPTY_REGISTER: FindingsResponse = { workspaceId: 'demo', findings: [], openQuestions: [] };
+const EMPTY_REGISTER: FindingsResponse = { workspaceId: 'demo', findings: [], openQuestions: [], tags: [] };
 
 function api(messages: RoomMessagesResponse, room: DataRoomResponse) {
   return {
@@ -99,6 +99,9 @@ function api(messages: RoomMessagesResponse, room: DataRoomResponse) {
     withdrawDocument: vi.fn<ChatApi['withdrawDocument']>(),
     getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue(ok(EMPTY_REGISTER)),
     submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
+    submitFindingTag: vi.fn<ChatApi['submitFindingTag']>(),
+    getChecklist: vi.fn<ChatApi['getChecklist']>(),
+    submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
   } satisfies ChatApi;
 }
 
