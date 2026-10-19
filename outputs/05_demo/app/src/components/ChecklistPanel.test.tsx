@@ -138,6 +138,24 @@ describe('ChecklistProvider', () => {
     await waitFor(() => expect(client.getChecklist).toHaveBeenCalledTimes(2));
   });
 
+  it('clears an old error when the next change starts', async () => {
+    const client = clientWith();
+    client.submitChecklistState.mockResolvedValueOnce(failure('Could not reach the server.', 0));
+    const { result } = renderHook(() => useChecklist(), { wrapper: wrapperFor(client) });
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    await act(async () => {
+      await result.current.set('regions', 'could_not_check', 'Plan not provided.');
+    });
+    expect(result.current.saveError).not.toBeNull();
+
+    client.submitChecklistState.mockResolvedValueOnce(ok(checklist({ regions: { state: 'could_not_check', reason: 'Plan not provided.' } })));
+    await act(async () => {
+      await result.current.set('regions', 'could_not_check', 'Plan not provided.');
+    });
+
+    expect(result.current.saveError).toBeNull();
+  });
+
   it('does not let an older read overwrite a newer change', async () => {
     const client = clientWith();
     client.submitChecklistState.mockResolvedValue(ok(checklist({ regions: { state: 'could_not_check', reason: 'Plan not provided.' } })));
@@ -264,6 +282,28 @@ describe('ChecklistPanel', () => {
     await waitFor(() => expect(client.submitChecklistState).toHaveBeenCalledWith('designations', 'not_applicable', 'Not an orphan product.'));
     await waitFor(() => expect(screen.getByRole('article', { name: 'Special designations' })).toHaveTextContent('Reason: Not an orphan product.'));
     expect(screen.getByRole('button', { name: 'Save Special designations' })).toBeDisabled();
+  });
+
+  it('limits the reason to 300 characters, as the server does', async () => {
+    mountPanel(clientWith(checklist({ regions: { state: 'could_not_check', reason: 'Plan not provided.' } })));
+
+    expect(await screen.findByLabelText('Reason for Regional differences')).toHaveAttribute('maxlength', '300');
+  });
+
+  it('can mark an item "could not check", with its reason, and saves it', async () => {
+    const client = clientWith();
+    client.submitChecklistState.mockResolvedValue(ok(checklist({ bottlenecks: { state: 'could_not_check', reason: 'The filing plan was not provided.' } })));
+    mountPanel(client);
+    const card = await screen.findByRole('article', { name: 'Bottleneck hunt' });
+    expect(within(card).getByRole('option', { name: 'Could not check' })).toBeInTheDocument();
+
+    await userEvent.selectOptions(within(card).getByLabelText('State of Bottleneck hunt'), 'could_not_check');
+    expect(within(card).getByLabelText('Reason for Bottleneck hunt')).toBeInTheDocument();
+    await userEvent.type(within(card).getByLabelText('Reason for Bottleneck hunt'), 'The filing plan was not provided.');
+    await userEvent.click(within(card).getByRole('button', { name: 'Save Bottleneck hunt' }));
+
+    await waitFor(() => expect(client.submitChecklistState).toHaveBeenCalledWith('bottlenecks', 'could_not_check', 'The filing plan was not provided.'));
+    await waitFor(() => expect(screen.getByRole('article', { name: 'Bottleneck hunt' }).querySelector('.badge')).toHaveTextContent(/^Could not check$/));
   });
 
   it('takes a mark back with no reason sent', async () => {

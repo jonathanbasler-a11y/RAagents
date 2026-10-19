@@ -239,6 +239,15 @@ describe('the checklist', () => {
     expect(() => store.setChecklistState('demo', 'guidance', 'could_not_check', '   ')).toThrow(RangeError);
   });
 
+  it('stores the reason trimmed, in the checklist and in the event, not as it was typed', () => {
+    const store = seeded();
+
+    store.setChecklistState('demo', 'designations', 'not_applicable', '   Not an orphan product.   ');
+
+    expect(store.listChecklist('demo').find((entry) => entry.item === 'designations')?.reason).toBe('Not an orphan product.');
+    expect(store.listChecklistEvents('demo')[0].reason).toBe('Not an orphan product.');
+  });
+
   it('keeps the four states apart in the list', () => {
     const store = seeded();
     accept(store, 'F-001', { checklistItem: 'guidance', category: 'neutral' });

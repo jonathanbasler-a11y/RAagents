@@ -151,6 +151,16 @@ describe('POST /api/checklist/[item]: a person moves an item', () => {
     expect(api.runtime.store.listChecklistEvents('demo')).toEqual([]);
   });
 
+  it('tells a list or text body what to send, rather than reading it as a state', async () => {
+    const api = setup();
+
+    for (const body of [[], '"checked"', 7]) {
+      const response = await move(api, 'regions', body);
+      expect(response.status).toBe(400);
+      expect((await jsonOf<ApiErrorBody>(response)).message).toMatch(/Send \{ "state"/);
+    }
+  });
+
   it('answers 404 checklist_item_not_found for an item that is not there, and for an id that is not an id', async () => {
     const api = setup();
 

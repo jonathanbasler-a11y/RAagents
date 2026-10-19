@@ -208,6 +208,52 @@ describe('FindingsProvider: tags', () => {
   });
 });
 
+describe('FindingsProvider: tagging one at a time, and after a refusal', () => {
+  const ACCEPTED = (id: string) => finding(id, { status: 'accepted', decidedBy: 'x', decidedAt: '2026-10-12T09:00:00.000Z' });
+
+  it('ignores a second tag while one is being saved', async () => {
+    const client = clientWith(register([ACCEPTED('F-001'), ACCEPTED('F-002')]));
+    let finish: (value: ApiResult<{ tag: never }>) => void = () => undefined;
+    client.submitFindingTag.mockImplementation(() => new Promise((resolve) => (finish = resolve as never)));
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    let first: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      first = result.current.tag('F-001', { checklistItem: 'regions', category: 'risk' });
+    });
+    expect(result.current.deciding).toBe('F-001');
+    let second = true;
+    await act(async () => {
+      second = await result.current.tag('F-002', { checklistItem: 'regions', category: 'risk' });
+    });
+
+    expect(second).toBe(false);
+    expect(client.submitFindingTag).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish({ ok: false, status: 400, error: null, message: 'x' });
+      await first;
+    });
+    expect(result.current.deciding).toBeNull();
+  });
+
+  it('reads the register again after a refused tag (409), so the screen shows what is saved', async () => {
+    const client = clientWith(register([ACCEPTED('F-001')]));
+    client.submitFindingTag.mockResolvedValue({ ok: false, status: 409, error: null, message: 'This finding already has its tag.' });
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    client.getFindings.mockClear();
+    client.getFindings.mockResolvedValue({ ok: true, data: { ...register([ACCEPTED('F-001')]), tags: [{ findingId: 'F-001', checklistItem: 'guidance', category: 'neutral', taggedAt: 'x', taggedBy: 'y' }] } });
+
+    await act(async () => {
+      await result.current.tag('F-001', { checklistItem: 'regions', category: 'risk' });
+    });
+
+    await waitFor(() => expect(client.getFindings).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.tags?.[0]?.checklistItem).toBe('guidance'));
+  });
+});
+
 describe('FindingsProvider: a read that started before a decision', () => {
   it('does not overwrite the decision with the older state it read', async () => {
     const client = clientWith(register([finding('F-001')]));
