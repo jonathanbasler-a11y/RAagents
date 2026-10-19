@@ -33,7 +33,7 @@ export function scriptFor(mode) {
 /** @param {number} port */
 export function demoUrls(port) {
   const base = `http://${HOST}:${port}`;
-  return { overview: `${base}/`, team: `${base}/team`, workspace: `${base}/workspace` };
+  return { workspace: `${base}/`, team: `${base}/team` };
 }
 
 /**

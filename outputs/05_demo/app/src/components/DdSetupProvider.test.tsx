@@ -250,6 +250,20 @@ describe('DdSetupProvider quiet refresh', () => {
     expect(result.current.setup.source).toBe('saved');
   });
 
+  it('recovers from a failed first load when a quiet read works', async () => {
+    const client = clientWith(['reglead']);
+    client.getDdSetup.mockResolvedValueOnce(failure('Could not reach the server.', null));
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.setup.status).toBe('error'));
+    client.getDdSetup.mockResolvedValue(setupReply(LATE_SETUP, ['reglead']));
+
+    await act(async () => tabBecomes('visible'));
+
+    expect(result.current.setup.status).toBe('ready');
+    expect(result.current.setup.loadError).toBeNull();
+    expect(result.current.setup.setup).toEqual(LATE_SETUP);
+  });
+
   it('stops listening when the provider goes away', async () => {
     const client = clientWith(['reglead']);
     const { result, unmount } = mount(client);

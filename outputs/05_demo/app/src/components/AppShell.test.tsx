@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROSTER } from '@/client/test-fixtures';
 import type { TimelineItem } from '@/client/timeline';
 import { AppShell } from './AppShell';
+import { DdSetupPanel } from './DdSetupPanel';
 import { AgentBubble } from './MessageBubble';
 
 const AGENT_ITEM = {
@@ -56,6 +57,32 @@ describe('AppShell navigation', () => {
     renderShell();
 
     expect(screen.getAllByRole('note')).toHaveLength(1);
+  });
+});
+
+describe('AppShell DD setup', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('mounts the DD setup for the pages below it', async () => {
+    const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const setup = { stage: 'Phase 2', classifications: ['orphan'] };
+    const selection = { workspaceId: 'demo', selected: ['reglead'], source: 'saved' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).includes('dd-setup') ? json({ workspaceId: 'demo', setup, source: 'saved', selection }) : json(selection),
+      ),
+    );
+
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }}>
+        <DdSetupPanel agents={ROSTER} />
+      </AppShell>,
+    );
+
+    expect(await screen.findByRole('radio', { name: 'Phase 2' })).toBeChecked();
   });
 });
 

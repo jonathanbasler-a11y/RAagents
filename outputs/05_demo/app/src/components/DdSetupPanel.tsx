@@ -8,7 +8,7 @@ import { CLASSIFICATION_LABELS, teamChangeText } from './labels';
 /**
  * The asset's stage and classification. A change is one save: the team follows by the playbook's
  * rule, and the agent cards and the team chat show it. Native radios and checkboxes stay enabled
- * while a save runs (a disabled control drops keyboard focus); changes are ignored until it ends.
+ * while a save runs (a disabled control drops keyboard focus); the provider ignores changes until it ends.
  */
 export function DdSetupPanel({ agents }: { agents: PublicAgent[] }) {
   const state = useDdSetup();
@@ -17,13 +17,14 @@ export function DdSetupPanel({ agents }: { agents: PublicAgent[] }) {
   const { setup, saving } = state;
   const firstName = (id: AgentId) => agents.find((agent) => agent.id === id)?.name ?? id;
 
+  // The provider ignores a change while a save runs, so the handlers need no guard of their own.
   const chooseStage = (stage: DevelopmentStage) => {
-    if (!setup || saving) return;
+    if (!setup) return;
     void state.change({ stage, classifications: setup.classifications });
   };
 
   const toggleClassification = (id: ClassificationId, on: boolean) => {
-    if (!setup || saving) return;
+    if (!setup) return;
     const chosen = new Set(setup.classifications);
     if (on) chosen.add(id);
     else chosen.delete(id);

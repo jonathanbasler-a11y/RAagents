@@ -12,11 +12,11 @@ In this phase no documents are connected and the agents have no tools. Every rep
 - [ ] A screen recording of that run is ready, in case the gateway fails on the day. Label it **"pre-recorded"** on screen and say so when you use it. Never show a fake-model run as the demo or as the fallback: every fake reply starts with "Fake reply from".
 - [ ] You are on the VPN. The model gateway is only reachable there.
 - [ ] In the app folder, `npm run smoke` shows `OK` on the agents plain and agents stream lines. If either says `FAIL`, fix it first. (The judge line is for evaluations; the demo does not use it.) The `model=…` it prints is the model name that **How this turn ran** shows on screen.
-- [ ] The app is running (`npm run demo`; see "Demo at any time" in `README.md`) and http://127.0.0.1:3200 is open. On the Team overview page the **Status** panel says **All checks pass**, with Model connection "Set up", Agent specs "25 agents loaded" and Chat database "OK". The panel only checks that the settings are there, not that they are the real ones: the warm-up question below checks that.
-- [ ] The Team overview page says **14 of 25 agents selected for this DD.** Steps 3 to 5 need Rosa, Carlos, Dara, Oona and Pia switched on, and the optional part of step 4 needs Eitan switched off. These are the defaults.
+- [ ] The app is running (`npm run demo`; see "Demo at any time" in `README.md`) and http://127.0.0.1:3200 is open. On the DD workspace page (the landing page) the **Status** panel says **All checks pass**, with Model connection "Set up", Agent specs "25 agents loaded" and Chat database "OK". The panel only checks that the settings are there, not that they are the real ones: the warm-up question below checks that.
+- [ ] The DD workspace shows the DD setup at **Phase 2** with **Orphan** and **Paediatric requirements** ticked, and says **14 of 25 agents selected for this DD.** Steps 3 to 5 need Rosa, Carlos, Dara, Oona and Pia switched on, and the optional part of step 4 needs Eitan switched off. These are the defaults. If a rehearsal left the setup at Phase 3 or Filed, click **Phase 2** again: the agents the stage brought in leave, and any switch you flipped by hand stays as you left it, so check Eitan and Rosa afterwards.
 - [ ] Send one warm-up question in a room you will not show (for example Clara's). Check that it streams and is a real answer. If it starts with "Fake reply from", the app is on rehearsal settings: stop it (`npm run demo:stop`, or Ctrl+C if you used `npm start`) and start the live demo again (`npm run demo`).
 - [ ] Click **New conversation** in each room you will use: Rosa's room and the team chat. Old threads are archived, not deleted. Rosa's room shows its starter prompts only while it is empty.
-- [ ] One browser tab per room: the Team overview page, Rosa's room and the team chat. Never open the same room in two tabs: while a turn runs, a question sent from the other tab is refused.
+- [ ] One browser tab per room: the DD workspace, Rosa's room and the team chat. Never open the same room in two tabs: while a turn runs, a question sent from the other tab is refused.
 
 ## Walkthrough
 
@@ -25,18 +25,25 @@ The times are estimates: confirm them in your rehearsal with the real model. Tur
 - **3 minutes:** steps 1, 3, 5, 6, 7 and 9.
 - **5 minutes:** steps 1 to 9. Without step 8, about 4.5 minutes. The optional part of step 4 adds about 45 s.
 
-### 1. The Team overview page (about 30 s)
+### 1. The DD workspace (about 30 s)
 
 Open http://127.0.0.1:3200.
 
 Point out:
 
 - **The honest frame, before any reply**: the dark banner at the top, "Confidential workspace. Chats stay on this computer and go to your company's model gateway; agents cannot promise secrecy or deletion.", and the line beside the title, "In this phase no documents and no tools are connected. Agent replies are model output, not sources." Say it now; you repeat it at the close.
-- **25 named AI agents, each with a picture**, in the four groups of the mockup: Regulatory function (9), Specialists by asset (7), Team roles (5) and Other functions (4, folded away because they are built for other playbooks).
+- **The DD setup**: the stage of the asset and its classification. They decide who is on the team, and the team follows with one click (see step 1b).
+- **25 named AI agents, each with a picture**, in the team overview below it, in the four groups of the mockup: Regulatory function (9), Specialists by asset (7), Team roles (5) and Other functions (4, folded away because they are built for other playbooks).
 - Each name starts with the letter of its capability: Rosa, Regulatory lead. Carlos, CMC regulatory. Emeka, Evidence checker.
-- **Who is selected for this DD**: the line "14 of 25 agents selected for this DD" and the switch on each card. The five team roles show **Always on**. In the team chat, routing only picks selected agents. Emeka, Saskia and Ruben answer only when @mentioned; Oskar answers when nobody else fits; Sofia sums up after two or more contributions.
+- **Who is selected for this DD**: the line "14 of 25 agents selected for this DD", the switch on each card and, under the name, one line that says why the agent is on or off. The five team roles show **Always on**. In the team chat, routing only picks selected agents. Emeka, Saskia and Ruben answer only when @mentioned; Oskar answers when nobody else fits; Sofia sums up after two or more contributions.
 - **Every agent has a human owner**, shown on its card, for example "Regulatory lead agent owner". The owner is a role, never a named person.
 - **Remit, marked "planned"**: what the agent is meant to do in later phases, once sources and tools are connected. Today it is a plan, and the card says so.
+
+### 1b. Set the stage, and the team follows (optional, about 40 s)
+
+In the DD setup, click **Phase 3**. The line under the buttons says who joined, for example "Saved. Olu, Mira and Rhea joined the team.", the count goes up, and on those three cards the switch is on with the reason "On because a filing is near (Phase 3 or filed)." The team chat uses the same team: a question about the filing now reaches them. Then click **Phase 2** to put the demo back: they leave again, and nothing you switched by hand changes.
+
+A switch you flip by hand is yours: changing the stage or the classification never undoes it, and the card says "Switched on by you" or "Switched off by you". Ticking or unticking a classification (for example **Expedited programme**) brings its specialist in or out the same way.
 
 ### 2. A 1:1 room: Rosa, the regulatory lead (about 40 s)
 
@@ -168,7 +175,7 @@ Say:
 | The page does not load, or "Could not reach the server, so your question was not sent." | The app has stopped, for example because its terminal was closed (if you used `npm start`) or the computer restarted. | In the app folder, run `npm run demo` (it reuses its build). If you used `npm start`, run that instead (no new build needed). Reload the page and ask again. |
 | "Another turn is running in this room. Your question is back in the box; send it when that turn ends." | A turn is still running in this room, often started from another browser tab. The room checks every 2 seconds. **New conversation** is refused too: "A turn is still running in this room. Start a new conversation when it ends." | Wait until the turn ends (it always does, within about 3 minutes), then send again. Use one browser tab per room on stage. |
 | "The live connection dropped. The turn continues on the server…" | The browser lost the stream, for example after a Wi-Fi blip or a sleeping laptop. | Wait. The saved replies appear when the turn ends. Do not send the question again. |
-| "@… is not the name of an agent, so it brought nobody in.", "… is not selected for this DD", or the wrong teammates answer | A typo in a typed prompt, or a teammate is switched off. | Use the demo prompt instead of typing. Switch the teammate on in the Team overview. |
+| "@… is not the name of an agent, so it brought nobody in.", "… is not selected for this DD", or the wrong teammates answer | A typo in a typed prompt, or a teammate is switched off. | Use the demo prompt instead of typing. Switch the teammate on in the Team overview (a section of the DD workspace page), or set the stage or classification that brings them in. |
 | A reply states something as checked, gives figures or dates, or makes a call | The model slipped from its brief. | Say so: that is why every reply is labelled "Model output · not sourced" and people decide. |
 
 ## Rehearse without the VPN

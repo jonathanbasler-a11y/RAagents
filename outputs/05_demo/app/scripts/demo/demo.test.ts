@@ -3,6 +3,7 @@ import {
   buildEnv,
   buildPlan,
   decideStart,
+  demoUrls,
   envFilePermissionProblem,
   fakeLlmArgs,
   findEnvFile,
@@ -74,6 +75,17 @@ describe('parseArgs: the mode and the flags', () => {
 
   it.each(['abc', '0', '70000', '3200.5', '-1'])('refuses DEMO_PORT=%s', (port) => {
     expect(() => parseArgs(['live'], { DEMO_PORT: port })).toThrow(/DEMO_PORT must be a port number from 1 to 65535/);
+  });
+});
+
+describe('demoUrls: the pages the launcher shows and opens', () => {
+  it('has the DD workspace (the landing page) and the team chat, and no page that no longer exists', () => {
+    expect(demoUrls(3200)).toEqual({ workspace: 'http://127.0.0.1:3200/', team: 'http://127.0.0.1:3200/team' });
+  });
+
+  it('follows the port', () => {
+    expect(demoUrls(3301).workspace).toBe('http://127.0.0.1:3301/');
+    expect(demoUrls(3301).team).toBe('http://127.0.0.1:3301/team');
   });
 });
 

@@ -114,6 +114,35 @@ describe('SelectionProvider quiet refresh', () => {
     expect([...(result.current.selected ?? [])]).toEqual(['reglead', 'ops']);
   });
 
+  it('drops a read that was overtaken by a switch save', async () => {
+    const client = clientWith(['reglead']);
+    client.setSelection.mockResolvedValue(reply(['reglead', 'label']));
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    let late: (value: ApiResult<SelectionResponse>) => void = () => undefined;
+    client.getSelection.mockImplementation(() => new Promise((resolve) => (late = resolve)));
+
+    await act(async () => tabBecomes('visible'));
+    await act(async () => result.current.setSelected('label', true));
+    await act(async () => late(reply(['reglead'])));
+
+    expect([...(result.current.selected ?? [])]).toEqual(['reglead', 'label']);
+  });
+
+  it('recovers from a failed first load when a quiet read works', async () => {
+    const client = clientWith([]);
+    client.getSelection.mockResolvedValueOnce(failure);
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    client.getSelection.mockResolvedValue(reply(['reglead']));
+
+    await act(async () => tabBecomes('visible'));
+
+    expect(result.current.status).toBe('ready');
+    expect(result.current.loadError).toBeNull();
+    expect(result.current.selected?.has('reglead')).toBe(true);
+  });
+
   it('stops listening when the provider goes away', async () => {
     const client = clientWith(['reglead']);
     const { result, unmount } = mount(client);

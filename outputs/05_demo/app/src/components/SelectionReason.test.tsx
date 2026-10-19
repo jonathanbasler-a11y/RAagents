@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiResult, ChatApi } from '@/client/chat-client';
 import { CYRUS, EMEKA, OLU, OONA, ROSA } from '@/client/test-fixtures';
@@ -62,6 +62,31 @@ describe('SelectionReason', () => {
 
   it('shows the agent\'s usual trigger, not a claim about this DD, while the setup or the selection is unknown', () => {
     renderReason(OONA, ['sp-orphan'], PHASE_2);
+
+    expect(screen.getByText('Usually switched on by the asset classification: Orphan.')).toBeInTheDocument();
+    expect(screen.queryByText(/On because/)).not.toBeInTheDocument();
+  });
+
+  it('makes no claim about this DD while the setup could not be loaded, even though the selection is known', async () => {
+    const client = {
+      getSelection: vi
+        .fn<ChatApi['getSelection']>()
+        .mockResolvedValue(ok<SelectionResponse>({ workspaceId: 'demo', selected: ['sp-orphan'], source: 'saved' })),
+      setSelection: vi.fn<ChatApi['setSelection']>(),
+      getDdSetup: vi
+        .fn<ChatApi['getDdSetup']>()
+        .mockResolvedValue({ ok: false, status: 0, error: null, message: 'Could not reach the server.' }),
+      setDdSetup: vi.fn<ChatApi['setDdSetup']>(),
+    };
+    render(
+      <SelectionProvider client={client}>
+        <DdSetupProvider client={client}>
+          <SelectionReason agent={OONA} />
+        </DdSetupProvider>
+      </SelectionProvider>,
+    );
+    await waitFor(() => expect(client.getDdSetup).toHaveBeenCalled());
+    await waitFor(() => expect(client.getSelection).toHaveBeenCalled());
 
     expect(screen.getByText('Usually switched on by the asset classification: Orphan.')).toBeInTheDocument();
     expect(screen.queryByText(/On because/)).not.toBeInTheDocument();
