@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import type { AutonomyLevel, PublicAgent } from '@/shared/contracts';
 import { Avatar } from './Avatar';
-import { AUTONOMY_LABELS, GROUP_INFO, triggerText } from './labels';
+import { AUTONOMY_LABELS, GROUP_INFO } from './labels';
 import { Markdown } from './Markdown';
+import { SelectionReason } from './SelectionReason';
 import { SelectionSwitch } from './SelectionSwitch';
 
 function Meter({ level }: { level: AutonomyLevel }) {
@@ -27,7 +28,6 @@ const PROFILE_SECTIONS: Array<{ key: keyof PublicAgent['profile']; title: string
 /** One agent on the team page. Spec text is written by people (ink); the remit is marked planned. */
 export function ProfileCard({ agent }: { agent: PublicAgent }) {
   const nameId = `agent-${agent.id}-name`;
-  const trigger = triggerText(agent.trigger);
   return (
     <article className="agent-card" id={`agent-${agent.id}`} aria-labelledby={nameId}>
       <div className="agent-top">
@@ -55,7 +55,7 @@ export function ProfileCard({ agent }: { agent: PublicAgent }) {
         </dt>
         <dd className="planned">{agent.plannedRemit}</dd>
       </dl>
-      {trigger && <p className="trig">{trigger}</p>}
+      <SelectionReason agent={agent} />
       <details className="spec">
         <summary>
           Profile<span className="visually-hidden"> of {agent.name}</span>
