@@ -11,6 +11,7 @@ import type {
   RouteSource,
   TurnStatus,
 } from '@/shared/contracts';
+import type { DocumentTurnState } from '@/shared/data-room';
 import type { SelectionReason } from '@/shared/dd-setup';
 
 /** Display text written by code. Nothing here comes from a model. */
@@ -49,6 +50,51 @@ export const GROUP_INFO: Record<AgentGroup, GroupInfo> = {
     note: 'Built for other playbooks. Off by default for a regulatory DD.',
     collapsed: true,
   },
+};
+
+/** Whether the agents can read documents: unknown while the data room is loading or failed to load. */
+export type DocumentsConnected = 'unknown' | 'none' | 'connected';
+
+const MODEL_OUTPUT = 'Agent replies are model output, not sources.';
+const STAND_IN = 'Replies in practice mode are stand-in text, not model output and not sources.';
+
+/** The line in the header: what is connected, and what a reply is. Unknown is never worded as "no documents". */
+export function phaseLineText(documents: DocumentsConnected, mode: 'live' | 'practice', shown: number): string {
+  const reply = mode === 'practice' ? STAND_IN : MODEL_OUTPUT;
+  if (documents === 'connected') {
+    return `A data room is connected (${shown} ${shown === 1 ? 'document' : 'documents'} shown to the agents). No tools are. ${reply}`;
+  }
+  if (documents === 'unknown') return `No tools are connected. ${reply}`;
+  return `In this phase no documents and no tools are connected. ${reply}`;
+}
+
+/** The lede of the DD workspace page. */
+export function homeLedeText(documents: DocumentsConnected): string {
+  const owners = 'Set up the asset and the team follows. People own every decision and every agent.';
+  const output = 'What they write is model output, not a source.';
+  if (documents === 'connected') {
+    return `${owners} The agents read the documents of the data room and cite them by id; they have no tools. ${output}`;
+  }
+  if (documents === 'unknown') return `${owners} The agents have no tools. ${output}`;
+  return `${owners} In this phase the agents have no documents and no tools: they explain how they would assess something and mark what needs checking. ${output}`;
+}
+
+/** The banner in the evidence checker's room. */
+export function evidenceBannerText(documents: DocumentsConnected, name: string): string {
+  if (documents === 'connected') {
+    return `${name} can check a claim against the documents of the data room and name the document that shows it. He has no tools, so he cannot look anything up outside it.`;
+  }
+  if (documents === 'unknown') return `${name} has no tools, so he cannot look anything up himself.`;
+  return `No documents are connected yet, so ${name} cannot verify anything. He can explain what evidence a claim would need.`;
+}
+
+/** What the agents do with a data-room document, in the data room list. */
+export const DOCUMENT_STATE_LABELS: Record<DocumentTurnState, string> = {
+  shown: 'Agents see it',
+  not_provided: 'Listed, not provided',
+  withdrawn: 'Withdrawn',
+  after_as_of: 'Not shown: dated after the as-of date',
+  too_large: 'Not shown: it did not fit',
 };
 
 export function shortCapability(agent: Pick<PublicAgent, 'capability' | 'shortCapability'>): string {

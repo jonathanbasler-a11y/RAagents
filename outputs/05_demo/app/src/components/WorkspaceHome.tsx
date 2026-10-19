@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { AGENT_GROUPS, type AgentGroup, type PublicAgent } from '@/shared/contracts';
 import type { ChatApi } from '@/client/chat-client';
+import { DataRoomSummary } from './DataRoomSummary';
 import { DdSetupPanel } from './DdSetupPanel';
+import { HomeLede } from './DocumentsNotes';
 import { GROUP_INFO } from './labels';
 import { ProfileCard } from './ProfileCard';
 import { SelectionSummary } from './SelectionSummary';
@@ -54,14 +56,11 @@ export function WorkspaceHome({ agents, client }: { agents: PublicAgent[]; clien
     <div className="team-page">
       <div className="screen-head">
         <h1>DD workspace</h1>
-        <p className="lede">
-          Set up the asset and the team follows. People own every decision and every agent. In this phase the agents
-          have no documents and no tools: they explain how they would assess something and mark what needs checking.
-          What they write is model output, not a source.
-        </p>
+        <HomeLede />
       </div>
 
       <DdSetupPanel agents={roster} />
+      <DataRoomSummary />
 
       <section className="sheet team-entry" aria-labelledby="team-entry-title">
         <div>

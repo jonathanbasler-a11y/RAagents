@@ -9,6 +9,7 @@ import {
   documentsForTurn,
   isIsoDate,
   nextDocumentId,
+  planTurn,
 } from './data-room';
 
 const AS_OF = '2026-10-12';
@@ -81,7 +82,7 @@ describe('checkNewDocument', () => {
   });
 
   it('keeps a given id and origin, and a missing url becomes null', () => {
-    const { url: _url, ...withoutUrl } = good;
+    const withoutUrl = Object.fromEntries(Object.entries(good).filter(([key]) => key !== 'url'));
     const result = checkNewDocument({ ...withoutUrl, id: 'DR-07' }, AS_OF, 'practice-pack');
 
     expect(result.ok && result.document).toMatchObject({ id: 'DR-07', origin: 'practice-pack', url: null });
@@ -245,6 +246,62 @@ describe('documentsForTurn', () => {
     );
 
     expect(result.notShown.map((entry) => entry.id)).toEqual(['DR-03', 'DR-09']);
+  });
+});
+
+describe('planTurn', () => {
+  const item = (id: string, overrides: Partial<{ provided: boolean; publishedAt: string | null; withdrawn: boolean; size: number }> = {}) => ({
+    id,
+    provided: true,
+    publishedAt: '2026-07-01',
+    withdrawn: false,
+    size: 10,
+    ...overrides,
+  });
+
+  it('gives each document one state, in numeric id order', () => {
+    const plan = planTurn(
+      [
+        item('DR-10'),
+        item('DR-02', { withdrawn: true }),
+        item('DR-03', { provided: false, publishedAt: null }),
+        item('DR-04', { publishedAt: '2026-10-13' }),
+        item('DR-05', { publishedAt: null }),
+        item('DR-06', { size: 1000 }),
+        item('DR-100'),
+      ],
+      AS_OF,
+      100,
+    );
+
+    expect(plan).toEqual([
+      { id: 'DR-02', state: 'withdrawn' },
+      { id: 'DR-03', state: 'not_provided' },
+      { id: 'DR-04', state: 'after_as_of' },
+      { id: 'DR-05', state: 'after_as_of' },
+      { id: 'DR-06', state: 'too_large' },
+      { id: 'DR-10', state: 'shown' },
+      { id: 'DR-100', state: 'shown' },
+    ]);
+  });
+
+  it('counts only shown documents against the room left, and a withdrawn one takes none', () => {
+    const plan = planTurn([item('DR-01', { size: 60, withdrawn: true }), item('DR-02', { size: 60 }), item('DR-03', { size: 60 }), item('DR-04', { size: 40 })], AS_OF, 100);
+
+    expect(plan.map((entry) => entry.state)).toEqual(['withdrawn', 'shown', 'too_large', 'shown']);
+  });
+
+  it('agrees with documentsForTurn on the same room', () => {
+    const documents = [doc({ id: 'DR-01', text: 'a'.repeat(60) }), doc({ id: 'DR-02', text: 'b'.repeat(60) }), doc({ id: 'DR-09', provided: false, text: null, publishedAt: null })];
+    const turn = documentsForTurn(room(documents), 100);
+    const plan = planTurn(
+      documents.map((entry) => ({ id: entry.id, provided: entry.provided, publishedAt: entry.publishedAt, withdrawn: entry.withdrawnAt !== null, size: entry.text?.length ?? 0 })),
+      AS_OF,
+      100,
+    );
+
+    expect(plan.filter((entry) => entry.state === 'shown').map((entry) => entry.id)).toEqual(turn.shown.map((entry) => entry.id));
+    expect(plan.filter((entry) => entry.state !== 'shown')).toEqual(turn.notShown.map((entry) => ({ id: entry.id, state: entry.reason })));
   });
 });
 

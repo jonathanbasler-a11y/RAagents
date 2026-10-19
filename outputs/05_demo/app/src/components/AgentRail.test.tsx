@@ -17,12 +17,13 @@ beforeEach(() => {
 });
 
 describe('AgentRail', () => {
-  it('links the DD workspace, the team chat and every agent, grouped as in mockup v2', () => {
+  it('links the DD workspace, the data room, the team chat and every agent, grouped as in mockup v2', () => {
     render(<AgentRail agents={ROSTER} />);
 
     const nav = screen.getByRole('navigation', { name: 'Rooms' });
     expect(within(nav).getByRole('link', { name: 'Team chat' })).toHaveAttribute('href', '/team');
     expect(within(nav).getByRole('link', { name: 'DD workspace' })).toHaveAttribute('href', '/');
+    expect(within(nav).getByRole('link', { name: 'Data room' })).toHaveAttribute('href', '/data-room');
     for (const heading of ['Regulatory function', 'Specialists by asset', 'Team roles', 'Other functions']) {
       expect(within(nav).getByText(heading)).toBeInTheDocument();
     }
@@ -64,19 +65,26 @@ describe('AgentRail', () => {
     expect(screen.getByRole('link', { name: 'DD workspace' })).not.toHaveAttribute('aria-current');
   });
 
-  it('has two entries above the agents, the DD workspace and the team chat, and marks the one you are on', () => {
+  it('has three entries above the agents, the DD workspace, the data room and the team chat, and marks the one you are on', () => {
     const { unmount } = render(<AgentRail agents={ROSTER} />);
     const top = screen.getByRole('link', { name: 'Team chat' }).closest('ul');
     expect(top).not.toBeNull();
-    expect(within(top as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['DD workspace', 'Team chat']);
+    expect(within(top as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['DD workspace', 'Data room', 'Team chat']);
     expect(screen.getByRole('link', { name: 'DD workspace' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Team chat' })).not.toHaveAttribute('aria-current');
     expect(screen.queryByRole('link', { name: /illustrative/i })).not.toBeInTheDocument();
     unmount();
 
+    pathname.current = '/data-room';
+    const second = render(<AgentRail agents={ROSTER} />);
+    expect(screen.getByRole('link', { name: 'Data room' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'DD workspace' })).not.toHaveAttribute('aria-current');
+    second.unmount();
+
     pathname.current = '/chat/reglead';
     render(<AgentRail agents={ROSTER} />);
     expect(screen.getByRole('link', { name: 'DD workspace' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Data room' })).not.toHaveAttribute('aria-current');
   });
 
   it('shows who is selected for this DD once the selection is known', async () => {

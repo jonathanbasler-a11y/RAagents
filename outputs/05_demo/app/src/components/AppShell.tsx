@@ -3,8 +3,10 @@ import type { ReactNode } from 'react';
 import type { DemoMode } from '@/shared/contracts';
 import { AgentRail } from './AgentRail';
 import { PracticeBanner } from './Banners';
+import { DataRoomProvider } from './DataRoomProvider';
 import { DdSetupProvider } from './DdSetupProvider';
 import { DemoModeProvider } from './DemoMode';
+import { PhaseLine } from './DocumentsNotes';
 import type { AgentsLoad } from './load-agents';
 import { SelectionProvider } from './SelectionProvider';
 
@@ -34,33 +36,31 @@ export function AppShell({
           {CONFIDENTIAL_BANNER}
         </div>
         <PracticeBanner mode={mode} />
-        <header className="docbar">
-          <Link href="/" className="product">
-            <b>Digital Human Hybrid Team</b>
-            <span>Agent personas · team chat and 1:1 rooms</span>
-          </Link>
-          <p className="doc-control">
-            {mode === 'practice'
-              ? 'In this phase no documents and no tools are connected. Replies in practice mode are stand-in text, not model output and not sources.'
-              : 'In this phase no documents and no tools are connected. Agent replies are model output, not sources.'}
-          </p>
-        </header>
-        <SelectionProvider>
-          <DdSetupProvider>
-            <div className="shell">
-              {agentsLoad.ok ? (
-                <AgentRail agents={agentsLoad.agents} />
-              ) : (
-                <nav className="rail" aria-label="Rooms">
-                  <p className="note rail-note">Agents unavailable: see the setup message.</p>
-                </nav>
-              )}
-              <main id="main" className="main" tabIndex={-1}>
-                {children}
-              </main>
-            </div>
-          </DdSetupProvider>
-        </SelectionProvider>
+        <DataRoomProvider>
+          <header className="docbar">
+            <Link href="/" className="product">
+              <b>Digital Human Hybrid Team</b>
+              <span>Agent personas · team chat and 1:1 rooms</span>
+            </Link>
+            <PhaseLine mode={mode} />
+          </header>
+          <SelectionProvider>
+            <DdSetupProvider>
+              <div className="shell">
+                {agentsLoad.ok ? (
+                  <AgentRail agents={agentsLoad.agents} />
+                ) : (
+                  <nav className="rail" aria-label="Rooms">
+                    <p className="note rail-note">Agents unavailable: see the setup message.</p>
+                  </nav>
+                )}
+                <main id="main" className="main" tabIndex={-1}>
+                  {children}
+                </main>
+              </div>
+            </DdSetupProvider>
+          </SelectionProvider>
+        </DataRoomProvider>
       </div>
     </DemoModeProvider>
   );

@@ -9,9 +9,14 @@ import type {
   PostTurnRequest,
   RoomId,
   RoomMessagesResponse,
+  AddDocumentRequest,
+  DataRoomDocumentResponse,
+  DataRoomResponse,
+  DataRoomStartRequest,
   DdSetup,
   DdSetupResponse,
   DdSetupUpdateRequest,
+  WithdrawDocumentRequest,
   SelectionResponse,
   SelectionUpdateRequest,
   TurnDuplicateResponse,
@@ -113,6 +118,13 @@ export interface ChatApi {
   getDdSetup(): Promise<ApiResult<DdSetupResponse>>;
   /** Saves the whole DD setup; the reply carries the selection that follows from it. */
   setDdSetup(setup: DdSetup): Promise<ApiResult<DdSetupResponse>>;
+  getDataRoom(): Promise<ApiResult<DataRoomResponse>>;
+  /** One document with its text. */
+  getDocument(documentId: string): Promise<ApiResult<DataRoomDocumentResponse>>;
+  /** Starts the workspace's data room, empty with an as-of date or with the fictional practice case. */
+  startDataRoom(request: DataRoomStartRequest): Promise<ApiResult<DataRoomResponse>>;
+  addDocument(request: AddDocumentRequest): Promise<ApiResult<DataRoomDocumentResponse>>;
+  withdrawDocument(documentId: string, reason: string): Promise<ApiResult<DataRoomDocumentResponse>>;
 }
 
 const UNREACHABLE_MESSAGE = 'Could not reach the server. Check the connection and try again.';
@@ -263,10 +275,39 @@ export function createChatClient(deps: ChatClientDeps = {}): ChatApi {
     getDdSetup: () => requestJson<DdSetupResponse>('/api/dd-setup', { headers: { Accept: 'application/json' } }),
     setDdSetup: (setup) =>
       postJson<DdSetupResponse>('/api/dd-setup', { stage: setup.stage, classifications: setup.classifications } satisfies DdSetupUpdateRequest),
+    getDataRoom: () => requestJson<DataRoomResponse>('/api/data-room', { headers: { Accept: 'application/json' } }),
+    getDocument: (documentId) =>
+      requestJson<DataRoomDocumentResponse>(`/api/data-room/documents/${encodeURIComponent(documentId)}`, { headers: { Accept: 'application/json' } }),
+    startDataRoom: (request) => postJson<DataRoomResponse>('/api/data-room', request),
+    addDocument: (request) =>
+      postJson<DataRoomDocumentResponse>('/api/data-room/documents', {
+        title: request.title,
+        sourceType: request.sourceType,
+        publishedAt: request.publishedAt,
+        url: request.url,
+        provided: request.provided,
+        text: request.text,
+      } satisfies AddDocumentRequest),
+    withdrawDocument: (documentId, reason) =>
+      postJson<DataRoomDocumentResponse>(`/api/data-room/documents/${encodeURIComponent(documentId)}`, { action: 'withdraw', reason } satisfies WithdrawDocumentRequest),
   };
 }
 
 /** The app's client: global fetch, crypto and Intl, looked up when each call is made. */
 export const chatClient: ChatApi = createChatClient();
 
-export const { postTurn, getMessages, newConversation, getHealth, getSelection, setSelection, getDdSetup, setDdSetup } = chatClient;
+export const {
+  postTurn,
+  getMessages,
+  newConversation,
+  getHealth,
+  getSelection,
+  setSelection,
+  getDdSetup,
+  setDdSetup,
+  getDataRoom,
+  getDocument,
+  startDataRoom,
+  addDocument,
+  withdrawDocument,
+} = chatClient;

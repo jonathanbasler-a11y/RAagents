@@ -142,8 +142,8 @@ export async function postDocument(request: Request, deps: ApiDeps): Promise<Res
     );
     if (!checked.ok) return apiError('invalid_request', correlationId, { message: checked.message });
 
-    const { id: _id, ...fields } = checked.document;
-    const document = store.addDocument(workspaceId, { ...fields, origin: 'added' });
+    const { title, sourceType, publishedAt, url, provided, text } = checked.document;
+    const document = store.addDocument(workspaceId, { title, sourceType, publishedAt, url, provided, text, origin: 'added' });
     return json({ document } satisfies DataRoomDocumentResponse);
   } catch (error) {
     if (error instanceof NoDataRoomError) return apiError('no_data_room', correlationId);

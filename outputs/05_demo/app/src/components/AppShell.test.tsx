@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROSTER } from '@/client/test-fixtures';
 import type { TimelineItem } from '@/client/timeline';
 import { AppShell } from './AppShell';
+import { DataRoomPanel } from './DataRoomPanel';
 import { DdSetupPanel } from './DdSetupPanel';
 import { AgentBubble } from './MessageBubble';
 
@@ -23,8 +24,38 @@ const AGENT_ITEM = {
 const pathname = vi.hoisted(() => ({ current: '/' }));
 vi.mock('next/navigation', () => ({ usePathname: () => pathname.current }));
 
+const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+const LIMITS = { documentChars: 12_000, turnChars: 48_000 };
+const SETUP = { stage: 'Phase 2', classifications: ['orphan'] };
+const SELECTION = { workspaceId: 'demo', selected: ['reglead'], source: 'saved' };
+
+/** The server as the shell's providers see it: a DD setup, a selection and a data room (null: none started). */
+function stubServer(dataRoom: { asOf: string; documents: unknown[] } | null) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.includes('dd-setup')) return json({ workspaceId: 'demo', setup: SETUP, source: 'saved', selection: SELECTION });
+      if (path.includes('data-room')) {
+        return json({ workspaceId: 'demo', dataRoom: dataRoom && { createdAt: 'x', ...dataRoom }, practiceAvailable: true, limits: LIMITS });
+      }
+      return json(SELECTION);
+    }),
+  );
+}
+
+const DOC = (id: string, overrides: Record<string, unknown> = {}) => ({
+  id, title: id, sourceType: 'company-disclosure', publishedAt: '2026-07-01', url: null, provided: true, origin: 'added', addedAt: 'x',
+  withdrawnAt: null, withdrawnReason: null, chars: 100, ...overrides,
+});
+
 beforeEach(() => {
   pathname.current = '/';
+  stubServer(null);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 function renderShell() {
@@ -61,21 +92,7 @@ describe('AppShell navigation', () => {
 });
 
 describe('AppShell DD setup', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it('mounts the DD setup for the pages below it', async () => {
-    const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    const setup = { stage: 'Phase 2', classifications: ['orphan'] };
-    const selection = { workspaceId: 'demo', selected: ['reglead'], source: 'saved' };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) =>
-        String(input).includes('dd-setup') ? json({ workspaceId: 'demo', setup, source: 'saved', selection }) : json(selection),
-      ),
-    );
-
     render(
       <AppShell agentsLoad={{ ok: true, agents: ROSTER }}>
         <DdSetupPanel agents={ROSTER} />
@@ -83,6 +100,41 @@ describe('AppShell DD setup', () => {
     );
 
     expect(await screen.findByRole('radio', { name: 'Phase 2' })).toBeChecked();
+  });
+});
+
+describe('AppShell data room', () => {
+  it('mounts the data room for the pages below it', async () => {
+    stubServer({ asOf: '2026-10-12', documents: [DOC('DR-01')] });
+
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }}>
+        <DataRoomPanel />
+      </AppShell>,
+    );
+
+    expect(await screen.findByRole('row', { name: /^DR-01/ })).toBeInTheDocument();
+  });
+
+  it('says in the header that no documents are connected when there is no data room', async () => {
+    renderShell();
+
+    expect(await within(screen.getByRole('banner')).findByText('In this phase no documents and no tools are connected. Agent replies are model output, not sources.')).toBeInTheDocument();
+  });
+
+  it('says in the header that a data room is connected once there is one', async () => {
+    stubServer({ asOf: '2026-10-12', documents: [DOC('DR-01'), DOC('DR-02')] });
+    renderShell();
+
+    expect(await within(screen.getByRole('banner')).findByText('A data room is connected (2 documents shown to the agents). No tools are. Agent replies are model output, not sources.')).toBeInTheDocument();
+  });
+
+  it('claims nothing about documents before it knows', () => {
+    renderShell();
+
+    const header = screen.getByRole('banner');
+    expect(header).toHaveTextContent('No tools are connected. Agent replies are model output, not sources.');
+    expect(header).not.toHaveTextContent(/no documents/i);
   });
 });
 
@@ -102,7 +154,7 @@ describe('AppShell in practice mode', () => {
     expect(practiceBanner.compareDocumentPosition(screen.getByRole('banner')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('stops calling replies model output in the header line', () => {
+  it('stops calling replies model output in the header line', async () => {
     render(
       <AppShell agentsLoad={{ ok: true, agents: ROSTER }} mode="practice">
         <p>Page body</p>
@@ -110,7 +162,9 @@ describe('AppShell in practice mode', () => {
     );
 
     const header = screen.getByRole('banner');
-    expect(header).toHaveTextContent('In this phase no documents and no tools are connected. Replies in practice mode are stand-in text, not model output and not sources.');
+    await waitFor(() =>
+      expect(header).toHaveTextContent('In this phase no documents and no tools are connected. Replies in practice mode are stand-in text, not model output and not sources.'),
+    );
     expect(header).not.toHaveTextContent('Agent replies are model output');
   });
 

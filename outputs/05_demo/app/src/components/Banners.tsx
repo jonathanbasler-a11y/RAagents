@@ -1,5 +1,6 @@
 import type { LlmSetupStatus } from '@/shared/contracts';
-import { PRACTICE_MODE_BANNER } from './labels';
+import { useDocumentsConnected } from './DataRoomProvider';
+import { PRACTICE_MODE_BANNER, evidenceBannerText } from './labels';
 
 /**
  * Practice mode: replies come from the stand-in model. Persistent and not dismissible: it is
@@ -37,11 +38,12 @@ export function SetupBanner({ llm }: { llm: LlmSetupStatus }) {
   );
 }
 
-/** The evidence checker's room: no documents are connected in this phase. */
+/** The evidence checker's room: what he can check, which depends on whether a data room is connected. */
 export function EvidenceBanner({ name }: { name: string }) {
+  const { documents } = useDocumentsConnected();
   return (
     <p className="banner-room" role="note">
-      No documents are connected yet, so {name} cannot verify anything. He can explain what evidence a claim would need.
+      {evidenceBannerText(documents, name)}
     </p>
   );
 }

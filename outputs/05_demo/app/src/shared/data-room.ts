@@ -159,24 +159,63 @@ export interface TurnDocuments {
   notShown: Array<{ id: string; reason: NotShownReason }>;
 }
 
+export type DocumentTurnState = 'shown' | NotShownReason;
+
+/** What the plan needs to know about a document: no text, so a list on a page can use it too. */
+export interface TurnPlanItem {
+  id: string;
+  provided: boolean;
+  publishedAt: string | null;
+  withdrawn: boolean;
+  /** Characters of text. */
+  size: number;
+}
+
+/**
+ * What one turn does with each document, in numeric id order. The rule, in one place: a document is left out when it was
+ * withdrawn, was never provided, is undated or dated after the as-of date, or does not fit the room left in the prompt
+ * (`limit` characters in all; a later, smaller document may still fit after one that did not).
+ */
+export function planTurn(items: readonly TurnPlanItem[], asOf: string, limit: number = MAX_TURN_DOCUMENT_CHARS): Array<{ id: string; state: DocumentTurnState }> {
+  let used = 0;
+  return [...items].sort(compareDocumentIds).map((item) => {
+    let state: DocumentTurnState;
+    if (item.withdrawn) state = 'withdrawn';
+    else if (!item.provided) state = 'not_provided';
+    else if (item.publishedAt === null || item.publishedAt > asOf) state = 'after_as_of';
+    else if (used + item.size > limit) state = 'too_large';
+    else {
+      used += item.size;
+      state = 'shown';
+    }
+    return { id: item.id, state };
+  });
+}
+
 /**
  * The documents a turn shows, in id order. A document is left out, and the reason kept, when it was withdrawn, was
  * never provided, is undated or dated after the as-of date, or does not fit the room left in the prompt (`limit`
  * characters of text in all; a later, smaller document may still fit after one that did not).
  */
 export function documentsForTurn(room: DataRoom, limit: number = MAX_TURN_DOCUMENT_CHARS): TurnDocuments {
+  const byId = new Map(room.documents.map((document) => [document.id, document]));
+  const plan = planTurn(
+    room.documents.map((document) => ({
+      id: document.id,
+      // A provided document with no text cannot be shown; the store never makes one, and this keeps the rule safe if one appears.
+      provided: document.provided && document.text !== null,
+      publishedAt: document.publishedAt,
+      withdrawn: document.withdrawnAt !== null,
+      size: document.text?.length ?? 0,
+    })),
+    room.asOf,
+    limit,
+  );
   const shown: DataRoomDocument[] = [];
   const notShown: TurnDocuments['notShown'] = [];
-  let used = 0;
-  for (const document of [...room.documents].sort(compareDocumentIds)) {
-    if (document.withdrawnAt !== null) notShown.push({ id: document.id, reason: 'withdrawn' });
-    else if (!document.provided || document.text === null) notShown.push({ id: document.id, reason: 'not_provided' });
-    else if (document.publishedAt === null || document.publishedAt > room.asOf) notShown.push({ id: document.id, reason: 'after_as_of' });
-    else if (used + document.text.length > limit) notShown.push({ id: document.id, reason: 'too_large' });
-    else {
-      used += document.text.length;
-      shown.push(document);
-    }
+  for (const { id, state } of plan) {
+    if (state === 'shown') shown.push(byId.get(id) as DataRoomDocument);
+    else notShown.push({ id, reason: state });
   }
   return { asOf: room.asOf, shown, notShown };
 }
