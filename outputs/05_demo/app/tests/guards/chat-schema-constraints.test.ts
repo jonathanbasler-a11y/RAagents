@@ -97,3 +97,35 @@ describe('turns: the database refuses two turns at the same place in a thread', 
     expect(() => insert.run('turn-c', thread.id, 6, 'client-c', START, START, DEADLINE)).not.toThrow();
   });
 });
+
+describe('dd_setup: the database refuses rows the code never writes', () => {
+  const insertSetup = (raw: SqliteDatabase) =>
+    raw.prepare('INSERT INTO dd_setup (workspace_id, stage, classifications, updated_at) VALUES (?, ?, ?, ?)');
+
+  it('refuses a stage that is not a development stage, and accepts one that is (positive control)', () => {
+    const { raw } = openWithOneTurn();
+    const insert = insertSetup(raw);
+
+    expect(() => insert.run('ws-a', 'Phase 4', '[]', START)).toThrow(/CHECK/);
+    expect(() => insert.run('ws-b', 'phase 2', '[]', START)).toThrow(/CHECK/);
+    expect(() => insert.run('ws-c', 'Phase 2', '["orphan"]', START)).not.toThrow();
+  });
+
+  it('refuses classifications that are not a JSON array', () => {
+    const { raw } = openWithOneTurn();
+    const insert = insertSetup(raw);
+
+    expect(() => insert.run('ws-a', 'Phase 2', 'orphan', START)).toThrow(/CHECK/);
+    expect(() => insert.run('ws-b', 'Phase 2', '{"orphan":true}', START)).toThrow(/CHECK/);
+    expect(() => insert.run('ws-c', 'Phase 2', '"orphan"', START)).toThrow(/CHECK/);
+    expect(() => insert.run('ws-d', 'Phase 2', '[]', START)).not.toThrow();
+  });
+
+  it('keeps one setup per workspace', () => {
+    const { raw } = openWithOneTurn();
+    const insert = insertSetup(raw);
+
+    expect(() => insert.run('ws-a', 'Phase 2', '[]', START)).not.toThrow();
+    expect(() => insert.run('ws-a', 'Filed', '[]', START)).toThrow(/UNIQUE|PRIMARY/);
+  });
+});
