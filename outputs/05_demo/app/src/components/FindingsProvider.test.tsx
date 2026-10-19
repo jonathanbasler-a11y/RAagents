@@ -20,7 +20,7 @@ const register = (findings: FindingsResponse['findings'] = [], openQuestions: Fi
 function clientWith(initial: FindingsResponse = register()) {
   return {
     getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue(ok(initial)),
-    decideFinding: vi.fn<ChatApi['decideFinding']>(),
+    submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
   };
 }
 
@@ -87,7 +87,7 @@ describe('FindingsProvider: deciding', () => {
   it('replaces the finding with what the server saved, sends only the decision and the note', async () => {
     const client = clientWith(register([finding('F-001'), finding('F-002')]));
     const saved = finding('F-001', { status: 'accepted', decidedBy: 'person (local, not authenticated)', decidedAt: '2026-10-12T09:00:00.000Z' });
-    client.decideFinding.mockResolvedValue(ok<FindingDecisionResponse>({ finding: saved }));
+    client.submitFindingDecision.mockResolvedValue(ok<FindingDecisionResponse>({ finding: saved }));
     const { result } = mount(client);
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
@@ -97,7 +97,7 @@ describe('FindingsProvider: deciding', () => {
     });
 
     expect(accepted).toBe(true);
-    expect(client.decideFinding).toHaveBeenCalledWith('F-001', 'accept', 'Checked.');
+    expect(client.submitFindingDecision).toHaveBeenCalledWith('F-001', 'accept', 'Checked.');
     expect(result.current.findings?.map((entry) => [entry.id, entry.status])).toEqual([['F-001', 'accepted'], ['F-002', 'draft']]);
     expect(result.current.deciding).toBeNull();
   });
@@ -105,7 +105,7 @@ describe('FindingsProvider: deciding', () => {
   it('ignores a second decision while one is being saved', async () => {
     const client = clientWith(register([finding('F-001'), finding('F-002')]));
     let finish: (value: ApiResult<FindingDecisionResponse>) => void = () => undefined;
-    client.decideFinding.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
+    client.submitFindingDecision.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
     const { result } = mount(client);
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
@@ -120,7 +120,7 @@ describe('FindingsProvider: deciding', () => {
     });
 
     expect(second).toBe(false);
-    expect(client.decideFinding).toHaveBeenCalledTimes(1);
+    expect(client.submitFindingDecision).toHaveBeenCalledTimes(1);
     await act(async () => {
       finish(ok({ finding: finding('F-001', { status: 'rejected' }) }));
       await first;
@@ -130,7 +130,7 @@ describe('FindingsProvider: deciding', () => {
 
   it('keeps the draft a draft when the decision is not saved, says which finding, and reads the register again after a 409', async () => {
     const client = clientWith(register([finding('F-001')]));
-    client.decideFinding.mockResolvedValue(failure('This finding was already decided.', 409, 'c-2'));
+    client.submitFindingDecision.mockResolvedValue(failure('This finding was already decided.', 409, 'c-2'));
     const { result } = mount(client);
     await waitFor(() => expect(result.current.status).toBe('ready'));
     client.getFindings.mockResolvedValue(ok(register([finding('F-001', { status: 'rejected' })])));
@@ -147,7 +147,7 @@ describe('FindingsProvider: deciding', () => {
 
   it('clears the old error when the next decision starts', async () => {
     const client = clientWith(register([finding('F-001')]));
-    client.decideFinding.mockResolvedValueOnce(failure('Could not reach the server.', 0));
+    client.submitFindingDecision.mockResolvedValueOnce(failure('Could not reach the server.', 0));
     const { result } = mount(client);
     await waitFor(() => expect(result.current.status).toBe('ready'));
     await act(async () => {
@@ -155,7 +155,7 @@ describe('FindingsProvider: deciding', () => {
     });
     expect(result.current.decideError).not.toBeNull();
 
-    client.decideFinding.mockResolvedValueOnce(ok({ finding: finding('F-001', { status: 'accepted' }) }));
+    client.submitFindingDecision.mockResolvedValueOnce(ok({ finding: finding('F-001', { status: 'accepted' }) }));
     await act(async () => {
       await result.current.decide('F-001', 'accept');
     });

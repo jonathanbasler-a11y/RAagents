@@ -14,7 +14,7 @@ import {
 import type { Finding, FindingDecisionRequest, FindingsResponse, OpenQuestion } from '@/shared/contracts';
 import { chatClient, type ApiResult, type ChatApi } from '@/client/chat-client';
 
-export type FindingsClient = Pick<ChatApi, 'getFindings' | 'decideFinding'>;
+export type FindingsClient = Pick<ChatApi, 'getFindings' | 'submitFindingDecision'>;
 
 export interface FindingsProblem {
   message: string;
@@ -127,7 +127,7 @@ export function FindingsProvider({ children, client = chatClient }: { children: 
       setDeciding(findingId);
       setDecideError(null);
       try {
-        const result = await client.decideFinding(findingId, decision, note);
+        const result = await client.submitFindingDecision(findingId, decision, note);
         if (!result.ok) {
           setDecideError({ ...problemOf(result), findingId });
           // Someone else decided it, or its document was withdrawn: show what is saved, not what was on screen.

@@ -133,7 +133,7 @@ export interface ChatApi {
   withdrawDocument(documentId: string, reason: string): Promise<ApiResult<DataRoomDocumentResponse>>;
   getFindings(): Promise<ApiResult<FindingsResponse>>;
   /** A person's decision on one draft finding. The server records who decided; this sends only the decision and a note. */
-  decideFinding(findingId: string, decision: FindingDecisionRequest['decision'], note?: string): Promise<ApiResult<FindingDecisionResponse>>;
+  submitFindingDecision(findingId: string, decision: FindingDecisionRequest['decision'], note?: string): Promise<ApiResult<FindingDecisionResponse>>;
 }
 
 const UNREACHABLE_MESSAGE = 'Could not reach the server. Check the connection and try again.';
@@ -298,7 +298,7 @@ export function createChatClient(deps: ChatClientDeps = {}): ChatApi {
         text: request.text,
       } satisfies AddDocumentRequest),
     getFindings: () => requestJson<FindingsResponse>('/api/findings', { headers: { Accept: 'application/json' } }),
-    decideFinding: (findingId, decision, note) =>
+    submitFindingDecision: (findingId, decision, note) =>
       postJson<FindingDecisionResponse>(`/api/findings/${encodeURIComponent(findingId)}`, {
         decision,
         ...(note ? { note } : {}),
@@ -326,5 +326,5 @@ export const {
   addDocument,
   withdrawDocument,
   getFindings,
-  decideFinding,
+  submitFindingDecision,
 } = chatClient;

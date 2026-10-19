@@ -12,7 +12,7 @@ const ok = <T,>(data: T): ApiResult<T> => ({ ok: true, data });
 function renderSummary(result: ApiResult<FindingsResponse> | Promise<ApiResult<FindingsResponse>>) {
   const client = {
     getFindings: vi.fn<ChatApi['getFindings']>().mockImplementation(() => Promise.resolve(result)),
-    decideFinding: vi.fn<ChatApi['decideFinding']>(),
+    submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
   };
   return render(
     <FindingsProvider client={client}>

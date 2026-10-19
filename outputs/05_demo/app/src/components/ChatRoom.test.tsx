@@ -115,7 +115,7 @@ function fakeApi(overrides: Partial<ChatApi> = {}): ChatApi {
     addDocument: vi.fn<ChatApi['addDocument']>(),
     withdrawDocument: vi.fn<ChatApi['withdrawDocument']>(),
     getFindings: vi.fn<ChatApi['getFindings']>(),
-    decideFinding: vi.fn<ChatApi['decideFinding']>(),
+    submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
     ...overrides,
   };
 }

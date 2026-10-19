@@ -46,7 +46,7 @@ function roomWith(withdrawn: string[] = []): DataRoomResponse {
 function setup(initial: FindingsResponse, room: DataRoomResponse = roomWith()) {
   const client = {
     getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue(ok(initial)),
-    decideFinding: vi.fn<ChatApi['decideFinding']>(),
+    submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
   };
   const dataRoomClient = {
     getDataRoom: vi.fn<ChatApi['getDataRoom']>().mockResolvedValue(ok(room)),
@@ -91,7 +91,7 @@ describe('FindingsPanel', () => {
   it('offers a retry when the register cannot be read, and does not claim it is empty', async () => {
     const client = {
       getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue({ ok: false, status: 0, error: null, message: 'Could not reach the server.' }),
-      decideFinding: vi.fn<ChatApi['decideFinding']>(),
+      submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
     };
     render(
       <FindingsProvider client={client}>
@@ -124,7 +124,7 @@ describe('FindingsPanel', () => {
 
   it('accepts with the note, and the card moves to Decided with the honest stamp', async () => {
     const client = setup(register([finding('F-001'), finding('F-002')]));
-    client.decideFinding.mockResolvedValue(
+    client.submitFindingDecision.mockResolvedValue(
       ok({ finding: finding('F-001', { status: 'accepted', decidedAt: '2026-10-12T09:30:00.000Z', decidedBy: LOCAL_PERSON, decisionNote: 'Checked against the label.' }) }),
     );
     const card = await screen.findByRole('article', { name: 'F-001' });
@@ -132,7 +132,7 @@ describe('FindingsPanel', () => {
     await userEvent.type(within(card).getByLabelText('Note (optional)'), 'Checked against the label.');
     await userEvent.click(within(card).getByRole('button', { name: 'Accept F-001' }));
 
-    await waitFor(() => expect(client.decideFinding).toHaveBeenCalledWith('F-001', 'accept', 'Checked against the label.'));
+    await waitFor(() => expect(client.submitFindingDecision).toHaveBeenCalledWith('F-001', 'accept', 'Checked against the label.'));
     const decided = await screen.findByRole('region', { name: 'Decided' });
     const stamp = within(decided).getByRole('article', { name: 'F-001' });
     expect(stamp).toHaveTextContent('Accepted by person (local, not authenticated) on 2026-10-12.');
@@ -143,17 +143,17 @@ describe('FindingsPanel', () => {
 
   it('rejects without a note', async () => {
     const client = setup(register([finding('F-001')]));
-    client.decideFinding.mockResolvedValue(ok({ finding: finding('F-001', { status: 'rejected', decidedAt: '2026-10-12T09:30:00.000Z', decidedBy: LOCAL_PERSON }) }));
+    client.submitFindingDecision.mockResolvedValue(ok({ finding: finding('F-001', { status: 'rejected', decidedAt: '2026-10-12T09:30:00.000Z', decidedBy: LOCAL_PERSON }) }));
 
     await userEvent.click(await screen.findByRole('button', { name: 'Reject F-001' }));
 
-    await waitFor(() => expect(client.decideFinding).toHaveBeenCalledWith('F-001', 'reject', ''));
+    await waitFor(() => expect(client.submitFindingDecision).toHaveBeenCalledWith('F-001', 'reject', ''));
     expect(await screen.findByText(/Rejected by person \(local, not authenticated\)/)).toBeInTheDocument();
   });
 
   it('keeps the draft and says why when a decision is not saved', async () => {
     const client = setup(register([finding('F-001')]));
-    client.decideFinding.mockResolvedValue({
+    client.submitFindingDecision.mockResolvedValue({
       ok: false,
       status: 409,
       error: { error: 'finding_decided', message: 'This finding was already decided.', correlationId: 'c-7' },

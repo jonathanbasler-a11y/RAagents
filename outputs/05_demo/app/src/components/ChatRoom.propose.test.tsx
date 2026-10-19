@@ -87,7 +87,7 @@ function api(messages: RoomMessagesResponse, room: DataRoomResponse) {
     addDocument: vi.fn<ChatApi['addDocument']>(),
     withdrawDocument: vi.fn<ChatApi['withdrawDocument']>(),
     getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue(ok(EMPTY_REGISTER)),
-    decideFinding: vi.fn<ChatApi['decideFinding']>(),
+    submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
   } satisfies ChatApi;
 }
 

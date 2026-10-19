@@ -428,9 +428,9 @@ describe('findings', () => {
     const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { finding: {} }));
     const chat = client(fetchImpl);
 
-    await chat.decideFinding('F-001', 'accept', 'Checked against the label.');
-    await chat.decideFinding('F-002', 'reject');
-    await chat.decideFinding('a/b?c', 'accept', '');
+    await chat.submitFindingDecision('F-001', 'accept', 'Checked against the label.');
+    await chat.submitFindingDecision('F-002', 'reject');
+    await chat.submitFindingDecision('a/b?c', 'accept', '');
 
     const [accepted, rejected, odd] = fetchImpl.mock.calls;
     expect(accepted[0]).toBe('/api/findings/F-001');
@@ -445,7 +445,7 @@ describe('findings', () => {
     const body = { error: 'finding_decided', message: 'This finding was already decided.', correlationId: 'c-9' };
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(409, body));
 
-    const result = await client(fetchImpl).decideFinding('F-001', 'accept');
+    const result = await client(fetchImpl).submitFindingDecision('F-001', 'accept');
 
     expect(result).toEqual({ ok: false, status: 409, error: body, message: body.message });
   });
