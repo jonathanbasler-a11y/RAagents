@@ -11,6 +11,7 @@ import type {
   RouteSource,
   TurnStatus,
 } from '@/shared/contracts';
+import type { DataRoomTrace } from '@/shared/contracts';
 import type { DocumentTurnState } from '@/shared/data-room';
 import type { SelectionReason } from '@/shared/dd-setup';
 
@@ -86,6 +87,22 @@ export function evidenceBannerText(documents: DocumentsConnected, name: string):
   }
   if (documents === 'unknown') return `${name} has no tools, so he cannot look anything up himself.`;
   return `No documents are connected yet, so ${name} cannot verify anything. He can explain what evidence a claim would need.`;
+}
+
+const NOT_SHOWN_WORDS: Record<DataRoomTrace['notShown'][number]['reason'], string> = {
+  not_provided: 'listed, not provided',
+  withdrawn: 'withdrawn',
+  after_as_of: 'dated after the as-of date',
+  too_large: 'did not fit',
+};
+
+/** "How this turn ran": what the agents of the turn saw of the data room. Written by code from the stored trace. */
+export function dataRoomTraceText(trace: DataRoomTrace): string {
+  const parts = [`As of ${trace.asOf}.`, `Shown: ${trace.shown.length === 0 ? 'none' : trace.shown.join(', ')}.`];
+  if (trace.notShown.length > 0) {
+    parts.push(`Not shown: ${trace.notShown.map((entry) => `${entry.id} (${NOT_SHOWN_WORDS[entry.reason]})`).join(', ')}.`);
+  }
+  return parts.join(' ');
 }
 
 /** What the agents do with a data-room document, in the data room list. */

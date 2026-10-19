@@ -42,6 +42,7 @@ Your model settings go in a git-ignored `.env.local` created with `install -m 60
 | `src/proxy.ts`, `src/server/request-gate.ts` | Host-header and Origin checks (DNS rebinding, cross-site writes) |
 | `src/app`, `src/components`, `src/client` | Pages, API routes, UI, and the browser's chat state machine. The landing page `/` is the DD workspace (`WorkspaceHome`): the DD setup panel, the team chat entry, the status and the team overview. `/workspace` only redirects to it |
 | `src/shared/dd-setup.ts` | The DD setup rule: stage and asset classification decide who is on the team. Pure, used by the API, the page and the tests. `GET`/`POST /api/dd-setup`; the setup and the selection it implies are saved in one transaction |
+| `src/shared/data-room.ts`, `src/server/prompts/data-room.ts`, `src/server/data-room` | The data room: the rules (a document dated after the room's as-of date is refused and never shown; 12,000 characters per document, 48,000 per turn), the builder that puts the index and the documents in front of the agents (the same code the evaluations use), and the reader of the fictional practice case. Tables `data_rooms` and `data_room_documents` (schema version 3): documents never change, only a withdrawal, once. `/data-room`, `GET`/`POST /api/data-room` |
 | `outputs/05_demo/ux-mockup` | The design reference for the DD setup. Not part of the app; `tests/guards/mockup-rule-parity.test.ts` pins what the rule copies from it |
 | `evals/cases`, `scripts/eval.ts` | 59 evaluation cases for 14 agents and the runner (judge from a different model family) |
 | `scripts/demo`, `scripts/fake-llm.mjs` | The one-command launcher and the stand-in model used by practice mode and tests |
@@ -61,12 +62,16 @@ These decide design arguments. Several are enforced by tests, which says so in t
 8. This repository is public: no credentials, hosts, company names other than regulators, personal names or confidential material. A private release scan runs before every push; its deny-list is never committed.
 9. Measure before tuning. The judge is a different model family from the agents. Compare runs case by case, against the noise.
 10. The team the router uses is the saved selection, read on every turn. A setup change moves only the agents whose own rule changed: a switch a person flipped by hand survives, and a hand switch never changes the classification. Unknown (still loading, or failed to load) is never shown as off or as the default.
+11. Documents ride on the turn; there are no tools. A turn reads the workspace's data room at its start, and every agent of that turn that sees documents (the 1:1 agent, the team primary and the secondaries; not the synthesiser) sees the same ones. A workspace without a data room gets exactly the prompt it had before. The turn's trace (`dataRoom`) names what was shown and what was not, and why. A withdrawn document, and one dated after the as-of date, are not even named in the agents' index.
+12. The answer key of the practice case never leaves `evals/`. The app reads the pack's documents only (`src/server/data-room/practice-pack.ts`), and a test pins that nothing of the key comes through.
+13. Seller documents are attributed claims, never verified fact. The turn instructions say so; the findings register (next step) will enforce it in code.
 
 ## Symptom, then first move
 
 | Symptom | First move |
 |---|---|
 | The team chat answers as if an agent were off, or a card disagrees with the setup | Open the page again (a stale tab refreshes only when it becomes visible). `GET /api/dd-setup` shows the saved setup and the selection it implies; `GET /api/selection` is what the router reads. |
+| An agent says "not found in the data room" for something on the Data room page | Open **How this turn ran**: its Data room row lists every document the agents saw and every one they did not, with the reason (withdrawn, listed but not provided, dated after the as-of date, did not fit). |
 | Replies fail with a timeout or "fetch failed" | The company VPN is probably off. `npm run smoke` shows which route fails and why. Practice mode works without it. |
 | Setup banner and a disabled composer | A model setting is missing or refused. `npm run smoke` names it; compare with `env.example`. |
 | Yellow banner on every page | The server is in practice mode. That is intended; stop it with `npm run demo:stop` and run `npm run demo` for real answers. |

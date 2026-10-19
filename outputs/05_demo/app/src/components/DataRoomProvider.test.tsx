@@ -309,6 +309,22 @@ describe('DataRoomProvider: quiet refresh', () => {
     expect(result.current.dataRoom?.documents).toHaveLength(1);
   });
 
+  it('drops an older read that comes back after a document was saved and the list read again', async () => {
+    const client = clientWith(roomWith(summary('DR-01')));
+    client.addDocument.mockResolvedValue(docReply('DR-02'));
+    const { result } = mount(client);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    let late: (value: ApiResult<DataRoomResponse>) => void = () => undefined;
+    client.getDataRoom.mockImplementationOnce(() => new Promise((resolve) => (late = resolve)));
+
+    await act(async () => tabBecomes('visible'));
+    client.getDataRoom.mockResolvedValue(ok(roomWith(summary('DR-01'), summary('DR-02'))));
+    await act(async () => void (await result.current.add({ title: 'x', sourceType: 'registry', publishedAt: '2026-01-01', url: null, provided: true, text: 'x' })));
+    await act(async () => late(ok(roomWith(summary('DR-01')))));
+
+    expect(result.current.dataRoom?.documents.map((entry) => entry.id)).toEqual(['DR-01', 'DR-02']);
+  });
+
   it('recovers from a failed first load when a quiet read works', async () => {
     const client = clientWith();
     client.getDataRoom.mockResolvedValueOnce(failure('Could not reach the server.'));

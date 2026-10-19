@@ -321,6 +321,16 @@ describe('caseMaterial', () => {
     expect(material.hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it('carries each document\'s kind of source into the label the agents read', () => {
+    const pack = rawPack();
+    (pack.documents as Record<string, unknown>[])[1].source = 'agency-record';
+
+    const labels = caseMaterial(packCase(), loadPack(makePack(pack)).pack).roomContext.map((block) => block.label);
+
+    expect(labels[2]).toBe('Data room document DR-02: Agency minutes (fictional practice document, agency record, dated 2026-08-15)');
+    expect(labels[1]).toContain('company disclosure');
+  });
+
   it('lists in the index only what the case shows and what the pack withholds, as the agents of that case see the room', () => {
     const index = (documents?: string[]) => caseMaterial(packCase(documents === undefined ? {} : { documents }), loadedPack()).roomContext[0].text;
 

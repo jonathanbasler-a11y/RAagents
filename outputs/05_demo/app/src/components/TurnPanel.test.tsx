@@ -44,6 +44,23 @@ const TURN = makeTurn({
   finishedAt: '2026-10-07T09:00:12.400Z',
 });
 
+describe('TurnPanel: the data room', () => {
+  const withRoom = (dataRoom: TurnTrace['dataRoom']) => makeTurn({ id: 't2', status: 'done', trace: { ...TRACE, dataRoom }, startedAt: TURN.startedAt, finishedAt: TURN.finishedAt });
+
+  it('says what the agents saw of the data room, from the stored trace', () => {
+    render(<TurnPanel turn={withRoom({ asOf: '2026-10-12', shown: ['DR-01'], notShown: [{ id: 'DR-09', reason: 'not_provided' }] })} />);
+
+    expect(screen.getByText('Data room')).toBeInTheDocument();
+    expect(screen.getByText('As of 2026-10-12. Shown: DR-01. Not shown: DR-09 (listed, not provided).')).toBeInTheDocument();
+  });
+
+  it('has no data room row for a turn of a workspace without one', () => {
+    render(<TurnPanel turn={TURN} />);
+
+    expect(screen.queryByText('Data room')).not.toBeInTheDocument();
+  });
+});
+
 describe('TurnPanel', () => {
   it('is collapsed until opened', async () => {
     const user = userEvent.setup();

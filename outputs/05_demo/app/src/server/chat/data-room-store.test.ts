@@ -297,6 +297,8 @@ describe('what the database refuses by itself', () => {
     ['a provided document with no date', { published_at: null }, /CHECK/],
     ['a provided document with empty text', { body: '' }, /CHECK/],
     ['text over the limit', { body: 'x'.repeat(12_001) }, /CHECK/],
+    ['a title over 200 characters', { title: 'x'.repeat(201) }, /CHECK/],
+    ['an address over 500 characters', { url: `https://example.org/${'a'.repeat(500)}` }, /CHECK/],
     ['a document that is not provided but has text', { provided: 0, published_at: null, body: 'text' }, /CHECK/],
     // '2026-1-1' sorts before the as-of date, so only the shape check can stop it.
     ['a date that is not a date', { published_at: '2026-1-1' }, /CHECK/],
@@ -332,6 +334,39 @@ describe('what the database refuses by itself', () => {
     expect(() => db.exec("UPDATE data_room_documents SET withdrawn_at = '2026-10-12T09:00:00.000Z', withdrawn_reason = 'why' WHERE id = 'DR-01'")).not.toThrow();
     expect(() => db.exec("UPDATE data_room_documents SET withdrawn_reason = 'another' WHERE id = 'DR-01'")).toThrow(/only withdrawn/);
     expect(() => db.exec("UPDATE data_room_documents SET withdrawn_at = NULL, withdrawn_reason = NULL WHERE id = 'DR-01'")).toThrow(/only withdrawn/);
+  });
+
+  it('accepts the limits exactly (positive control): a title of 200, an address of 500, text of 12000', () => {
+    const db = seeded();
+
+    expect(() => insertDocument(db, { title: 'x'.repeat(200), url: `https://example.org/${'a'.repeat(480)}`.slice(0, 500), body: 'x'.repeat(12_000) })).not.toThrow();
+  });
+
+  it('does not let a withdrawal carry another change with it, whichever column it is', () => {
+    const db = seeded();
+    const withdrawn = "withdrawn_at = '2026-10-12T09:00:00.000Z', withdrawn_reason = 'why'";
+
+    for (const change of [
+      "title = 'changed'",
+      "source_type = 'registry'",
+      "published_at = '2026-01-01'",
+      "url = 'https://example.org/x'",
+      'provided = 0',
+      "origin = 'practice-pack'",
+      "body = 'changed'",
+      "added_at = 'changed'",
+      "id = 'DR-50'",
+    ]) {
+      expect(() => db.exec(`UPDATE data_room_documents SET ${withdrawn}, ${change} WHERE id = 'DR-01'`), change).toThrow();
+    }
+    expect(db.prepare("SELECT withdrawn_at FROM data_room_documents WHERE id = 'DR-01'").get()?.withdrawn_at).toBeNull();
+  });
+
+  it('refuses a withdrawal reason of 301 characters and accepts one of 300', () => {
+    const db = seeded();
+
+    expect(() => db.exec(`UPDATE data_room_documents SET withdrawn_at = 'x', withdrawn_reason = '${'r'.repeat(301)}' WHERE id = 'DR-01'`)).toThrow(/CHECK/);
+    expect(() => db.exec(`UPDATE data_room_documents SET withdrawn_at = 'x', withdrawn_reason = '${'r'.repeat(300)}' WHERE id = 'DR-01'`)).not.toThrow();
   });
 
   it('never lets the as-of date change or the room go', () => {

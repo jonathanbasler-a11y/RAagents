@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AGENT_TRIGGERS } from '@/shared/contracts';
-import { CLASSIFICATION_LABELS, DOCUMENT_STATE_LABELS, GROUP_INFO, evidenceBannerText, homeLedeText, phaseLineText, PRACTICE_REPLY_LABEL, describeChatError, selectionReasonText, teamChangeText, triggerText } from './labels';
+import { CLASSIFICATION_LABELS, DOCUMENT_STATE_LABELS, GROUP_INFO, dataRoomTraceText, evidenceBannerText, homeLedeText, phaseLineText, PRACTICE_REPLY_LABEL, describeChatError, selectionReasonText, teamChangeText, triggerText } from './labels';
 
 describe('practice mode label', () => {
   it('says a practice reply is not AI and not sourced', () => {
@@ -51,6 +51,30 @@ describe('what the wording says about documents', () => {
       'Emeka can check a claim against the documents of the data room and name the document that shows it. He has no tools, so he cannot look anything up outside it.',
     );
     expect(evidenceBannerText('unknown', 'Emeka')).toBe('Emeka has no tools, so he cannot look anything up himself.');
+  });
+});
+
+describe('dataRoomTraceText', () => {
+  it('says what the agents of a turn saw of the data room, and what they did not and why', () => {
+    expect(
+      dataRoomTraceText({
+        asOf: '2026-10-12',
+        shown: ['DR-01', 'DR-02'],
+        notShown: [
+          { id: 'DR-03', reason: 'too_large' },
+          { id: 'DR-09', reason: 'not_provided' },
+          { id: 'DR-10', reason: 'withdrawn' },
+          { id: 'DR-11', reason: 'after_as_of' },
+        ],
+      }),
+    ).toBe(
+      'As of 2026-10-12. Shown: DR-01, DR-02. Not shown: DR-03 (did not fit), DR-09 (listed, not provided), DR-10 (withdrawn), DR-11 (dated after the as-of date).',
+    );
+  });
+
+  it('leaves out the part that has nothing in it, and says "none" when nothing was shown', () => {
+    expect(dataRoomTraceText({ asOf: '2026-10-12', shown: ['DR-01'], notShown: [] })).toBe('As of 2026-10-12. Shown: DR-01.');
+    expect(dataRoomTraceText({ asOf: '2026-10-12', shown: [], notShown: [] })).toBe('As of 2026-10-12. Shown: none.');
   });
 });
 

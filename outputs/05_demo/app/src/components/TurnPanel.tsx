@@ -8,6 +8,7 @@ import {
   ROLE_LABELS,
   ROUTE_SOURCE_LABELS,
   TURN_STATUS_LABELS,
+  dataRoomTraceText,
   describeChatError,
   formatDuration,
 } from './labels';
@@ -74,6 +75,12 @@ export function TurnPanel({ turn }: { turn: Turn }) {
           <>
             <dt>Route</dt>
             <dd>{ROUTE_SOURCE_LABELS[trace.route.source]}</dd>
+          </>
+        )}
+        {trace?.dataRoom && (
+          <>
+            <dt>Data room</dt>
+            <dd>{dataRoomTraceText(trace.dataRoom)}</dd>
           </>
         )}
         <dt>Model</dt>

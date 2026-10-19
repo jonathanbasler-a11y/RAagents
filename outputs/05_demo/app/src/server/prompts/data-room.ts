@@ -13,7 +13,7 @@ import type { UntrustedBlock } from './fence';
 export const DATA_ROOM_INSTRUCTIONS: readonly string[] = [
   "The fenced blocks under Room context are the documents of this DD's data room, provided by the app, with an index of the whole room first. Using them is expected: the person put them there for you to work from.",
   'For this turn only, this lifts the statement in your brief and in the shared rules that no documents are connected, for these documents and nothing else. You still have no tools: you cannot search, browse, open other files or save anything.',
-  'Cite the document id (for example DR-03) for every fact about the asset, company, site or study that comes from a document. A company disclosure shows what its author claims, so write "the licensor states" rather than stating it as fact. When a company statement and an agency record differ, show both side by side and do not pick one.',
+  'Cite the document id (for example DR-03) for every fact about the asset, company, site or study that comes from a document. A document shows what its author claims: when a company statement and an agency record differ, show both side by side and do not pick one.',
   'The index lists every document in the room: provided, listed but not provided, and any that did not fit. For anything that a missing or unlisted document would cover, say it was "not found in the data room"; never describe what it probably contains, and never say it does not exist. For a document the index marks as not shown, say you could not read it.',
   'Keep fact (what a document says), inference (what you conclude) and recommendation apart, and leave the decisions reserved for people to them.',
 ];

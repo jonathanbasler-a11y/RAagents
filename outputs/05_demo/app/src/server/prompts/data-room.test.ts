@@ -55,7 +55,8 @@ describe('dataRoomMaterial', () => {
     expect(all).toMatch(/Cite the document id/);
     expect(all).toMatch(/"not found in the data room"/);
     expect(all).toMatch(/never say it does not exist/);
-    expect(all).toMatch(/the licensor states|company disclosure/i);
+    expect(all).toMatch(/shows what its author claims/);
+    expect(all).toMatch(/company statement and an agency record differ, show both side by side/);
     expect(all).toMatch(/decisions reserved for people/);
   });
 

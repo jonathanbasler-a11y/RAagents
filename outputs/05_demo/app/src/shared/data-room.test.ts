@@ -115,6 +115,9 @@ describe('checkNewDocument', () => {
     ['a date that does not exist', { ...good, publishedAt: '2026-02-30' }, /date/],
     ['a url that is not http or https', { ...good, url: 'file:///etc/passwd' }, /address/],
     ['a javascript url', { ...good, url: 'javascript:alert(1)' }, /address/],
+    ['a url with a user name and password', { ...good, url: 'https://user:secret@example.org/a' }, /address/],
+    ['a url that is not a url at all', { ...good, url: 'not a url' }, /address/],
+    ['a url that is not text', { ...good, url: 5 }, /address/],
     ['a url over the limit', { ...good, url: `https://example.org/${'a'.repeat(600)}` }, /address/],
     ['an id that does not fit DR-nn', { ...good, id: 'doc-7' }, /id/],
     ['text on a document that is not provided', { ...good, provided: false }, /not provided/],
@@ -140,6 +143,18 @@ describe('checkNewDocument', () => {
     const result = checkNewDocument({ title: 'Plan', sourceType: 'company-disclosure', provided: false, text: null, publishedAt: '2027-01-01' }, AS_OF);
 
     expect(result.ok).toBe(false);
+  });
+
+  it('drops a byte-order mark and turns old Mac line endings into line breaks', () => {
+    const result = checkNewDocument({ ...good, text: '\uFEFFFirst.\rSecond.\r\nThird.' }, AS_OF);
+
+    expect(result.ok && result.document.text).toBe('First.\nSecond.\nThird.');
+  });
+
+  it('trims the address', () => {
+    const result = checkNewDocument({ ...good, url: '  https://example.org/a  ' }, AS_OF);
+
+    expect(result.ok && result.document.url).toBe('https://example.org/a');
   });
 
   it('counts the text after trimming and line-ending changes against the limit', () => {
