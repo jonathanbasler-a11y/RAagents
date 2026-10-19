@@ -107,9 +107,9 @@ Prefer the command to the recorded value.
 | Next.js | 16.4.0 | `grep '"next"' outputs/05_demo/app/package.json` | 2026-10-12 |
 | Offline test baseline | 2224 passed, 1 skipped, after the data room (B1) (the skip is the name-protection test, which needs a local hash file) | `npm test` | 2026-10-19 |
 | First live evaluation | overall 4.33 ± 0.11 over 177 answers; 128 of 177 "good"; the 4 critical hits were false positives of the checks | the saved run under `.eval-runs/` (local, git-ignored); `scripts/eval.ts` repeats it | 2026-10-12 |
-| Stable demo copy | version 6 (commit 1481134), outside the repository; versions 5 to 1 are kept beside it for rollback | the `README-DEMO.md` in that folder | 2026-10-19 |
+| Stable demo copy | version 7 (commit 2aba9ef), outside the repository; versions 6 to 1 are kept beside it for rollback | the `README-DEMO.md` in that folder | 2026-10-19 |
 | Demo auto-start | a user login job, label `com.raagents.demo`; no restart on exit; settings from the development tree's settings file | `launchctl print gui/501/com.raagents.demo` and the `promote-stable-demo` skill | 2026-10-15 |
-| CI on `main` | green after pull request 17 | `gh run list --branch main` | 2026-10-19 |
+| CI on `main` | green after pull request 18 | `gh run list --branch main` | 2026-10-19 |
 | Can a hosted environment reach the model gateway? | untested | run the connection probe in that environment (`docs/ONA.md` on branch `feature/ona-env`) | not yet |
 | Other team's material | on `main`, not reviewed | `ls hybrid-regulatory-dd-team` | 2026-10-12 |
 
