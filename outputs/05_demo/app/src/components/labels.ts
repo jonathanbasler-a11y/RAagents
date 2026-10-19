@@ -11,6 +11,7 @@ import type {
   RouteSource,
   TurnStatus,
 } from '@/shared/contracts';
+import type { SelectionReason } from '@/shared/dd-setup';
 
 /** Display text written by code. Nothing here comes from a model. */
 
@@ -60,7 +61,7 @@ export const AUTONOMY_LABELS: Record<AutonomyLevel, string> = {
   3: 'L3 Delegate under oversight',
 };
 
-const CLASSIFICATION_LABELS: Record<ClassificationId, string> = {
+export const CLASSIFICATION_LABELS: Record<ClassificationId, string> = {
   orphan: 'Orphan',
   paed: 'Paediatric requirements',
   exp: 'Expedited programme',
@@ -73,6 +74,52 @@ export function triggerText(trigger: AgentTrigger | undefined): string | null {
   if (trigger === 'late') return 'Usually joins when a filing is near (Phase 3 or filed).';
   if (trigger === 'filed') return 'Joins only when the asset is filed.';
   return `Usually switched on by the asset classification: ${CLASSIFICATION_LABELS[trigger]}.`;
+}
+
+/** Why an agent is on or off for this DD, in one line. `trigger` is the agent's own trigger, used when a person overrode the rule. */
+export function selectionReasonText(reason: SelectionReason, trigger: AgentTrigger | undefined): string {
+  switch (reason.kind) {
+    case 'always':
+      return 'Always on: a team role in every DD.';
+    case 'classification':
+      return `On because the asset is classified: ${CLASSIFICATION_LABELS[reason.id]}.`;
+    case 'late':
+      return 'On because a filing is near (Phase 3 or filed).';
+    case 'filed':
+      return 'On because the asset is filed.';
+    case 'default':
+      return 'On for every regulatory DD.';
+    case 'manual-on':
+      return 'Switched on by you.';
+    case 'manual-off':
+      return `Switched off by you (${wouldJoin(trigger)}).`;
+    case 'waiting':
+      if (reason.trigger === 'late') return 'Joins when a filing is near (Phase 3 or filed).';
+      if (reason.trigger === 'filed') return 'Joins only when the asset is filed.';
+      return `Joins if the asset is classified: ${CLASSIFICATION_LABELS[reason.trigger]}.`;
+    case 'not-for-dd':
+      return 'Off for a regulatory DD: built for other playbooks.';
+  }
+}
+
+function wouldJoin(trigger: AgentTrigger | undefined): string {
+  if (trigger === undefined) return 'on by default';
+  if (trigger === 'late') return 'the playbook would bring them in at Phase 3 or filed';
+  if (trigger === 'filed') return 'the playbook would bring them in once the asset is filed';
+  return `the playbook would bring them in: ${CLASSIFICATION_LABELS[trigger]}`;
+}
+
+function nameList(names: readonly string[]): string {
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/** What changed in the team after a DD setup save, from the first names of who joined and who left. */
+export function teamChangeText(joined: readonly string[], left: readonly string[]): string {
+  const parts: string[] = [];
+  if (joined.length > 0) parts.push(`${nameList(joined)} joined the team`);
+  if (left.length > 0) parts.push(`${nameList(left)} left the team`);
+  return parts.length > 0 ? `Saved. ${parts.join('; ')}.` : 'Saved. The team stays the same.';
 }
 
 /** Can be brought into a team turn with @Name. The orchestrator and the synthesiser join by rule. */

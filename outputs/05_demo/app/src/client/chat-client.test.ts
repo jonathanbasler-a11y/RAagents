@@ -271,6 +271,34 @@ describe('JSON helpers', () => {
     expect(getHealth[0]).toBe('/api/health');
   });
 
+  it('getDdSetup GETs the setup route and setDdSetup POSTs the whole setup, nothing else', async () => {
+    const reply = { workspaceId: 'demo', setup: { stage: 'Phase 3', classifications: ['orphan'] }, source: 'saved', selection: { workspaceId: 'demo', selected: [], source: 'saved' } };
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, reply));
+    const chat = client(fetchImpl);
+
+    const got = await chat.getDdSetup();
+    const saved = await chat.setDdSetup({ stage: 'Phase 3', classifications: ['orphan'] });
+
+    const [get, post] = fetchImpl.mock.calls;
+    expect(get[0]).toBe('/api/dd-setup');
+    expect(get[1]?.method ?? 'GET').toBe('GET');
+    expect(post[0]).toBe('/api/dd-setup');
+    expect(post[1]?.method).toBe('POST');
+    expect(headerOf(post, 'content-type')).toBe('application/json');
+    expect(bodyOf(post)).toEqual({ stage: 'Phase 3', classifications: ['orphan'] });
+    expect(got).toEqual({ ok: true, data: reply });
+    expect(saved).toEqual({ ok: true, data: reply });
+  });
+
+  it('returns the error body for a refused setup (400)', async () => {
+    const body = { error: 'invalid_request', message: 'The stage must be one of Phase 1, Phase 2, Phase 3, Filed.', correlationId: 'c-2' };
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(400, body));
+
+    const result = await client(fetchImpl).setDdSetup({ stage: 'Phase 3', classifications: [] });
+
+    expect(result).toEqual({ ok: false, status: 400, error: body, message: body.message });
+  });
+
   it('returns the error body and its message for an error status', async () => {
     const body = { error: 'locked_agent', message: 'Team roles are always on.', correlationId: 'c-1' };
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(409, body));

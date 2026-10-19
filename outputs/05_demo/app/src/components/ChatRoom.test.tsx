@@ -107,6 +107,8 @@ function fakeApi(overrides: Partial<ChatApi> = {}): ChatApi {
         ok<SelectionResponse>({ workspaceId: 'demo', selected: ['reglead', 'cmcreg', 'orc', 'san', 'ev', 'syn'], source: 'saved' }),
       ),
     setSelection: vi.fn<ChatApi['setSelection']>(),
+    getDdSetup: vi.fn<ChatApi['getDdSetup']>(),
+    setDdSetup: vi.fn<ChatApi['setDdSetup']>(),
     ...overrides,
   };
 }

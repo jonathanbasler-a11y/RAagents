@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AGENT_TRIGGERS } from '@/shared/contracts';
-import { GROUP_INFO, PRACTICE_REPLY_LABEL, describeChatError, triggerText } from './labels';
+import { CLASSIFICATION_LABELS, GROUP_INFO, PRACTICE_REPLY_LABEL, describeChatError, selectionReasonText, teamChangeText, triggerText } from './labels';
 
 describe('practice mode label', () => {
   it('says a practice reply is not AI and not sourced', () => {
@@ -54,5 +54,44 @@ describe('describeChatError', () => {
   it('keeps the other codes as they were (positive control)', () => {
     expect(describeChatError('out_of_time')).toMatchObject({ kind: 'service', text: 'The turn ran out of time.' });
     expect(describeChatError(null)).toMatchObject({ kind: 'app', text: 'Something went wrong.' });
+  });
+});
+
+describe('selectionReasonText', () => {
+  it.each([
+    [{ kind: 'always' }, undefined, 'Always on: a team role in every DD.'],
+    [{ kind: 'classification', id: 'orphan' }, 'orphan', 'On because the asset is classified: Orphan.'],
+    [{ kind: 'classification', id: 'cdx' }, 'cdx', 'On because the asset is classified: Companion diagnostic.'],
+    [{ kind: 'late' }, 'late', 'On because a filing is near (Phase 3 or filed).'],
+    [{ kind: 'filed' }, 'filed', 'On because the asset is filed.'],
+    [{ kind: 'default' }, undefined, 'On for every regulatory DD.'],
+    [{ kind: 'manual-on' }, 'exp', 'Switched on by you.'],
+    [{ kind: 'manual-off' }, undefined, 'Switched off by you (on by default).'],
+    [{ kind: 'manual-off' }, 'orphan', 'Switched off by you (the playbook would bring them in: Orphan).'],
+    [{ kind: 'manual-off' }, 'late', 'Switched off by you (the playbook would bring them in at Phase 3 or filed).'],
+    [{ kind: 'manual-off' }, 'filed', 'Switched off by you (the playbook would bring them in once the asset is filed).'],
+    [{ kind: 'waiting', trigger: 'exp' }, 'exp', 'Joins if the asset is classified: Expedited programme.'],
+    [{ kind: 'waiting', trigger: 'late' }, 'late', 'Joins when a filing is near (Phase 3 or filed).'],
+    [{ kind: 'waiting', trigger: 'filed' }, 'filed', 'Joins only when the asset is filed.'],
+    [{ kind: 'not-for-dd' }, undefined, 'Off for a regulatory DD: built for other playbooks.'],
+  ] as const)('says %j (trigger %s) as "%s"', (reason, trigger, expected) => {
+    expect(selectionReasonText(reason, trigger)).toBe(expected);
+  });
+
+  it('has a label for every classification', () => {
+    expect(Object.keys(CLASSIFICATION_LABELS).sort()).toEqual(['cdx', 'combo', 'exp', 'orphan', 'paed']);
+  });
+});
+
+describe('teamChangeText', () => {
+  it.each([
+    [['Olu'], [], 'Saved. Olu joined the team.'],
+    [['Olu', 'Mira'], [], 'Saved. Olu and Mira joined the team.'],
+    [['Olu', 'Mira', 'Rhea'], [], 'Saved. Olu, Mira and Rhea joined the team.'],
+    [[], ['Eitan'], 'Saved. Eitan left the team.'],
+    [['Olu'], ['Eitan', 'Chen'], 'Saved. Olu joined the team; Eitan and Chen left the team.'],
+    [[], [], 'Saved. The team stays the same.'],
+  ])('joined %j, left %j: "%s"', (joined, left, expected) => {
+    expect(teamChangeText(joined, left)).toBe(expected);
   });
 });
