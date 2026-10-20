@@ -39,6 +39,7 @@ function checklist(patch: Patch = {}): ChecklistResponse {
 function clientWith(initial: ChecklistResponse = checklist()) {
   return {
     getChecklist: vi.fn<ChatApi['getChecklist']>().mockResolvedValue(ok(initial)),
+    getBriefing: vi.fn<ChatApi['getBriefing']>(),
     submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
   };
 }

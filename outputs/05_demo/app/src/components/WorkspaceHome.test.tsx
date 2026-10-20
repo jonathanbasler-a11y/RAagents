@@ -94,11 +94,15 @@ describe('WorkspaceHome: the findings and the checklist', () => {
     const dataRoom = screen.getByRole('heading', { name: 'Data room' });
     const findings = screen.getByRole('heading', { name: 'Findings' });
     const checklist = screen.getByRole('heading', { name: 'Checklist' });
+    const briefing = screen.getByRole('heading', { name: 'Briefing' });
     const chat = screen.getByRole('heading', { name: 'Team chat' });
     const before = (first: HTMLElement, second: HTMLElement) => Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect(before(dataRoom, findings)).toBe(true);
     expect(before(findings, checklist)).toBe(true);
-    expect(before(checklist, chat)).toBe(true);
+    expect(before(checklist, briefing)).toBe(true);
+    expect(before(briefing, chat)).toBe(true);
+    expect(screen.getByRole('link', { name: 'Open the briefing' })).toHaveAttribute('href', '/briefing');
+    expect(screen.getByText(/It is not a decision\./)).toBeInTheDocument();
     expect(await screen.findByText('0 checked, 0 not applicable, 0 could not check, 6 not checked (of 6).')).toBeInTheDocument();
   });
 });

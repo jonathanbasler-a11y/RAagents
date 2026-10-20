@@ -516,6 +516,20 @@ describe('the checklist and the tags', () => {
   });
 });
 
+describe('the briefing', () => {
+  it('reads the briefing with a GET and sends nothing', async () => {
+    const payload = { workspaceId: 'demo', generatedAt: '2026-10-19T10:00:00.000Z', briefing: {} };
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(200, payload));
+
+    const result = await client(fetchImpl).getBriefing();
+
+    expect(result).toEqual({ ok: true, data: payload });
+    expect(fetchImpl.mock.calls[0][0]).toBe('/api/briefing');
+    expect(fetchImpl.mock.calls[0][1]?.method ?? 'GET').toBe('GET');
+    expect(fetchImpl.mock.calls[0][1]?.body).toBeUndefined();
+  });
+});
+
 describe('createClientTurnId', () => {
   it('uses crypto.randomUUID when it exists', () => {
     expect(createClientTurnId({ randomUUID: () => 'from-random-uuid', getRandomValues: (array) => array })).toBe(

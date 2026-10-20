@@ -13,6 +13,7 @@ import type {
   DataRoomDocumentResponse,
   DataRoomResponse,
   DataRoomStartRequest,
+  BriefingResponse,
   ChecklistResponse,
   ChecklistStateRequest,
   FindingDecisionRequest,
@@ -143,6 +144,8 @@ export interface ChatApi {
   /** Tags a finding that was accepted without a tag. Once. */
   submitFindingTag(findingId: string, tag: FindingTagInput): Promise<ApiResult<FindingTagResponse>>;
   getChecklist(): Promise<ApiResult<ChecklistResponse>>;
+  /** The briefing, built from the register, the tags and the checklist. Read only. */
+  getBriefing(): Promise<ApiResult<BriefingResponse>>;
   /** A person moves one checklist item to one of the four states; the reply is the whole checklist. */
   submitChecklistState(item: string, state: ChecklistStateRequest['state'], reason?: string): Promise<ApiResult<ChecklistResponse>>;
 }
@@ -318,6 +321,7 @@ export function createChatClient(deps: ChatClientDeps = {}): ChatApi {
     submitFindingTag: (findingId, tag) =>
       postJson<FindingTagResponse>(`/api/findings/${encodeURIComponent(findingId)}/tags`, { checklistItem: tag.checklistItem, category: tag.category } satisfies FindingTagRequest),
     getChecklist: () => requestJson<ChecklistResponse>('/api/checklist', { headers: { Accept: 'application/json' } }),
+    getBriefing: () => requestJson<BriefingResponse>('/api/briefing', { headers: { Accept: 'application/json' } }),
     submitChecklistState: (item, state, reason) =>
       postJson<ChecklistResponse>(`/api/checklist/${encodeURIComponent(item)}`, { state, ...(reason ? { reason } : {}) } satisfies ChecklistStateRequest),
     withdrawDocument: (documentId, reason) =>
@@ -346,5 +350,6 @@ export const {
   submitFindingDecision,
   submitFindingTag,
   getChecklist,
+  getBriefing,
   submitChecklistState,
 } = chatClient;

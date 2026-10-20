@@ -17,6 +17,21 @@ import {
 
 export const MAX_STATE_REASON_CHARS = 300;
 
+/** The four states in words, kept apart. The screens and the briefing use these. */
+export const CHECKLIST_STATE_WORDS: Record<ChecklistState, string> = {
+  not_checked: 'Not checked',
+  checked: 'Checked',
+  not_applicable: 'Checked: not applicable',
+  could_not_check: 'Could not check',
+};
+
+/** What kind of finding it is, as a person tagged it. */
+export const FINDING_CATEGORY_WORDS: Record<FindingCategory, string> = {
+  positive: 'Positive',
+  risk: 'Risk',
+  neutral: 'Neutral',
+};
+
 export const CHECKLIST_ITEMS: Record<ChecklistItemId, { label: string; hint: string }> = {
   guidance: {
     label: 'Applicable guidance',
