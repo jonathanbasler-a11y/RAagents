@@ -46,7 +46,7 @@ function setup(withRoom = true): ApiHarness {
         checked('A paediatric plan has been agreed.', 'Still only a draft claim.'),
         checked('is sufficient for approval', 'A claim a person rejected.'),
       ],
-      refused: [],
+      refused: [{ claim: 'The study met its endpoint.', code: 'quote_not_in_document', message: 'The quote is not in DR-04.', documentId: 'DR-04' }],
     });
     store.decideFinding('demo', 'F-001', 'accepted', 'Matches the minutes.', { checklistItem: 'regions', category: 'risk' });
     store.decideFinding('demo', 'F-003', 'rejected', null);
@@ -71,7 +71,8 @@ describe('GET /api/briefing', () => {
     expect(body.briefing.risks).toMatchObject([{ id: 'F-001', claim: 'The licensor says one study is enough.', category: 'risk', checklistItem: 'regions', decisionNote: 'Matches the minutes.' }]);
     expect(JSON.stringify(body)).not.toContain('Still only a draft claim.');
     expect(JSON.stringify(body)).not.toContain('A claim a person rejected.');
-    expect(body.briefing.counts).toMatchObject({ acceptedTagged: 1, drafts: 1, rejected: 1 });
+    expect(body.briefing.counts).toMatchObject({ acceptedTagged: 1, drafts: 1, rejected: 1, openQuestions: 1 });
+    expect(body.briefing.openQuestions).toMatchObject([{ id: 'Q-001', claim: 'The study met its endpoint.', documentId: 'DR-04' }]);
     expect(body.briefing.warnings.map((warning) => warning.code)).toContain('drafts_pending');
   });
 

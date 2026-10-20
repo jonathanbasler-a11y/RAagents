@@ -118,6 +118,18 @@ describe('buildBriefing: what is in it', () => {
     expect(briefing.ptrsInputs.map((entry) => entry.id)).toEqual(['F-007']);
   });
 
+  it('puts findings and open questions in id order whatever order they come in, and F-10 after F-2', () => {
+    const briefing = build({
+      findings: [finding('F-10'), finding('F-2'), finding('F-1')],
+      tags: [tag('F-10', 'regions', 'risk'), tag('F-2', 'regions', 'risk'), tag('F-1', 'regions', 'risk')],
+      openQuestions: [question('Q-10', 'ten'), question('Q-2', 'two')],
+    });
+
+    expect(briefing.risks.map((entry) => entry.id)).toEqual(['F-1', 'F-2', 'F-10']);
+    expect(briefing.checklist.find((row) => row.item === 'regions')?.findingIds).toEqual(['F-1', 'F-2', 'F-10']);
+    expect(briefing.openQuestions.map((entry) => entry.id)).toEqual(['Q-2', 'Q-10']);
+  });
+
   it('leaves a draft and a rejected finding out entirely, counting them', () => {
     const briefing = build(mixed());
     const everywhere = JSON.stringify(briefing);
@@ -226,6 +238,12 @@ describe('buildBriefing: what it says is missing', () => {
     expect(oneLive).toBeUndefined();
   });
 
+  it('does not flag an item marked checked that has no finding behind it at all (nothing was withdrawn)', () => {
+    const room = { ...ROOM, documents: ROOM.documents.map((document) => ({ ...document, withdrawnAt: '2026-10-13T08:00:00.000Z' })) };
+
+    expect(codes({ dataRoom: room, checklist: checklist({ regions: { state: 'checked' } }) })).not.toContain('checked_on_withdrawn');
+  });
+
   it('counts the items nobody checked and the items that could not be checked, apart', () => {
     const warnings = build(mixed()).warnings;
 
@@ -310,6 +328,20 @@ describe('briefingToMarkdown', () => {
     const room = { ...ROOM, documents: ROOM.documents.map((document) => (document.id === 'DR-02' ? { ...document, withdrawnAt: '2026-10-13T08:00:00.000Z' } : document)) };
 
     expect(markdown({ ...mixed(), dataRoom: room })).toContain('Its document has been withdrawn from the data room since it was accepted.');
+  });
+
+  it('says "No warnings." when there are none', () => {
+    const all = Object.fromEntries(CHECKLIST_ITEM_IDS.map((item) => [item, { state: 'not_applicable' as const, reason: 'Does not apply.' }]));
+
+    expect(markdown({ checklist: checklist(all) }).split('## Before you read')[1].split('\n## ')[0]).toContain('No warnings.');
+  });
+
+  it('lists the documents, and says which was listed but not provided and which was withdrawn', () => {
+    const room = { ...ROOM, documents: ROOM.documents.map((document) => (document.id === 'DR-02' ? { ...document, withdrawnAt: '2026-10-13T08:00:00.000Z' } : document)) };
+
+    const text = markdown({ dataRoom: room });
+
+    expect(text).toContain('Documents in the data room: DR-01 Licensor overview (company disclosure); DR-02 Agency minutes (agency record, withdrawn); DR-09 Paediatric study plan (company disclosure, listed, not provided).');
   });
 
   it('writes "none" under an empty section rather than leaving it out', () => {
