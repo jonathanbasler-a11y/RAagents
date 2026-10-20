@@ -18,6 +18,8 @@ import type {
   TurnStatus,
 } from '@/shared/contracts';
 import type { DataRoomTrace } from '@/shared/contracts';
+import { CHECKLIST_STATE_WORDS, FINDING_CATEGORY_WORDS } from '@/shared/checklist';
+import { FINDING_BASIS_WORDS, FINDING_CONFIDENCE_WORDS } from '@/shared/findings';
 import type { DocumentTurnState } from '@/shared/data-room';
 import type { SelectionReason } from '@/shared/dd-setup';
 
@@ -137,32 +139,16 @@ export const FINDING_STATUS_LABELS: Record<FindingStatus, string> = {
 };
 
 /** The four checklist states, kept apart in words as in the database. */
-export const CHECKLIST_STATE_LABELS: Record<ChecklistState, string> = {
-  not_checked: 'Not checked',
-  checked: 'Checked',
-  not_applicable: 'Checked: not applicable',
-  could_not_check: 'Could not check',
-};
+export const CHECKLIST_STATE_LABELS: Record<ChecklistState, string> = CHECKLIST_STATE_WORDS;
 
 /** What kind of finding it is, as a person tagged it. */
-export const FINDING_CATEGORY_LABELS: Record<FindingCategory, string> = {
-  positive: 'Positive',
-  risk: 'Risk',
-  neutral: 'Neutral',
-};
+export const FINDING_CATEGORY_LABELS: Record<FindingCategory, string> = FINDING_CATEGORY_WORDS;
 
 /** What a finding stands on. A seller's own document is attributed to the seller and never becomes verified fact. */
-export const FINDING_BASIS_LABELS: Record<FindingBasis, string> = {
-  attributed: 'Attributed: what the seller states, not verified fact',
-  'primary-record': 'Primary record',
-};
+export const FINDING_BASIS_LABELS: Record<FindingBasis, string> = FINDING_BASIS_WORDS;
 
 /** How sure the agent is that the quote shows the claim; not how likely the claim is to be true. */
-export const FINDING_CONFIDENCE_LABELS: Record<FindingConfidence, string> = {
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
+export const FINDING_CONFIDENCE_LABELS: Record<FindingConfidence, string> = FINDING_CONFIDENCE_WORDS;
 
 export function shortCapability(agent: Pick<PublicAgent, 'capability' | 'shortCapability'>): string {
   return agent.shortCapability?.trim() || agent.capability;

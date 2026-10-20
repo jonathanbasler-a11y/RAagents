@@ -13,6 +13,7 @@ import * as findingRoute from './findings/[id]/route';
 import * as findingTagsRoute from './findings/[id]/tags/route';
 import * as checklistRoute from './checklist/route';
 import * as checklistItemRoute from './checklist/[item]/route';
+import * as briefingRoute from './briefing/route';
 import * as ddSetupRoute from './dd-setup/route';
 import * as healthRoute from './health/route';
 import * as messagesRoute from './rooms/[room]/messages/route';
@@ -34,6 +35,7 @@ const ROUTES = [
   ['findings/[id]/tags', findingTagsRoute, ['POST']],
   ['checklist', checklistRoute, ['GET']],
   ['checklist/[item]', checklistItemRoute, ['POST']],
+  ['briefing', briefingRoute, ['GET']],
   ['dd-setup', ddSetupRoute, ['GET', 'POST']],
   ['health', healthRoute, ['GET']],
   ['rooms/[room]/messages', messagesRoute, ['GET']],

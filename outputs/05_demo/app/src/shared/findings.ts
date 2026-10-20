@@ -35,6 +35,19 @@ export const MAX_PROPOSED_PER_TURN = 8;
 export const PROPOSAL_MAX_TOKENS = 4000;
 const MAX_REFUSAL_MESSAGE_CHARS = 300;
 
+/** What a finding stands on, in words. A seller's own document is attributed to the seller and never becomes verified fact. */
+export const FINDING_BASIS_WORDS: Record<FindingBasis, string> = {
+  attributed: 'Attributed: what the seller states, not verified fact',
+  'primary-record': 'Primary record',
+};
+
+/** How sure the agent is that the quote shows the claim; not how likely the claim is to be true. */
+export const FINDING_CONFIDENCE_WORDS: Record<FindingConfidence, string> = {
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+};
+
 /** A company disclosure is what the seller states; everything else is a primary record. */
 export function basisOf(sourceType: DocumentSourceType): FindingBasis {
   return sourceType === 'company-disclosure' ? 'attributed' : 'primary-record';

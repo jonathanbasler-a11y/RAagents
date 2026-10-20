@@ -50,6 +50,7 @@ function setup(initial: FindingsResponse, room: DataRoomResponse = roomWith()) {
     submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
     submitFindingTag: vi.fn<ChatApi['submitFindingTag']>(),
     getChecklist: vi.fn<ChatApi['getChecklist']>(),
+    getBriefing: vi.fn<ChatApi['getBriefing']>(),
     submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
   };
   const dataRoomClient = {
@@ -104,6 +105,7 @@ describe('FindingsPanel', () => {
       submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
       submitFindingTag: vi.fn<ChatApi['submitFindingTag']>(),
       getChecklist: vi.fn<ChatApi['getChecklist']>(),
+      getBriefing: vi.fn<ChatApi['getBriefing']>(),
       submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
     };
     render(

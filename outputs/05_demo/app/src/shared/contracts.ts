@@ -1440,3 +1440,83 @@ export interface FindingTagResponse {
   tag: FindingTag;
 }
 
+// ---------------------------------------------------------------------------
+// Briefing: what the regulatory lead takes into the cross-functional discussion. Built by code from the register, the
+// tags and the checklist (src/shared/briefing.ts); no model writes it, and it contains none of the decisions reserved
+// for people. Only accepted findings that a person tagged are sorted into it.
+// ---------------------------------------------------------------------------
+
+/** An accepted finding as the briefing shows it. */
+export interface BriefingFinding {
+  id: string;
+  /** Drafted by an agent; a person accepted it. */
+  claim: string;
+  /** Word for word from the document. */
+  quote: string;
+  documentId: string;
+  documentTitle: string;
+  sourceType: DocumentSourceType;
+  basis: FindingBasis;
+  publishedAt: string;
+  confidence: FindingConfidence;
+  /** Null while nobody has said which item it supports. */
+  checklistItem: ChecklistItemId | null;
+  category: FindingCategory | null;
+  /** The document was withdrawn from the data room after the finding was accepted. */
+  documentWithdrawn: boolean;
+  decisionNote: string | null;
+}
+
+export const BRIEFING_WARNING_CODES = [
+  'no_data_room',
+  'drafts_pending',
+  'untagged_accepted',
+  'withdrawn_document',
+  'checked_on_withdrawn',
+  'items_not_checked',
+  'items_could_not_check',
+] as const;
+export type BriefingWarningCode = (typeof BRIEFING_WARNING_CODES)[number];
+
+export interface BriefingWarning {
+  code: BriefingWarningCode;
+  message: string;
+}
+
+export interface BriefingChecklistRow {
+  item: ChecklistItemId;
+  label: string;
+  hint: string;
+  state: ChecklistState;
+  reason: string | null;
+  /** Ids of the accepted findings tagged to this item, in id order. */
+  findingIds: string[];
+}
+
+export interface Briefing {
+  /** The data room's as-of date; null when there is no data room. */
+  asOf: string | null;
+  /** The documents in the data room, as listed. */
+  documents: Array<{ id: string; title: string; sourceType: DocumentSourceType; publishedAt: string | null; provided: boolean; withdrawn: boolean }>;
+  counts: { acceptedTagged: number; acceptedUntagged: number; drafts: number; rejected: number; openQuestions: number };
+  warnings: BriefingWarning[];
+  checklist: BriefingChecklistRow[];
+  positives: BriefingFinding[];
+  risks: BriefingFinding[];
+  neutral: BriefingFinding[];
+  /** Accepted findings with no tag: listed apart so nothing accepted goes missing. */
+  unsorted: BriefingFinding[];
+  /** The accepted findings tagged to the PTRS item. The app computes no number. */
+  ptrsInputs: BriefingFinding[];
+  openQuestions: Array<{ id: string; claim: string; reason: string; documentId: string | null }>;
+  /** The checklist items a person marked "could not check", with the reason. */
+  couldNotCheck: Array<{ item: ChecklistItemId; label: string; reason: string }>;
+}
+
+/** GET /api/briefing */
+export interface BriefingResponse {
+  workspaceId: WorkspaceId;
+  generatedAt: string;
+  briefing: Briefing;
+}
+

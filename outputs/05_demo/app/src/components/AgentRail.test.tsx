@@ -65,11 +65,11 @@ describe('AgentRail', () => {
     expect(screen.getByRole('link', { name: 'DD workspace' })).not.toHaveAttribute('aria-current');
   });
 
-  it('has five entries above the agents, the DD workspace, the data room, the findings, the checklist and the team chat, and marks the one you are on', () => {
+  it('has six entries above the agents, the DD workspace, the data room, the findings, the checklist, the briefing and the team chat, and marks the one you are on', () => {
     const { unmount } = render(<AgentRail agents={ROSTER} />);
     const top = screen.getByRole('link', { name: 'Team chat' }).closest('ul');
     expect(top).not.toBeNull();
-    expect(within(top as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['DD workspace', 'Data room', 'Findings', 'Checklist', 'Team chat']);
+    expect(within(top as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['DD workspace', 'Data room', 'Findings', 'Checklist', 'Briefing', 'Team chat']);
     expect(screen.getByRole('link', { name: 'DD workspace' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Team chat' })).not.toHaveAttribute('aria-current');
     expect(screen.queryByRole('link', { name: /illustrative/i })).not.toBeInTheDocument();
@@ -92,6 +92,12 @@ describe('AgentRail', () => {
     expect(screen.getByRole('link', { name: 'Checklist' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Findings' })).not.toHaveAttribute('aria-current');
     fourth.unmount();
+
+    pathname.current = '/briefing';
+    const fifth = render(<AgentRail agents={ROSTER} />);
+    expect(screen.getByRole('link', { name: 'Briefing' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Checklist' })).not.toHaveAttribute('aria-current');
+    fifth.unmount();
 
     pathname.current = '/chat/reglead';
     render(<AgentRail agents={ROSTER} />);

@@ -1452,3 +1452,28 @@ details.spec .kv {
   max-width: 100%;
 }
 
+/* ===== Briefing ===== */
+.bf-notice {
+  margin: 8px 0 16px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--ink);
+  background: var(--ink-wash);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.bf-section {
+  margin-top: 20px;
+}
+.bf-section > h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.bf-list {
+  margin: 0 0 8px 18px;
+  overflow-wrap: anywhere;
+}
+.bf-list li {
+  margin: 4px 0;
+}
+

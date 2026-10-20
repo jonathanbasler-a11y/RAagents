@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AGENT_GROUPS, type AgentGroup, type PublicAgent } from '@/shared/contracts';
 import type { ChatApi } from '@/client/chat-client';
 import { DataRoomSummary } from './DataRoomSummary';
+import { BriefingCard } from './BriefingCard';
 import { ChecklistSummary } from './ChecklistSummary';
 import { FindingsSummary } from './FindingsSummary';
 import { DdSetupPanel } from './DdSetupPanel';
@@ -65,6 +66,7 @@ export function WorkspaceHome({ agents, client }: { agents: PublicAgent[]; clien
       <DataRoomSummary />
       <FindingsSummary />
       <ChecklistSummary />
+      <BriefingCard />
 
       <section className="sheet team-entry" aria-labelledby="team-entry-title">
         <div>
