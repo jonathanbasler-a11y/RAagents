@@ -1,9 +1,14 @@
 import 'server-only';
 import type { SqliteDatabase } from '@/server/db/sqlite';
-import { PROPOSAL_REFUSAL_CODES } from '@/shared/contracts';
+import { CHECKLIST_ITEM_IDS, CHECKLIST_STATES, FINDING_CATEGORIES, PROPOSAL_REFUSAL_CODES } from '@/shared/contracts';
 
 // The reasons an open question can carry come from the contract, so the list in the database cannot drift from it.
 const REASON_CODES_SQL = PROPOSAL_REFUSAL_CODES.map((code) => `'${code}'`).join(', ');
+// Likewise the checklist items, the four states and the finding categories.
+const sqlList = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
+const CHECKLIST_ITEMS_SQL = sqlList(CHECKLIST_ITEM_IDS);
+const CHECKLIST_STATES_SQL = sqlList(CHECKLIST_STATES);
+const FINDING_CATEGORIES_SQL = sqlList(FINDING_CATEGORIES);
 
 /**
  * The chat schema, one entry per version: entry i takes a database from version i to
@@ -318,6 +323,104 @@ export const CHAT_MIGRATIONS: readonly string[] = [
   BEFORE DELETE ON open_questions
   BEGIN
     SELECT RAISE(ABORT, 'an open question cannot be deleted');
+  END;
+  `,
+
+  // Version 5: the regulatory checklist and the tags that tie accepted findings to it. A person tags a finding once, when
+  // accepting it (or afterwards, if it was accepted without a tag); a tag is never changed. A checklist item is in one of
+  // four states, set by a person, with every change kept as an event. "checked" needs an accepted finding tagged to the
+  // item: the store checks it, and so does the database.
+  `
+  CREATE TABLE finding_tags (
+    workspace_id TEXT NOT NULL,
+    finding_id TEXT NOT NULL,
+    checklist_item TEXT NOT NULL CHECK (checklist_item IN (${CHECKLIST_ITEMS_SQL})),
+    category TEXT NOT NULL CHECK (category IN (${FINDING_CATEGORIES_SQL})),
+    tagged_at TEXT NOT NULL,
+    tagged_by TEXT NOT NULL,
+    PRIMARY KEY (workspace_id, finding_id),
+    FOREIGN KEY (workspace_id, finding_id) REFERENCES findings (workspace_id, id)
+  ) STRICT;
+
+  CREATE TRIGGER finding_tags_only_accepted
+  BEFORE INSERT ON finding_tags
+  WHEN (SELECT status FROM findings WHERE workspace_id = NEW.workspace_id AND id = NEW.finding_id) IS NOT 'accepted'
+  BEGIN
+    SELECT RAISE(ABORT, 'only an accepted finding can be tagged');
+  END;
+
+  CREATE TRIGGER finding_tags_no_update
+  BEFORE UPDATE ON finding_tags
+  BEGIN
+    SELECT RAISE(ABORT, 'a tag cannot be changed');
+  END;
+
+  CREATE TRIGGER finding_tags_no_delete
+  BEFORE DELETE ON finding_tags
+  BEGIN
+    SELECT RAISE(ABORT, 'a tag cannot be deleted');
+  END;
+
+  CREATE TABLE checklist_states (
+    workspace_id TEXT NOT NULL,
+    item TEXT NOT NULL CHECK (item IN (${CHECKLIST_ITEMS_SQL})),
+    state TEXT NOT NULL CHECK (state IN (${CHECKLIST_STATES_SQL})),
+    reason TEXT CHECK (reason IS NULL OR length(reason) BETWEEN 1 AND 300),
+    changed_at TEXT NOT NULL,
+    changed_by TEXT NOT NULL,
+    PRIMARY KEY (workspace_id, item),
+    CHECK (state NOT IN ('not_applicable', 'could_not_check') OR reason IS NOT NULL),
+    CHECK (state <> 'not_checked' OR reason IS NULL)
+  ) STRICT;
+
+  CREATE TRIGGER checklist_checked_needs_finding_insert
+  BEFORE INSERT ON checklist_states
+  WHEN NEW.state = 'checked' AND NOT EXISTS (
+    SELECT 1 FROM finding_tags t
+    JOIN findings f ON f.workspace_id = t.workspace_id AND f.id = t.finding_id
+    WHERE t.workspace_id = NEW.workspace_id AND t.checklist_item = NEW.item AND f.status = 'accepted'
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'an item can be checked only when an accepted finding is tagged to it');
+  END;
+
+  CREATE TRIGGER checklist_checked_needs_finding_update
+  BEFORE UPDATE ON checklist_states
+  WHEN NEW.state = 'checked' AND NOT EXISTS (
+    SELECT 1 FROM finding_tags t
+    JOIN findings f ON f.workspace_id = t.workspace_id AND f.id = t.finding_id
+    WHERE t.workspace_id = NEW.workspace_id AND t.checklist_item = NEW.item AND f.status = 'accepted'
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'an item can be checked only when an accepted finding is tagged to it');
+  END;
+
+  CREATE TRIGGER checklist_states_no_delete
+  BEFORE DELETE ON checklist_states
+  BEGIN
+    SELECT RAISE(ABORT, 'a checklist state cannot be deleted');
+  END;
+
+  CREATE TABLE checklist_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id TEXT NOT NULL,
+    item TEXT NOT NULL CHECK (item IN (${CHECKLIST_ITEMS_SQL})),
+    state TEXT NOT NULL CHECK (state IN (${CHECKLIST_STATES_SQL})),
+    reason TEXT,
+    at TEXT NOT NULL,
+    actor TEXT NOT NULL
+  ) STRICT;
+
+  CREATE TRIGGER checklist_events_no_update
+  BEFORE UPDATE ON checklist_events
+  BEGIN
+    SELECT RAISE(ABORT, 'a checklist event cannot be changed');
+  END;
+
+  CREATE TRIGGER checklist_events_no_delete
+  BEFORE DELETE ON checklist_events
+  BEGIN
+    SELECT RAISE(ABORT, 'a checklist event cannot be deleted');
   END;
   `,
 ];

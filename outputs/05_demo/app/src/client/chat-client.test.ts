@@ -451,6 +451,71 @@ describe('findings', () => {
   });
 });
 
+describe('the checklist and the tags', () => {
+  it('sends the tag with an acceptance, and no tag fields without one', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { finding: {}, tag: null }));
+    const chat = client(fetchImpl);
+
+    await chat.submitFindingDecision('F-001', 'accept', 'Checked.', { checklistItem: 'ptrs-inputs', category: 'positive' });
+    await chat.submitFindingDecision('F-002', 'reject');
+
+    const [accepted, rejected] = fetchImpl.mock.calls;
+    expect(bodyOf(accepted)).toEqual({ decision: 'accept', note: 'Checked.', checklistItem: 'ptrs-inputs', category: 'positive' });
+    expect(bodyOf(rejected)).toEqual({ decision: 'reject' });
+  });
+
+  it('tags a finding with a POST to its own tags address, the id encoded, and only the two tag fields', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { tag: {} }));
+    const chat = client(fetchImpl);
+
+    await chat.submitFindingTag('F-001', { checklistItem: 'regions', category: 'risk' });
+    await chat.submitFindingTag('a/b?c', { checklistItem: 'regions', category: 'risk' });
+
+    const [first, odd] = fetchImpl.mock.calls;
+    expect(first[0]).toBe('/api/findings/F-001/tags');
+    expect(first[1]?.method).toBe('POST');
+    expect(bodyOf(first)).toEqual({ checklistItem: 'regions', category: 'risk' });
+    expect(odd[0]).toBe('/api/findings/a%2Fb%3Fc/tags');
+  });
+
+  it('reads the checklist with a GET', async () => {
+    const payload = { workspaceId: 'demo', items: [] };
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(200, payload));
+
+    const result = await client(fetchImpl).getChecklist();
+
+    expect(result).toEqual({ ok: true, data: payload });
+    expect(fetchImpl.mock.calls[0][0]).toBe('/api/checklist');
+    expect(fetchImpl.mock.calls[0][1]?.method ?? 'GET').toBe('GET');
+  });
+
+  it('moves an item with a POST to its own address: the state, and the reason only when there is one', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { workspaceId: 'demo', items: [] }));
+    const chat = client(fetchImpl);
+
+    await chat.submitChecklistState('designations', 'not_applicable', 'Not an orphan product.');
+    await chat.submitChecklistState('regions', 'not_checked');
+    await chat.submitChecklistState('a/b?c', 'not_checked', '');
+
+    const [na, back, odd] = fetchImpl.mock.calls;
+    expect(na[0]).toBe('/api/checklist/designations');
+    expect(na[1]?.method).toBe('POST');
+    expect(bodyOf(na)).toEqual({ state: 'not_applicable', reason: 'Not an orphan product.' });
+    expect(bodyOf(back)).toEqual({ state: 'not_checked' });
+    expect(odd[0]).toBe('/api/checklist/a%2Fb%3Fc');
+    expect(bodyOf(odd)).toEqual({ state: 'not_checked' });
+  });
+
+  it('returns the error body when "checked" is refused for want of an accepted finding (409)', async () => {
+    const body = { error: 'checklist_needs_finding', message: 'An item can be marked checked only when at least one accepted finding is tagged to it.', correlationId: 'c-8' };
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(409, body));
+
+    const result = await client(fetchImpl).submitChecklistState('regions', 'checked');
+
+    expect(result).toEqual({ ok: false, status: 409, error: body, message: body.message });
+  });
+});
+
 describe('createClientTurnId', () => {
   it('uses crypto.randomUUID when it exists', () => {
     expect(createClientTurnId({ randomUUID: () => 'from-random-uuid', getRandomValues: (array) => array })).toBe(

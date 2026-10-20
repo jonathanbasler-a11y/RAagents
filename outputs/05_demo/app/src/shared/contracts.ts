@@ -864,7 +864,26 @@ export interface Store {
    * FindingAlreadyDecidedError, FindingSourceWithdrawnError (accepting a finding whose document was withdrawn; rejecting
    * it is allowed) or RangeError (a decision other than accepted or rejected, or a long note).
    */
-  decideFinding(workspaceId: WorkspaceId, findingId: string, decision: 'accepted' | 'rejected', note: string | null): Finding;
+  decideFinding(workspaceId: WorkspaceId, findingId: string, decision: 'accepted' | 'rejected', note: string | null, tag?: FindingTagInput): Finding;
+  /**
+   * Which checklist item an accepted finding supports and whether it is a positive, a risk or neutral, set once by a
+   * person (insert-only: a tag is never changed). The ONLY writer of a tag. Accepting a finding can carry the tag in the
+   * same transaction (see decideFinding); this is for a finding accepted without one. Throws FindingNotFoundError,
+   * FindingNotAcceptedError (a draft or rejected finding has no tag), FindingAlreadyTaggedError or RangeError (an unknown
+   * item or category).
+   */
+  tagFinding(workspaceId: WorkspaceId, findingId: string, tag: FindingTagInput): FindingTag;
+  listFindingTags(workspaceId: WorkspaceId): FindingTag[];
+  /**
+   * Moves one checklist item to a state, as a person's action, with an append-only event. "checked" needs at least one
+   * accepted finding tagged to the item (ChecklistNeedsFindingError); "not applicable" and "could not check" need a
+   * reason (RangeError). The ONLY writer of a checklist state.
+   */
+  setChecklistState(workspaceId: WorkspaceId, item: ChecklistItemId, state: ChecklistState, reason: string | null): ChecklistEntry;
+  /** Every checklist item in the order of CHECKLIST_ITEM_IDS; an item nobody touched is "not checked". */
+  listChecklist(workspaceId: WorkspaceId): ChecklistEntry[];
+  /** The checklist's audit trail, oldest first. */
+  listChecklistEvents(workspaceId: WorkspaceId): ChecklistEvent[];
   close(): void;
 }
 
@@ -917,13 +936,18 @@ export const API_ERROR_CODES = [
   'finding_not_found',
   'finding_decided',
   'finding_source_withdrawn',
+  'finding_not_accepted',
+  'finding_tagged',
+  'checklist_needs_finding',
+  'checklist_item_not_found',
   'llm_not_configured',
   'internal',
 ] as const;
 /**
  * HTTP status: invalid_request 400, forbidden 403, not_found 404, room_busy 409, server_busy 429,
  * locked_agent 409, data_room_exists 409, no_data_room 409, document_not_found 404, finding_not_found 404, finding_decided 409,
- * finding_source_withdrawn 409, llm_not_configured 503, internal 500.
+ * finding_source_withdrawn 409, finding_not_accepted 409, finding_tagged 409, checklist_needs_finding 409,
+ * checklist_item_not_found 404, llm_not_configured 503, internal 500.
  * server_busy: two turns already run on this server (the most it runs at once); nothing was written.
  */
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
@@ -1324,16 +1348,95 @@ export interface FindingsResponse {
   workspaceId: WorkspaceId;
   findings: Finding[];
   openQuestions: OpenQuestion[];
+  /** The tags of accepted findings; a finding with no entry here is untagged. */
+  tags: FindingTag[];
 }
 
 /** POST /api/findings/[id]: the decision of a person. Anything else is refused. */
 export interface FindingDecisionRequest {
   decision: 'accept' | 'reject';
   note?: string;
+  /** Required to accept: which checklist item the finding supports, and whether it is a positive, a risk or neutral. */
+  checklistItem?: ChecklistItemId;
+  category?: FindingCategory;
 }
 
-/** The finding as it is saved after the decision. */
+/** The finding as it is saved after the decision, and its tag (null for a rejection). */
 export interface FindingDecisionResponse {
   finding: Finding;
+  tag: FindingTag | null;
+}
+
+// ---------------------------------------------------------------------------
+// Checklist: the regulatory checklist of the DD playbook, and the tags that tie accepted findings to it.
+// Rules in src/shared/checklist.ts. Every state is set by a person; "checked" needs an accepted finding behind it.
+// ---------------------------------------------------------------------------
+
+/** The regulatory checklist (CLAUDE.md, "Regulatory checklist"). Labels and hints are in src/shared/checklist.ts. */
+export const CHECKLIST_ITEM_IDS = ['guidance', 'designations', 'regions', 'bottlenecks', 'ptrs-inputs', 'hta-handover'] as const;
+export type ChecklistItemId = (typeof CHECKLIST_ITEM_IDS)[number];
+
+/**
+ * The four states, kept apart on purpose:
+ * - not_checked: nobody has looked, or somebody took the mark back. The default.
+ * - checked: looked at, with at least one accepted finding behind it.
+ * - not_applicable: looked at and does not apply here, with a reason ("checked: not applicable").
+ * - could_not_check: tried and could not, with a reason (for example a document was not provided).
+ */
+export const CHECKLIST_STATES = ['not_checked', 'checked', 'not_applicable', 'could_not_check'] as const;
+export type ChecklistState = (typeof CHECKLIST_STATES)[number];
+
+export const FINDING_CATEGORIES = ['positive', 'risk', 'neutral'] as const;
+export type FindingCategory = (typeof FINDING_CATEGORIES)[number];
+
+export interface FindingTagInput {
+  checklistItem: ChecklistItemId;
+  category: FindingCategory;
+}
+
+/** What a person said an accepted finding is about. Never changed once set. */
+export interface FindingTag extends FindingTagInput {
+  findingId: string;
+  taggedAt: string;
+  /** LOCAL_PERSON while the app has no login. */
+  taggedBy: string;
+}
+
+export interface ChecklistEntry {
+  item: ChecklistItemId;
+  state: ChecklistState;
+  /** Required for not_applicable and could_not_check. */
+  reason: string | null;
+  /** Null for an item nobody has touched. */
+  changedAt: string | null;
+  changedBy: string | null;
+}
+
+export interface ChecklistEvent {
+  id: number;
+  item: ChecklistItemId;
+  state: ChecklistState;
+  reason: string | null;
+  at: string;
+  by: string;
+}
+
+/** GET /api/checklist: each item with how many accepted findings are tagged to it. */
+export interface ChecklistResponse {
+  workspaceId: WorkspaceId;
+  items: Array<ChecklistEntry & { acceptedFindings: number }>;
+}
+
+/** POST /api/checklist/[item]: a person moves one item to a state. */
+export interface ChecklistStateRequest {
+  state: ChecklistState;
+  reason?: string;
+}
+
+/** POST /api/findings/[id]/tags: a person tags a finding they accepted without one. */
+export type FindingTagRequest = FindingTagInput;
+
+export interface FindingTagResponse {
+  tag: FindingTag;
 }
 

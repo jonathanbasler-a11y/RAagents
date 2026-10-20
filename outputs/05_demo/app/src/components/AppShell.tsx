@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { DemoMode } from '@/shared/contracts';
 import { AgentRail } from './AgentRail';
 import { PracticeBanner } from './Banners';
+import { ChecklistProvider } from './ChecklistProvider';
 import { DataRoomProvider } from './DataRoomProvider';
 import { DdSetupProvider } from './DdSetupProvider';
 import { DemoModeProvider } from './DemoMode';
@@ -46,6 +47,7 @@ export function AppShell({
             <PhaseLine mode={mode} />
           </header>
           <FindingsProvider>
+            <ChecklistProvider>
             <SelectionProvider>
               <DdSetupProvider>
                 <div className="shell">
@@ -62,6 +64,7 @@ export function AppShell({
                 </div>
               </DdSetupProvider>
             </SelectionProvider>
+            </ChecklistProvider>
           </FindingsProvider>
         </DataRoomProvider>
       </div>

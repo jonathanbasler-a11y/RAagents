@@ -23,7 +23,7 @@ In this phase no documents are connected and the agents have no tools. Every rep
 The times are estimates: confirm them in your rehearsal with the real model. Turns that end with Sofia's summary (steps 3 and 4) make three model calls in a row, so they take longest: talk while they stream.
 
 - **3 minutes:** steps 1, 3, 5, 6, 7 and 10.
-- **5 minutes:** steps 1 to 8 and 10. Without step 8, about 4.5 minutes. The optional part of step 4 adds about 45 s, step 1b about 40 s the data room (step 9) about 90 s and the findings (step 9b) about 2 minutes more. The findings step needs the data room and a real model; it is not part of the 3 or 5 minute versions.
+- **5 minutes:** steps 1 to 8 and 10. Without step 8, about 4.5 minutes. The optional part of step 4 adds about 45 s, step 1b about 40 s the data room (step 9) about 90 s, the findings (step 9b) about 2 minutes more and the checklist (step 9c) about 90 seconds after that. The findings step needs the data room and a real model; it is not part of the 3 or 5 minute versions.
 
 ### 1. The DD workspace (about 30 s)
 
@@ -185,10 +185,20 @@ Click **Findings** in the left rail. Point out:
 - Every card is a **draft**: "Draft: no person has decided". Each has the claim, the **quote** beside it in the highlighter, and the document it comes from (id, title, date, kind). Code has checked that the quote is word for word in a document she was shown; a claim without such a quote could not become a finding and is under **Open questions** instead.
 - A finding from the licensor's own document is labelled **Attributed: what the seller states, not verified fact**. A finding from an agency record is a primary record.
 - The card says **agent output, not evidence**, who drafted it and the human owner.
-- Type a short note on one card and click **Accept**; click **Reject** on another. A decided card moves under **Decided** and carries the stamp: **person (local, not authenticated)**. Say plainly that this app has no login, so it cannot tell who clicked; that is the next gate's job. A decision is made once and cannot be undone here.
+- On one card, choose **which checklist item it supports** and **whether it is a positive, a risk or neutral** (Accept stays off until both are chosen, and nothing is preselected, so accepting is never done by habit). Type a short note if you like and click **Accept**; click **Reject** on another (a rejection needs no tag). A decided card moves under **Decided** and carries the stamp: **person (local, not authenticated)**. Say plainly that this app has no login, so it cannot tell who clicked; that is the next gate's job. A decision is made once and cannot be undone here.
+- The accepted card now says **Supports: …** with the item and the kind. That is what the checklist and, later, the briefing are built from.
 - If you click **Propose findings** again on a similar question, claims on a sentence already in the register are not added again; the line under her reply says which finding they repeated.
 
 If you **Withdraw** a document on the Data room page, the drafts that rest on it can still be rejected but no longer accepted.
+
+### 9c. The checklist: four states that never blur (optional, about 90 seconds; only after step 9b)
+
+Click **Checklist** in the left rail. Six items, the regulatory checklist of the due diligence. Point out:
+
+- The item you tagged in step 9b says "1 accepted finding is tagged to this item". **Checked is offered only there**; for every other item it is greyed out, because "checked" needs an accepted finding behind it (code refuses it otherwise, and so does the database). Mark the tagged item **Checked** and save.
+- Pick another item, choose **Checked: not applicable**, and try to save: it asks for a **reason**. Type one ("Not an orphan product" is the fictional case's own answer) and save. Do the same with **Could not check** on a third item ("The filing plan was not provided").
+- The counts line keeps the four states apart: checked, checked: not applicable, could not check, not checked. Say plainly that "not checked" is the default and stays visible: nothing is skipped silently, and nothing becomes "checked" because an agent said so.
+- The page says the app has no login, so a change is stamped "person (local, not authenticated)". The briefing that is built from accepted, tagged findings is the next step; it is not in this version.
 
 ### 10. Close (about 15 s)
 

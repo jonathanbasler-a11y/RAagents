@@ -2,6 +2,12 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { openDatabase, type SqliteDatabase } from '@/server/db/sqlite';
 import type {
+  ChecklistEntry,
+  ChecklistEvent,
+  ChecklistItemId,
+  ChecklistState,
+  FindingTag,
+  FindingTagInput,
   AgentId,
   AppendResult,
   ChatErrorCode,
@@ -32,8 +38,9 @@ import type {
   TurnTrace,
   WorkspaceId,
 } from '@/shared/contracts';
-import { CLASSIFICATION_IDS, DEVELOPMENT_STAGES, LOCAL_PERSON } from '@/shared/contracts';
+import { CHECKLIST_ITEM_IDS, CLASSIFICATION_IDS, DEVELOPMENT_STAGES, LOCAL_PERSON } from '@/shared/contracts';
 import { neutraliseUntrusted } from '@/server/prompts/fence';
+import { checkStateChange, checkTagInput, isChecklistItemId } from '@/shared/checklist';
 import { checkProposedFinding, foldForMatch, type ProposalContext } from '@/shared/findings';
 import { MAX_REASON_CHARS, checkAsOf, checkNewDocument, compareDocumentIds, nextDocumentId } from '@/shared/data-room';
 import { immediateTransaction, migrateChatSchema } from './schema';
@@ -140,6 +147,36 @@ export class FindingSourceWithdrawnError extends Error {
   constructor(findingId: string, documentId: string) {
     super(`finding ${findingId} cannot be accepted: ${documentId} has been withdrawn`);
     this.name = 'FindingSourceWithdrawnError';
+  }
+}
+
+/** Thrown by tagFinding for a finding that is not accepted. The API answers 409 finding_not_accepted. */
+export class FindingNotAcceptedError extends Error {
+  readonly code = 'finding_not_accepted' as const;
+
+  constructor(findingId: string, status: string) {
+    super(`finding ${findingId} is ${status}; only an accepted finding can be tagged`);
+    this.name = 'FindingNotAcceptedError';
+  }
+}
+
+/** Thrown by tagFinding for a finding that already has its tag. The API answers 409 finding_tagged. */
+export class FindingAlreadyTaggedError extends Error {
+  readonly code = 'finding_tagged' as const;
+
+  constructor(findingId: string) {
+    super(`finding ${findingId} already has its tag; a tag is set once`);
+    this.name = 'FindingAlreadyTaggedError';
+  }
+}
+
+/** Thrown by setChecklistState for "checked" without an accepted finding tagged to the item. The API answers 409 checklist_needs_finding. */
+export class ChecklistNeedsFindingError extends Error {
+  readonly code = 'checklist_needs_finding' as const;
+
+  constructor(item: string) {
+    super(`${item} cannot be marked checked: no accepted finding is tagged to it`);
+    this.name = 'ChecklistNeedsFindingError';
   }
 }
 
@@ -549,6 +586,21 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
     ),
     insertFindingEvent: db.prepare('INSERT INTO finding_events (workspace_id, finding_id, kind, at, actor, note) VALUES (?, ?, ?, ?, ?, ?)'),
     findingEventsOf: db.prepare('SELECT id, finding_id, kind, at, actor, note FROM finding_events WHERE workspace_id = ? ORDER BY id'),
+    insertFindingTag: db.prepare('INSERT INTO finding_tags (workspace_id, finding_id, checklist_item, category, tagged_at, tagged_by) VALUES (?, ?, ?, ?, ?, ?)'),
+    findingTagOf: db.prepare('SELECT 1 AS present FROM finding_tags WHERE workspace_id = ? AND finding_id = ?'),
+    findingTagsOf: db.prepare('SELECT finding_id, checklist_item, category, tagged_at, tagged_by FROM finding_tags WHERE workspace_id = ? ORDER BY rowid'),
+    acceptedFindingsForItem: db.prepare(
+      `SELECT COUNT(*) AS n FROM finding_tags t
+         JOIN findings f ON f.workspace_id = t.workspace_id AND f.id = t.finding_id
+        WHERE t.workspace_id = ? AND t.checklist_item = ? AND f.status = 'accepted'`,
+    ),
+    upsertChecklistState: db.prepare(
+      `INSERT INTO checklist_states (workspace_id, item, state, reason, changed_at, changed_by) VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (workspace_id, item) DO UPDATE SET state = excluded.state, reason = excluded.reason, changed_at = excluded.changed_at, changed_by = excluded.changed_by`,
+    ),
+    insertChecklistEvent: db.prepare('INSERT INTO checklist_events (workspace_id, item, state, reason, at, actor) VALUES (?, ?, ?, ?, ?, ?)'),
+    checklistStatesOf: db.prepare('SELECT item, state, reason, changed_at, changed_by FROM checklist_states WHERE workspace_id = ?'),
+    checklistEventsOf: db.prepare('SELECT id, item, state, reason, at, actor FROM checklist_events WHERE workspace_id = ? ORDER BY id'),
     openQuestionsOf: db.prepare("SELECT * FROM open_questions WHERE workspace_id = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER)"),
     nextQuestionNumber: db.prepare("SELECT COALESCE(MAX(CAST(SUBSTR(id, 3) AS INTEGER)), 0) + 1 AS next FROM open_questions WHERE workspace_id = ?"),
     insertOpenQuestion: db.prepare(
@@ -1143,11 +1195,18 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       });
     },
 
-    decideFinding(workspaceId, findingId, decision, note) {
+    decideFinding(workspaceId, findingId, decision, note, tag) {
       requireNonEmpty('workspaceId', workspaceId);
       if (decision !== 'accepted' && decision !== 'rejected') throw new RangeError('a decision is accepted or rejected');
       const trimmed = typeof note === 'string' ? note.trim() : '';
       if (trimmed.length > MAX_DECISION_NOTE_CHARS) throw new RangeError(`the note is longer than ${MAX_DECISION_NOTE_CHARS} characters`);
+      let checkedTag: FindingTagInput | null = null;
+      if (tag !== undefined) {
+        if (decision !== 'accepted') throw new RangeError('only an accepted finding has a tag');
+        const result = checkTagInput(tag.checklistItem, tag.category);
+        if (!result.ok) throw new RangeError(result.message);
+        checkedTag = result.tag;
+      }
       const at = timestamp();
       return immediateTransaction(db, () => {
         const finding = readFinding(workspaceId, findingId);
@@ -1158,8 +1217,84 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
         }
         sql.updateFindingDecision.run({ workspace_id: workspaceId, id: findingId, status: decision, at, by: LOCAL_PERSON, note: trimmed === '' ? null : trimmed });
         sql.insertFindingEvent.run(workspaceId, findingId, decision, at, LOCAL_PERSON, trimmed === '' ? null : trimmed);
+        if (checkedTag !== null) sql.insertFindingTag.run(workspaceId, findingId, checkedTag.checklistItem, checkedTag.category, at, LOCAL_PERSON);
         return mustExist(readFinding(workspaceId, findingId) ?? undefined, `finding ${findingId}`);
       });
+    },
+
+    tagFinding(workspaceId, findingId, tag) {
+      requireNonEmpty('workspaceId', workspaceId);
+      const result = checkTagInput(tag?.checklistItem, tag?.category);
+      if (!result.ok) throw new RangeError(result.message);
+      const at = timestamp();
+      return immediateTransaction(db, () => {
+        const finding = readFinding(workspaceId, findingId);
+        if (finding === null) throw new FindingNotFoundError(findingId);
+        if (finding.status !== 'accepted') throw new FindingNotAcceptedError(findingId, finding.status);
+        if (sql.findingTagOf.get(workspaceId, findingId)) throw new FindingAlreadyTaggedError(findingId);
+        sql.insertFindingTag.run(workspaceId, findingId, result.tag.checklistItem, result.tag.category, at, LOCAL_PERSON);
+        return { findingId, ...result.tag, taggedAt: at, taggedBy: LOCAL_PERSON } satisfies FindingTag;
+      });
+    },
+
+    listFindingTags(workspaceId) {
+      requireNonEmpty('workspaceId', workspaceId);
+      return (sql.findingTagsOf.all(workspaceId) as Array<Record<string, unknown>>).map(
+        (row): FindingTag => ({
+          findingId: row.finding_id as string,
+          checklistItem: row.checklist_item as ChecklistItemId,
+          category: row.category as FindingTag['category'],
+          taggedAt: row.tagged_at as string,
+          taggedBy: row.tagged_by as string,
+        }),
+      );
+    },
+
+    setChecklistState(workspaceId, item, state, reason) {
+      requireNonEmpty('workspaceId', workspaceId);
+      if (!isChecklistItemId(item)) throw new RangeError(`${String(item)} is not a checklist item`);
+      const at = timestamp();
+      return immediateTransaction(db, () => {
+        const accepted = Number((sql.acceptedFindingsForItem.get(workspaceId, item) as { n: number }).n);
+        const checked = checkStateChange({ state, reason, acceptedFindings: accepted });
+        if (!checked.ok) {
+          if (checked.code === 'needs_finding') throw new ChecklistNeedsFindingError(item);
+          throw new RangeError(checked.message);
+        }
+        sql.upsertChecklistState.run(workspaceId, item, state, checked.reason, at, LOCAL_PERSON);
+        sql.insertChecklistEvent.run(workspaceId, item, state, checked.reason, at, LOCAL_PERSON);
+        return { item, state, reason: checked.reason, changedAt: at, changedBy: LOCAL_PERSON } satisfies ChecklistEntry;
+      });
+    },
+
+    listChecklist(workspaceId) {
+      requireNonEmpty('workspaceId', workspaceId);
+      const rows = new Map((sql.checklistStatesOf.all(workspaceId) as Array<Record<string, unknown>>).map((row) => [row.item as string, row]));
+      return CHECKLIST_ITEM_IDS.map((item): ChecklistEntry => {
+        const row = rows.get(item);
+        if (row === undefined) return { item, state: 'not_checked', reason: null, changedAt: null, changedBy: null };
+        return {
+          item,
+          state: row.state as ChecklistState,
+          reason: (row.reason as string | null) ?? null,
+          changedAt: row.changed_at as string,
+          changedBy: row.changed_by as string,
+        };
+      });
+    },
+
+    listChecklistEvents(workspaceId) {
+      requireNonEmpty('workspaceId', workspaceId);
+      return (sql.checklistEventsOf.all(workspaceId) as Array<Record<string, unknown>>).map(
+        (row): ChecklistEvent => ({
+          id: Number(row.id),
+          item: row.item as ChecklistItemId,
+          state: row.state as ChecklistState,
+          reason: (row.reason as string | null) ?? null,
+          at: row.at as string,
+          by: row.actor as string,
+        }),
+      );
     },
 
     close() {

@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import type { Finding, OpenQuestion } from '@/shared/contracts';
+import type { Finding, FindingTag, OpenQuestion } from '@/shared/contracts';
 import { LOCAL_PERSON } from '@/shared/contracts';
+import { CHECKLIST_ITEMS } from '@/shared/checklist';
 import { SOURCE_TYPE_LABELS } from '@/shared/data-room';
 import { useDataRoom } from './DataRoomProvider';
 import { useFindings } from './FindingsProvider';
-import { FINDING_BASIS_LABELS, FINDING_CONFIDENCE_LABELS, FINDING_STATUS_LABELS } from './labels';
+import { FINDING_BASIS_LABELS, FINDING_CATEGORY_LABELS, FINDING_CONFIDENCE_LABELS, FINDING_STATUS_LABELS } from './labels';
+import { isCompleteChoice, NO_CHOICE, TagPicker, type TagChoice } from './TagPicker';
 
 // The findings page: what the agents drafted from the data room, and what a person decided. An agent proposes; code has
 // already checked that the quote is in a document the agent was shown; only the buttons here change a status. The app has
@@ -25,6 +27,7 @@ function when(iso: string | null): string {
 function Decision({ finding, withdrawn }: { finding: Finding; withdrawn: boolean }) {
   const { deciding, decide, decideError } = useFindings();
   const [note, setNote] = useState('');
+  const [choice, setChoice] = useState<TagChoice>(NO_CHOICE);
   const busy = deciding !== null;
   const mine = decideError?.findingId === finding.id ? decideError : null;
   const noteId = `fd-note-${finding.id}`;
@@ -48,13 +51,21 @@ function Decision({ finding, withdrawn }: { finding: Finding; withdrawn: boolean
           onChange={(event) => setNote(event.target.value)}
         />
       </label>
+      <TagPicker findingId={finding.id} choice={choice} onChange={setChoice} disabled={busy} />
+      {!isCompleteChoice(choice) && (
+        <p className="note" aria-live="polite">
+          To accept, choose the checklist item it supports and whether it is a positive, a risk or neutral.
+        </p>
+      )}
       <div className="dr-buttons">
         <button
           type="button"
           className="btn btn-primary"
-          disabled={busy || withdrawn}
+          disabled={busy || withdrawn || !isCompleteChoice(choice)}
           aria-label={`Accept ${finding.id}`}
-          onClick={() => void decide(finding.id, 'accept', note.trim())}
+          onClick={() => {
+            if (isCompleteChoice(choice)) void decide(finding.id, 'accept', note.trim(), { checklistItem: choice.item, category: choice.category });
+          }}
         >
           {deciding === finding.id ? 'Saving…' : 'Accept'}
         </button>
@@ -72,7 +83,40 @@ function Decision({ finding, withdrawn }: { finding: Finding; withdrawn: boolean
   );
 }
 
-function FindingCard({ finding, withdrawn }: { finding: Finding; withdrawn: boolean }) {
+/** An accepted finding with no tag: the person can still say what it supports. */
+function LateTag({ finding }: { finding: Finding }) {
+  const { deciding, tag, decideError } = useFindings();
+  const [choice, setChoice] = useState<TagChoice>(NO_CHOICE);
+  const busy = deciding !== null;
+  const mine = decideError?.findingId === finding.id ? decideError : null;
+  return (
+    <div className="fd-decision">
+      <p className="note">Not tagged yet: it counts for no checklist item and is not sorted into the briefing.</p>
+      <TagPicker findingId={finding.id} choice={choice} onChange={setChoice} disabled={busy} />
+      <div className="dr-buttons">
+        <button
+          type="button"
+          className="btn"
+          disabled={busy || !isCompleteChoice(choice)}
+          aria-label={`Save tag for ${finding.id}`}
+          onClick={() => {
+            if (isCompleteChoice(choice)) void tag(finding.id, { checklistItem: choice.item, category: choice.category });
+          }}
+        >
+          {deciding === finding.id ? 'Saving…' : 'Save tag'}
+        </button>
+      </div>
+      {mine && (
+        <p className="dr-error" role="alert">
+          Not saved: {mine.message}
+          {mine.correlationId && <span className="mono"> Reference {mine.correlationId}</span>}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FindingCard({ finding, withdrawn, tag }: { finding: Finding; withdrawn: boolean; tag: FindingTag | undefined }) {
   const decided = finding.status !== 'draft';
   return (
     <article className="sheet fd-card" aria-labelledby={`fd-${finding.id}`} data-status={finding.status}>
@@ -107,10 +151,20 @@ function FindingCard({ finding, withdrawn }: { finding: Finding; withdrawn: bool
         Drafted by {finding.draftedBy.agentName} (version {finding.draftedBy.agentVersion}); agent output, not evidence. Human owner: {finding.owner}.
       </p>
       {decided ? (
-        <p className="fd-stamp">
-          {finding.status === 'accepted' ? 'Accepted' : 'Rejected'} by {finding.decidedBy ?? 'someone not recorded'} on {when(finding.decidedAt)}.
-          {finding.decisionNote && <> Note: {finding.decisionNote}</>}
-        </p>
+        <>
+          <p className="fd-stamp">
+            {finding.status === 'accepted' ? 'Accepted' : 'Rejected'} by {finding.decidedBy ?? 'someone not recorded'} on {when(finding.decidedAt)}.
+            {finding.decisionNote && <> Note: {finding.decisionNote}</>}
+          </p>
+          {finding.status === 'accepted' &&
+            (tag ? (
+              <p className="note fd-tagline">
+                Supports: {CHECKLIST_ITEMS[tag.checklistItem].label} · {FINDING_CATEGORY_LABELS[tag.category]}
+              </p>
+            ) : (
+              <LateTag finding={finding} />
+            ))}
+        </>
       ) : (
         <Decision finding={finding} withdrawn={withdrawn} />
       )}
@@ -136,6 +190,7 @@ export function FindingsPanel() {
   const dataRoom = useDataRoom();
   if (register.status === 'unavailable') return null;
 
+  const tagOf = new Map((register.tags ?? []).map((entry) => [entry.findingId, entry]));
   const withdrawnIds = new Set((dataRoom.dataRoom?.documents ?? []).filter((document) => document.withdrawnAt !== null).map((document) => document.id));
 
   let body: ReactNode;
@@ -171,7 +226,7 @@ export function FindingsPanel() {
           <section aria-labelledby="fd-drafts-title">
             <h2 id="fd-drafts-title">Drafts waiting for a person</h2>
             {drafts.map((finding) => (
-              <FindingCard key={finding.id} finding={finding} withdrawn={withdrawnIds.has(finding.documentId)} />
+              <FindingCard key={finding.id} finding={finding} withdrawn={withdrawnIds.has(finding.documentId)} tag={tagOf.get(finding.id)} />
             ))}
           </section>
         )}
@@ -179,7 +234,7 @@ export function FindingsPanel() {
           <section aria-labelledby="fd-decided-title">
             <h2 id="fd-decided-title">Decided</h2>
             {decided.map((finding) => (
-              <FindingCard key={finding.id} finding={finding} withdrawn={withdrawnIds.has(finding.documentId)} />
+              <FindingCard key={finding.id} finding={finding} withdrawn={withdrawnIds.has(finding.documentId)} tag={tagOf.get(finding.id)} />
             ))}
           </section>
         )}
