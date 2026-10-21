@@ -973,7 +973,8 @@ details.spec .kv {
 }
 .log {
   flex: 1 1 auto;
-  min-height: 0;
+  /* The thread stays readable when the team list and the prompts are open; the page then scrolls instead. */
+  min-height: 180px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -1145,6 +1146,85 @@ details.spec .kv {
 .sysline-error {
   color: var(--red);
 }
+
+/* ===== Adding agents from the team chat ===== */
+.offer {
+  list-style: none;
+  margin: 0;
+  padding: 0 12%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 12px;
+}
+.offer-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.offer-on {
+  color: var(--graphite);
+}
+.offer .switch-error {
+  text-align: left;
+}
+.team-picker {
+  padding: 4px 0;
+  /* Never squeezed by the room's flex layout: the open list would be drawn under the message box. */
+  flex: none;
+}
+.team-picker-count {
+  color: var(--graphite);
+}
+.team-picker-panel {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--sheet);
+  max-height: 34vh;
+  overflow-y: auto;
+}
+.tp-group + .tp-group {
+  margin-top: 10px;
+}
+.tp-group-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--graphite);
+}
+.tp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  column-gap: 24px;
+}
+.tp-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 4px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.tp-name {
+  font-weight: 600;
+  min-width: 64px;
+}
+.tp-cap {
+  flex: 1 1 120px;
+  min-width: 0;
+  color: var(--graphite);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
 .turn-panel {
   font-size: 13px;
   border: 1px solid var(--line);
@@ -1312,6 +1392,16 @@ details.spec .kv {
     position: sticky;
     bottom: 0;
     padding-bottom: 8px;
+  }
+  /* The composer sticks to the bottom here, and the prompt lists now stay open: one swipeable row each, so it stays short. */
+  .starters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .starters .starter {
+    flex: none;
+    white-space: nowrap;
+    max-width: none;
   }
   .docbar {
     padding: 8px 16px;

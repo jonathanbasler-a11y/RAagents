@@ -438,7 +438,7 @@ describe('teamExecutor: routes and budget', () => {
     const turn = run(deps, '@Lena @Rosa what goes in the label?');
     const finished = await turn.finished;
 
-    const note = 'Lena is not selected for this DD; switch them on in the team overview to bring them in.';
+    const note = 'Lena is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).';
     const messages = temp.store.listMessages(turn.thread.id);
     expect(shown(messages)).toEqual([
       ['human', null, '@Lena @Rosa what goes in the label?'],

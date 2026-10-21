@@ -26,6 +26,8 @@ function show(item: TimelineItem): string {
       return `${item.tone}: ${item.text}`;
     case 'turn':
       return `panel ${item.turn.id}`;
+    case 'offer':
+      return `offer: ${item.agentIds.map(nameOf).join(', ')}`;
   }
 }
 
@@ -604,5 +606,169 @@ describe('detachLiveTurn and retainAfterReload', () => {
     );
 
     expect(retainAfterReload(live, data)).toBeNull();
+  });
+});
+
+describe('agents the route could not bring in because they are not selected', () => {
+  const NOTE = 'Oona matches this question but is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).';
+  const ROUTE: RouteDecision = {
+    source: 'keyword',
+    primary: 'reglead',
+    secondaries: [],
+    notConsulted: [{ agentId: 'sp-orphan', reason: 'not_selected' }],
+    notes: [NOTE],
+    synthesis: false,
+  };
+  const TRACE: TurnTrace = {
+    route: ROUTE,
+    agents: [
+      { agentId: 'reglead', agentName: 'Rosa', role: 'primary', state: 'answered', messageId: 'a1' },
+      { agentId: 'sp-orphan', agentName: 'Oona', role: 'secondary', state: 'not_consulted', reason: 'not_selected' },
+    ],
+  };
+  const SAVED = roomData(
+    [
+      makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Orphan question', seq: 1 }),
+      makeMessage({ id: 'n1', turnId: 't1', author: 'note', text: NOTE, seq: 2 }),
+      makeMessage({ id: 'a1', turnId: 't1', author: 'agent', agentId: 'reglead', agentName: 'Rosa', text: 'Answer.', seq: 3 }),
+    ],
+    [makeTurn({ id: 't1', trace: TRACE })],
+  );
+
+  it('offers them right after the notes and before the answers, from the route and not from the note text', () => {
+    expect(buildTimeline(SAVED, null, nameOf).map(show)).toEqual([
+      'you: Orphan question',
+      `note: ${NOTE}`,
+      'offer: Oona',
+      'Rosa [complete]: Answer.',
+      'panel t1',
+    ]);
+  });
+
+  it('puts one offer after a run of several notes, with every agent that was left out, each once', () => {
+    const route: RouteDecision = {
+      ...ROUTE,
+      notConsulted: [
+        { agentId: 'sp-orphan', reason: 'not_selected' },
+        { agentId: 'o-cmc', reason: 'not_selected' },
+        { agentId: 'sp-orphan', reason: 'not_selected' },
+      ],
+    };
+    const data = roomData(
+      [
+        makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Q', seq: 1 }),
+        makeMessage({ id: 'n1', turnId: 't1', author: 'note', text: 'first note', seq: 2 }),
+        makeMessage({ id: 'n2', turnId: 't1', author: 'note', text: 'second note', seq: 3 }),
+        makeMessage({ id: 'a1', turnId: 't1', author: 'agent', agentId: 'reglead', agentName: 'Rosa', text: 'Answer.', seq: 4 }),
+      ],
+      [makeTurn({ id: 't1', trace: { route, agents: [] } })],
+    );
+
+    expect(buildTimeline(data, null, nameOf).map(show)).toEqual([
+      'you: Q',
+      'note: first note',
+      'note: second note',
+      'offer: Oona, Cyrus',
+      'Rosa [complete]: Answer.',
+      'panel t1',
+    ]);
+  });
+
+  it('offers them straight after your question when the saved thread has no note', () => {
+    const data = roomData(
+      [
+        makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Q', seq: 1 }),
+        makeMessage({ id: 'a1', turnId: 't1', author: 'agent', agentId: 'reglead', agentName: 'Rosa', text: 'Answer.', seq: 2 }),
+      ],
+      [makeTurn({ id: 't1', trace: TRACE })],
+    );
+
+    expect(buildTimeline(data, null, nameOf).map(show).slice(0, 3)).toEqual(['you: Q', 'offer: Oona', 'Rosa [complete]: Answer.']);
+  });
+
+  it('offers nothing for agents left out for other reasons (positive control: the over-cap line is still there)', () => {
+    const data = roomData(
+      [
+        makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Q', seq: 1 }),
+        makeMessage({ id: 'a1', turnId: 't1', author: 'agent', agentId: 'reglead', agentName: 'Rosa', text: 'Answer.', seq: 2 }),
+      ],
+      [makeTurn({ id: 't1', trace: { route: KEYWORD_ROUTE, agents: [] } })],
+    );
+
+    const shown = buildTimeline(data, null, nameOf).map(show);
+    expect(shown).toContain('note: Lena and Ines matched, not consulted.');
+    expect(shown.some((line) => line.startsWith('offer:'))).toBe(false);
+  });
+
+  it('shows the offer of a turn that is still running on the server, ahead of the agents still to come', () => {
+    const data = roomData(
+      [
+        makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Q', seq: 1 }),
+        makeMessage({ id: 'n1', turnId: 't1', author: 'note', text: NOTE, seq: 2 }),
+      ],
+      [makeTurn({ id: 't1', status: 'running', finishedAt: null, trace: { route: ROUTE, agents: [] } })],
+    );
+
+    expect(buildTimeline(data, null, nameOf).map(show)).toEqual([
+      'you: Q',
+      `note: ${NOTE}`,
+      'offer: Oona',
+      'Rosa [thinking]: ',
+    ]);
+  });
+
+  it('shows the offer of a live turn once the route and its note have arrived, before the agents that have not started', () => {
+    const live = run(startLiveTurn('Q', {}), [TURN_EVENT, { type: 'route', route: ROUTE }, { type: 'note', text: NOTE, messageId: 'n1' }]);
+
+    expect(buildTimeline(EMPTY, live, nameOf).map(show)).toEqual(['you: Q', `note: ${NOTE}`, 'offer: Oona', 'Rosa [thinking]: ']);
+  });
+
+  it('shows nothing extra before the route arrives', () => {
+    const live = run(startLiveTurn('Q', {}), [TURN_EVENT]);
+
+    expect(buildTimeline(EMPTY, live, nameOf).map(show)).toEqual(['you: Q']);
+  });
+
+  it('shows the offer once when the saved thread and the live turn both hold it', () => {
+    const live = run(startLiveTurn('Q', {}), [TURN_EVENT, { type: 'route', route: ROUTE }, { type: 'note', text: NOTE, messageId: 'n1' }]);
+
+    const shown = buildTimeline(SAVED, live, nameOf).map(show);
+
+    expect(shown.filter((line) => line.startsWith('offer:'))).toEqual(['offer: Oona']);
+  });
+
+  it('keeps one offer per turn, each under its own question', () => {
+    const second: RouteDecision = { ...ROUTE, notConsulted: [{ agentId: 'o-cmc', reason: 'not_selected' }] };
+    const data = roomData(
+      [
+        makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'First', seq: 1 }),
+        makeMessage({ id: 'u2', turnId: 't2', author: 'human', text: 'Second', seq: 2 }),
+      ],
+      [makeTurn({ id: 't1', trace: TRACE }), makeTurn({ id: 't2', trace: { route: second, agents: [] } })],
+    );
+
+    expect(buildTimeline(data, null, nameOf).map(show).filter((line) => line.startsWith('you:') || line.startsWith('offer:'))).toEqual([
+      'you: First',
+      'offer: Oona',
+      'you: Second',
+      'offer: Cyrus',
+    ]);
+  });
+
+  it('shows the offer of a new live turn even though an earlier saved turn has its own', () => {
+    const second: RouteDecision = { ...ROUTE, notConsulted: [{ agentId: 'o-cmc', reason: 'not_selected' }] };
+    const turnTwo: ChatEvent = { ...TURN_EVENT, turnId: 't2', clientTurnId: 'c2', userMessageId: 'u2' } as ChatEvent;
+    const live = run(startLiveTurn('Second', {}), [turnTwo, { type: 'route', route: second }]);
+
+    const shown = buildTimeline(SAVED, live, nameOf).map(show);
+
+    expect(shown.filter((line) => line.startsWith('offer:'))).toEqual(['offer: Oona', 'offer: Cyrus']);
+  });
+
+  it('shows the offer of a live turn at the end when no agent is to answer', () => {
+    const nobody: RouteDecision = { ...ROUTE, primary: undefined };
+    const live = run(startLiveTurn('Q', {}), [TURN_EVENT, { type: 'route', route: nobody }]);
+
+    expect(buildTimeline(EMPTY, live, nameOf).map(show)).toEqual(['you: Q', 'offer: Oona']);
   });
 });

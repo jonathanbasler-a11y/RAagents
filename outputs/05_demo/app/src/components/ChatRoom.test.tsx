@@ -427,22 +427,75 @@ describe('ChatRoom: the live demo’s prompts', () => {
     expect(api.postTurn).not.toHaveBeenCalled();
   });
 
-  it('once the conversation has started, the demo prompts wait under the "Demo prompts" toggle', async () => {
+  it('once the conversation has started, the demo prompts stay listed and each can be clicked again', async () => {
     const user = userEvent.setup();
     renderRoom('team', fakeApi({ getMessages: vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(STARTED)) }));
     await screen.findByText('Earlier answer.');
     const box = screen.getByRole('textbox', { name: 'Message the team' });
     await waitFor(() => expect(box).toBeEnabled());
-    const toggle = screen.getByRole('button', { name: 'Demo prompts' });
 
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('group', { name: 'Demo prompts' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Demo prompts' })).toHaveAttribute('aria-expanded', 'true');
+    const list = () => within(screen.getByRole('group', { name: 'Demo prompts' }));
+    expect(list().getAllByRole('button')).toHaveLength(7);
 
-    await user.click(toggle);
-    await user.click(within(screen.getByRole('group', { name: 'Demo prompts' })).getByRole('button', { name: /^Step 6 · / }));
-
+    await user.click(list().getByRole('button', { name: /^Step 6 · / }));
     expect(box).toHaveValue(demoText('step6'));
-    expect(screen.queryByRole('group', { name: 'Demo prompts' })).not.toBeInTheDocument();
+    await user.click(list().getByRole('button', { name: /^Step 6 · / }));
+    expect(box).toHaveValue(demoText('step6'));
+    await user.click(list().getByRole('button', { name: /^Step 7 · / }));
+
+    expect(box).toHaveValue(demoText('step7'));
+    expect(list().getAllByRole('button')).toHaveLength(7);
+  });
+
+  it('a question sent from the team chat leaves the demo prompts in place for the next one', async () => {
+    const user = userEvent.setup();
+    const api = fakeApi({
+      postTurn: vi.fn<ChatApi['postTurn']>().mockResolvedValue({
+        kind: 'stream',
+        clientTurnId: 'c1',
+        done: { type: 'done', turnId: 't1', status: 'done' },
+        broken: false,
+      }),
+    });
+    renderRoom('team', api);
+    const box = screen.getByRole('textbox', { name: 'Message the team' });
+    await waitFor(() => expect(box).toBeEnabled());
+    await user.click(within(await screen.findByRole('group', { name: 'Demo prompts' })).getByRole('button', { name: /^Step 4b · / }));
+    await user.type(box, '{Enter}');
+
+    await waitFor(() => expect(api.postTurn).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(box).toBeEnabled());
+    expect(screen.getByRole('group', { name: 'Demo prompts' })).toBeInTheDocument();
+    await user.click(within(screen.getByRole('group', { name: 'Demo prompts' })).getByRole('button', { name: /^Step 4b · / }));
+    expect(box).toHaveValue(demoText('step4b'));
+  });
+
+  it('Rosa’s room keeps the walkthrough’s prompt and her examples after a conversation has started, and each can be clicked again', async () => {
+    const user = userEvent.setup();
+    const started = roomData(
+      [
+        makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Earlier question', seq: 1, }),
+        makeMessage({ id: 'a1', turnId: 't1', author: 'agent', agentId: 'reglead', agentName: 'Rosa', text: 'Earlier answer.', seq: 2 }),
+      ],
+      [makeTurn({ id: 't1', roomId: 'reglead' })],
+      'reglead',
+    );
+    renderRoom('reglead', fakeApi({ getMessages: vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(started)) }));
+    await screen.findByText('Earlier answer.');
+    const box = screen.getByRole('textbox', { name: 'Message Rosa' });
+    await waitFor(() => expect(box).toBeEnabled());
+
+    const starters = () => within(screen.getByRole('group', { name: 'Starter prompts' }));
+    expect(starters().getAllByRole('button').map((button) => button.textContent)).toEqual([demoText('step2'), ...ROSA.examplePrompts]);
+
+    await user.click(starters().getByRole('button', { name: demoText('step2') }));
+    await user.click(starters().getByRole('button', { name: demoText('step2') }));
+    expect(box).toHaveValue(demoText('step2'));
+    await user.click(starters().getByRole('button', { name: ROSA.examplePrompts[1] }));
+
+    expect(box).toHaveValue(ROSA.examplePrompts[1]);
+    expect(starters().getAllByRole('button')).toHaveLength(3);
   });
 
   it('Rosa’s empty room offers the walkthrough’s step 2 prompt first among her starters', async () => {
@@ -472,5 +525,116 @@ describe('ChatRoom: the live demo’s prompts', () => {
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual(CARLOS.examplePrompts);
+  });
+});
+
+describe('ChatRoom: bringing agents onto the team from the chat', () => {
+  const ON = ['reglead', 'cmcreg', 'orc', 'san', 'ev', 'syn'];
+  const NOTE = 'Oona matches this question but is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).';
+
+  /** A selection that saves like the API does: the reply is the new saved state. */
+  function savingApi(overrides: Partial<ChatApi> = {}) {
+    return fakeApi({
+      setSelection: vi.fn<ChatApi['setSelection']>(async (agentId, selected) =>
+        ok<SelectionResponse>({
+          workspaceId: 'demo',
+          selected: selected ? [...ON, agentId] : ON.filter((id) => id !== agentId),
+          source: 'saved',
+        }),
+      ),
+      ...overrides,
+    });
+  }
+
+  const LEFT_OUT = roomData(
+    [
+      makeMessage({ id: 'u1', turnId: 't1', author: 'human', text: 'Is orphan designation likely?', seq: 1 }),
+      makeMessage({ id: 'n1', turnId: 't1', author: 'note', text: NOTE, seq: 2 }),
+      makeMessage({ id: 'a1', turnId: 't1', author: 'agent', agentId: 'reglead', agentName: 'Rosa', text: 'Here is how I would look at it.', seq: 3 }),
+    ],
+    [
+      makeTurn({
+        id: 't1',
+        trace: {
+          route: {
+            source: 'keyword',
+            primary: 'reglead',
+            secondaries: [],
+            notConsulted: [{ agentId: 'sp-orphan', reason: 'not_selected' }],
+            notes: [NOTE],
+            synthesis: false,
+          },
+          agents: [{ agentId: 'reglead', agentName: 'Rosa', role: 'primary', state: 'answered', messageId: 'a1' }],
+        },
+      }),
+    ],
+  );
+
+  it('offers the team list in the team chat and not in an agent’s 1:1 room', async () => {
+    const { unmount } = renderRoom('team', savingApi());
+    expect(await screen.findByRole('button', { name: /Team for this DD/ })).toBeInTheDocument();
+    unmount();
+
+    renderRoom('reglead', savingApi());
+    await screen.findByRole('textbox', { name: 'Message Rosa' });
+    expect(screen.queryByRole('button', { name: /Team for this DD/ })).not.toBeInTheDocument();
+  });
+
+  it('adds an agent the router left out from the button under the note, and the @mention chip appears at once', async () => {
+    const user = userEvent.setup();
+    const api = savingApi({ getMessages: vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(LEFT_OUT)) });
+    renderRoom('team', api);
+    const chips = await screen.findByRole('group', { name: 'Mention an agent' });
+    expect(within(chips).queryByRole('button', { name: '@Oona' })).not.toBeInTheDocument();
+
+    const log = screen.getByRole('log');
+    await user.click(await within(log).findByRole('button', { name: /Add Oona/ }));
+
+    expect(api.setSelection).toHaveBeenCalledWith('sp-orphan', true);
+    expect(await within(log).findByText(/Added: Oona can join from your next question/)).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Mention an agent' })).getByRole('button', { name: '@Oona' })).toBeInTheDocument();
+  });
+
+  it('shows the offer straight after the note and before the answer', async () => {
+    renderRoom('team', savingApi({ getMessages: vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(LEFT_OUT)) }));
+
+    const add = await within(screen.getByRole('log')).findByRole('button', { name: /Add Oona/ });
+    // "How this turn ran" lists the route's notes too, further down; the first match is the one in the thread.
+    const note = within(screen.getByRole('log')).getAllByText(NOTE)[0];
+    const answer = within(screen.getByRole('log')).getByText('Here is how I would look at it.');
+
+    expect(note.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(add.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('switching an agent on in the list adds the @mention chip, and switching off takes it away', async () => {
+    const user = userEvent.setup();
+    renderRoom('team', savingApi());
+    await user.click(await screen.findByRole('button', { name: /Team for this DD/ }));
+
+    await user.click(screen.getByRole('switch', { name: /Cyrus/ }));
+    expect(within(screen.getByRole('group', { name: 'Mention an agent' })).getByRole('button', { name: '@Cyrus' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('switch', { name: /Carlos/ }));
+    expect(within(screen.getByRole('group', { name: 'Mention an agent' })).queryByRole('button', { name: '@Carlos' })).not.toBeInTheDocument();
+  });
+
+  it('leaves the chips alone when a save fails', async () => {
+    const user = userEvent.setup();
+    const api = savingApi({
+      getMessages: vi.fn<ChatApi['getMessages']>().mockResolvedValue(ok(LEFT_OUT)),
+      setSelection: vi.fn<ChatApi['setSelection']>().mockResolvedValue({
+        ok: false,
+        status: 500,
+        error: { error: 'internal', message: 'Could not save the selection.', correlationId: 'corr-r1' },
+        message: 'Could not save the selection.',
+      }),
+    });
+    renderRoom('team', api);
+
+    await user.click(await within(screen.getByRole('log')).findByRole('button', { name: /Add Oona/ }));
+
+    expect(within(screen.getByRole('log')).getByRole('alert')).toHaveTextContent('corr-r1');
+    expect(within(screen.getByRole('group', { name: 'Mention an agent' })).queryByRole('button', { name: '@Oona' })).not.toBeInTheDocument();
   });
 });

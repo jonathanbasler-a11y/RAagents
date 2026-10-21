@@ -139,7 +139,7 @@ describe('routeTeamTurn: @mentions', () => {
       primary: 'lead',
       secondaries: [],
       notConsulted: [{ agentId: 'labels', reason: 'not_selected' }],
-      notes: ['Lena is not selected for this DD; switch them on in the team overview to bring them in.'],
+      notes: ['Lena is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).'],
       synthesis: false,
     });
   });
@@ -246,7 +246,7 @@ describe('routeTeamTurn: routing terms', () => {
       primary: 'conductor',
       secondaries: [],
       notConsulted: [{ agentId: 'labels', reason: 'not_selected' }],
-      notes: ['Lena matches this question but is not selected for this DD; switch them on in the team overview to bring them in.'],
+      notes: ['Lena matches this question but is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).'],
       synthesis: false,
       matchedTerms: { labels: ['product information'] },
     });
@@ -258,7 +258,7 @@ describe('routeTeamTurn: routing terms', () => {
       primary: 'conductor',
       secondaries: [],
       notConsulted: [{ agentId: 'labels', reason: 'not_selected' }],
-      notes: ['Lena is not selected for this DD; switch them on in the team overview to bring them in.'],
+      notes: ['Lena is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).'],
       synthesis: false,
       matchedTerms: { labels: ['SmPC'] },
     });

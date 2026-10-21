@@ -20,6 +20,7 @@ import type {
  * Lines written by code from structured data:
  * - "<names> matched, not consulted." from the route (over the mention or keyword cap);
  * - "<Name> had nothing to add." from the trace or the no_addition event;
+ * - an offer to add the agents the route left out because they are not selected, from the same route;
  * - turn-level failures and interruptions from the turn row.
  * Free-text notes (for example about an agent who is not selected) come from the server
  * as note messages and `note` events.
@@ -97,10 +98,13 @@ export type TimelineItem =
     }
   | { kind: 'line'; key: string; tone: 'note' | 'error'; text: string; errorCode: ChatErrorCode | null; correlationId: string | null }
   /** "How this turn ran" for a finished turn. */
-  | { kind: 'turn'; key: string; turn: Turn };
+  | { kind: 'turn'; key: string; turn: Turn }
+  /** The agents this turn's route left out because they are not selected: the room offers to add them. */
+  | { kind: 'offer'; key: string; agentIds: AgentId[] };
 
 type AgentTimelineItem = Extract<TimelineItem, { kind: 'agent' }>;
 type LineTimelineItem = Extract<TimelineItem, { kind: 'line' }>;
+type OfferTimelineItem = Extract<TimelineItem, { kind: 'offer' }>;
 
 const ENDED: ReadonlySet<AgentBubbleState> = new Set(['complete', 'partial', 'error']);
 
@@ -371,6 +375,12 @@ function nameInTrace(trace: TurnTrace, agentId: AgentId, nameOf: (id: AgentId) =
   return trace.agents.find((outcome) => outcome.agentId === agentId)?.agentName ?? nameOf(agentId);
 }
 
+/** Built from the route's structured entries, never from the note text. Each agent once, in route order. */
+function offerFor(turnKey: string, route: RouteDecision): OfferTimelineItem | null {
+  const agentIds = [...new Set(route.notConsulted.filter((entry) => entry.reason === 'not_selected').map((entry) => entry.agentId))];
+  return agentIds.length === 0 ? null : { kind: 'offer', key: `offer:${turnKey}`, agentIds };
+}
+
 function overCapLine(turn: Turn, nameOf: (id: AgentId) => string): LineTimelineItem | null {
   const trace = turn.trace;
   if (!trace) return null;
@@ -491,6 +501,11 @@ function liveItems(
       });
     }
   }
+  const offer = live.route ? offerFor(turnKey(live), live.route) : null;
+  if (offer && !savedKeys.has(offer.key)) {
+    const firstAgent = out.findIndex((item) => item.kind === 'agent');
+    out.splice(firstAgent < 0 ? out.length : firstAgent, 0, offer);
+  }
   return out;
 }
 
@@ -531,6 +546,12 @@ export function buildTimeline(
       }
     }
     if (!overCapPlaced && overCap) head.unshift(overCap);
+    const offer = turn?.trace ? offerFor(turnId, turn.trace.route) : null;
+    // The notes come before the first answer; the offer follows them.
+    if (offer) {
+      const firstAgent = head.findIndex((item) => item.kind === 'agent');
+      head.splice(firstAgent < 0 ? head.length : firstAgent, 0, offer);
+    }
     segments.push({ turnId, head, foot: turn ? footerItems(turn, group, savedIds) : [] });
   }
   // A finished turn with no saved message (it failed before the question was saved).

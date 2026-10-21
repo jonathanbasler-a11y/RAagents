@@ -223,14 +223,9 @@ describe('Composer', () => {
 });
 
 describe('Composer: demo prompts', () => {
-  it('keeps them under a "Demo prompts" toggle that opens and closes the list', async () => {
+  it('lists them from the start, under a "Demo prompts" toggle that closes and opens the list', async () => {
     const user = userEvent.setup();
     render(<Composer label="Message Rosa" onSend={vi.fn(sent)} demoPrompts={DEMO} />);
-
-    expect(demoToggle()).toHaveAttribute('aria-expanded', 'false');
-    expect(demoList()).not.toBeInTheDocument();
-
-    await user.click(demoToggle());
 
     const list = screen.getByRole('group', { name: 'Demo prompts' });
     expect(demoToggle()).toHaveAttribute('aria-expanded', 'true');
@@ -243,12 +238,16 @@ describe('Composer: demo prompts', () => {
 
     expect(demoToggle()).toHaveAttribute('aria-expanded', 'false');
     expect(demoList()).not.toBeInTheDocument();
+
+    await user.click(demoToggle());
+
+    expect(demoList()).toBeInTheDocument();
   });
 
-  it('a click puts the exact text in the box, replacing a draft, without sending; the list folds away', async () => {
+  it('a click puts the exact text in the box, replacing a draft, without sending; the list stays', async () => {
     const user = userEvent.setup();
     const onSend = vi.fn(sent);
-    render(<Composer label="Message Rosa" onSend={onSend} demoPrompts={DEMO} demoPromptsOpenByDefault />);
+    render(<Composer label="Message Rosa" onSend={onSend} demoPrompts={DEMO} />);
     await user.type(box(), 'a draft');
 
     await user.click(screen.getByRole('button', { name: 'Step 3 · Two mentions' }));
@@ -256,23 +255,40 @@ describe('Composer: demo prompts', () => {
     expect(box()).toHaveValue('@Rosa @Carlos What should our DD check?');
     expect(box()).toHaveFocus();
     expect(onSend).not.toHaveBeenCalled();
-    expect(demoList()).not.toBeInTheDocument();
-    expect(demoToggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(demoList()).toBeInTheDocument();
+    expect(demoToggle()).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('follows the room’s default (open while it is empty) until the person opens or closes the list', async () => {
+  it('the same prompt can be clicked again and the others after it, before and after a question is sent', async () => {
     const user = userEvent.setup();
-    const { rerender } = render(<Composer label="Message Rosa" onSend={vi.fn(sent)} demoPrompts={DEMO} demoPromptsOpenByDefault={false} />);
-    expect(demoList()).not.toBeInTheDocument();
+    const onSend = vi.fn(sent);
+    render(<Composer label="Message Rosa" onSend={onSend} demoPrompts={DEMO} />);
 
-    rerender(<Composer label="Message Rosa" onSend={vi.fn(sent)} demoPrompts={DEMO} demoPromptsOpenByDefault />);
+    await user.click(screen.getByRole('button', { name: 'Step 6 · A decision' }));
+    await user.click(screen.getByRole('button', { name: 'Step 6 · A decision' }));
+    expect(box()).toHaveValue('Should we buy this asset?');
+
+    await user.click(screen.getByRole('button', { name: 'Step 3 · Two mentions' }));
+    expect(box()).toHaveValue('@Rosa @Carlos What should our DD check?');
+
+    await user.type(box(), '{Enter}');
+    expect(onSend).toHaveBeenCalledWith('@Rosa @Carlos What should our DD check?');
+    expect(box()).toHaveValue('');
     expect(demoList()).toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: 'Step 3 · Two mentions' }));
+    expect(box()).toHaveValue('@Rosa @Carlos What should our DD check?');
+  });
+
+  it('stays closed once the person has closed it', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<Composer label="Message Rosa" onSend={vi.fn(sent)} demoPrompts={DEMO} />);
     await user.click(demoToggle());
-    rerender(<Composer label="Message Rosa" onSend={vi.fn(sent)} demoPrompts={DEMO} demoPromptsOpenByDefault={false} />);
-    rerender(<Composer label="Message Rosa" onSend={vi.fn(sent)} demoPrompts={DEMO} demoPromptsOpenByDefault />);
+
+    rerender(<Composer label="Message Rosa" onSend={vi.fn(sent)} demoPrompts={DEMO} />);
 
     expect(demoList()).not.toBeInTheDocument();
+    expect(demoToggle()).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('can be read but not used while the box is disabled', () => {
@@ -281,7 +297,6 @@ describe('Composer: demo prompts', () => {
         label="Message Rosa"
         onSend={vi.fn(sent)}
         demoPrompts={DEMO}
-        demoPromptsOpenByDefault
         disabled
         disabledReason="Waiting for the reply…"
       />,
