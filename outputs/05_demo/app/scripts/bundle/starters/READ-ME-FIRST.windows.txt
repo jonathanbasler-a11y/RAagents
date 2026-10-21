@@ -1,0 +1,43 @@
+DIGITAL HUMAN HYBRID TEAM - DEMO (Windows)
+25 AI agents help with a regulatory due diligence. All data is fictional.
+It runs on your own computer. The people who built it do not see what you do.
+
+THE 3 STEPS
+  1. Unzip the ZIP to a short place such as the Desktop (right-click > Extract
+     All) and open the folder "HybridDemo".
+  2. Double-click "Start practice demo". Your browser opens the demo.
+  3. When you are done, double-click "Stop demo".
+
+FIRST TIME ONLY
+  Best: BEFORE unzipping, right-click the ZIP > Properties, tick Unblock at
+  the bottom, click OK. Otherwise Windows asks once for each file: click More
+  info, then Run anyway ("Windows protected your PC"), or Run ("The publisher
+  could not be verified"). No administrator rights needed.
+
+PRACTICE OR LIVE
+  Practice: no key, no network. Every reply is a stand-in, not AI. It says so.
+  Live: real AI answers. Every question you type, and the documents of the
+  data room, go to the model gateway you set up. Use the fictional case or
+  public documents only. Never type anything confidential.
+
+FOR LIVE: FILL IN my-settings.env
+  Double-click "Start live demo". Notepad opens the file. Fill in 3 lines:
+    LLM_BASE_URL  the address of your gateway, up to and including /v1
+    LLM_API_KEY   your own key only (ask your IT or AI team where to get one)
+    LLM_MODEL     the exact model name
+  Save, then double-click "Start live demo" again. Never share this file.
+
+YOUR DATA is in the folder "data". To start again from empty: stop the demo,
+then delete the "data" folder. TO REMOVE EVERYTHING: stop the demo, then
+delete the folder "HybridDemo".
+
+IF A SECURITY SETTING BLOCKS THE DOUBLE-CLICK
+  Open Command Prompt (Start menu, type cmd), type cd and a space, drag the
+  folder "HybridDemo" into the window and press Enter. Then type this and
+  press Enter (for live or stop, change the last word):
+    runtime\win32-x64\node.exe launcher\bundle\launcher.mjs practice
+
+IF SOMETHING GOES WRONG
+  Browser did not open          Open the address shown in the window.
+  "Not reachable" (live)        Connect to your company network or VPN.
+  "Wrong key", "unknown model"  Check my-settings.env.

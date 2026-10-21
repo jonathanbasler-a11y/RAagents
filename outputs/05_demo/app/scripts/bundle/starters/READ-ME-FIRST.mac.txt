@@ -1,0 +1,43 @@
+DIGITAL HUMAN HYBRID TEAM - DEMO (Mac)
+25 AI agents help with a regulatory due diligence. All data is fictional.
+It runs on your own computer. The people who built it do not see what you do.
+
+THE 3 STEPS
+  1. Unzip the ZIP and open the folder "HybridDemo".
+  2. Double-click "Start practice demo". Your browser opens the demo.
+  3. When you are done, double-click "Stop demo".
+
+FIRST TIME ONLY
+  The Mac may say the file "cannot be opened because Apple cannot check it".
+  Click Done (not Move to Trash). Open System Settings > Privacy & Security,
+  scroll down to the message about "Start practice demo", click Open Anyway
+  and confirm. No administrator rights needed. It may ask again for another
+  file, or for access to your folder: do the same, or click OK.
+
+PRACTICE OR LIVE
+  Practice: no key, no network. Every reply is a stand-in, not AI. It says so.
+  Live: real AI answers. Every question you type, and the documents of the
+  data room, go to the model gateway you set up. Use the fictional case or
+  public documents only. Never type anything confidential.
+
+FOR LIVE: FILL IN my-settings.env
+  Double-click "Start live demo". The file opens. Fill in 3 lines:
+    LLM_BASE_URL  the address of your gateway, up to and including /v1
+    LLM_API_KEY   your own key only (ask your IT or AI team where to get one)
+    LLM_MODEL     the exact model name
+  Save, then double-click "Start live demo" again. Never share this file.
+
+YOUR DATA is in the folder "data". To start again from empty: stop the demo,
+then delete the "data" folder. TO REMOVE EVERYTHING: stop the demo, then
+delete the folder "HybridDemo".
+
+IF A SECURITY SETTING BLOCKS THE DOUBLE-CLICK
+  Open Terminal, type cd and a space, drag the folder "HybridDemo" into the
+  window, press Return. Then type this and press Return:
+    ./runtime/darwin-arm64/bin/node launcher/bundle/launcher.mjs practice
+  Intel Mac: use darwin-x64 instead. For live or stop, change the last word.
+
+IF SOMETHING GOES WRONG
+  Browser did not open          Open the address shown in the window.
+  "Not reachable" (live)        Connect to your company network or VPN.
+  "Wrong key", "unknown model"  Check my-settings.env.
