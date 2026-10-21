@@ -13,6 +13,7 @@ function show(item: TimelineItem): string {
   if (item.kind === 'human') return `you: ${item.text}`;
   if (item.kind === 'agent') return `${item.agentName} [${item.state}]: ${item.text}`;
   if (item.kind === 'line') return `${item.tone}: ${item.text}`;
+  if (item.kind === 'offer') return `offer: ${item.agentIds.map(nameOf).join(', ')}`;
   return `panel ${item.turn.id}`;
 }
 

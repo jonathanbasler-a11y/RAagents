@@ -21,15 +21,15 @@ export interface ComposerProps {
   placeholder?: string;
   /** Team chat: each chip inserts "@Name ". */
   mentionChips?: Array<{ id: string; name: string }>;
-  /** Shown while the room is empty; a click fills the box. */
+  /** A 1:1 room's prompts, always listed; a click fills the box and sends nothing. */
   starterPrompts?: string[];
   /**
-   * The team chat: the live demo's prompts, listed under a "Demo prompts" toggle. A click puts
-   * the prompt's exact text in the box (it does not send) and folds the list away.
+   * The team chat: the live demo's prompts, listed under a "Demo prompts" toggle. The list is open
+   * and stays open: a click puts the prompt's exact text in the box (it does not send), and the
+   * same prompt or another can be clicked again, also after a question was sent. Only the person
+   * closes it.
    */
   demoPrompts?: ReadonlyArray<{ id: string; label: string; text: string }>;
-  /** Whether that list is open (the team chat: while it is empty) until the person opens or closes it. */
-  demoPromptsOpenByDefault?: boolean;
 }
 
 export function Composer({
@@ -41,12 +41,10 @@ export function Composer({
   mentionChips = [],
   starterPrompts = [],
   demoPrompts = [],
-  demoPromptsOpenByDefault = false,
 }: ComposerProps) {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  /** null until the person opens or closes the demo prompts; then their choice stands. */
-  const [demoOpenChoice, setDemoOpenChoice] = useState<boolean | null>(null);
+  const [demoListOpen, setDemoListOpen] = useState(true);
   const form = useRef<HTMLFormElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const submittingNow = useRef(false);
@@ -119,16 +117,11 @@ export function Composer({
     setText(prompt);
   }
 
-  function applyDemoPrompt(prompt: string) {
-    applyStarter(prompt);
-    setDemoOpenChoice(false);
-  }
-
   const showCounter = length >= COUNTER_FROM;
   // While the box is disabled, "Enter sends" is not true: the reason takes the hint's place.
   const busyReason = disabled && disabledReason ? disabledReason : null;
   const describedBy = busyReason ? statusId : hintId;
-  const demoOpen = demoPrompts.length > 0 && (demoOpenChoice ?? demoPromptsOpenByDefault);
+  const demoOpen = demoPrompts.length > 0 && demoListOpen;
 
   return (
     <form
@@ -200,7 +193,7 @@ export function Composer({
             className="btn btn-quiet btn-sm"
             aria-expanded={demoOpen}
             aria-controls={demoOpen ? demoListId : undefined}
-            onClick={() => setDemoOpenChoice(!demoOpen)}
+            onClick={() => setDemoListOpen(!demoOpen)}
           >
             Demo prompts <span aria-hidden="true">{demoOpen ? '▾' : '▸'}</span>
           </button>
@@ -215,7 +208,7 @@ export function Composer({
               className="chip starter"
               title={prompt.text}
               disabled={disabled}
-              onClick={() => applyDemoPrompt(prompt.text)}
+              onClick={() => applyStarter(prompt.text)}
             >
               {prompt.label}
             </button>

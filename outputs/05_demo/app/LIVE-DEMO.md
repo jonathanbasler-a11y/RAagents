@@ -1,6 +1,6 @@
 # Live demo: the hybrid team in 3 to 5 minutes
 
-A walkthrough to follow on stage. Each prompt in it is a button in the app. In the team chat, click **Demo prompts** under the box, then the step's button. In Rosa's empty room, the prompt is the first starter prompt. A click puts the exact text in the box but does not send it: check the text, then press Enter. The list folds away after each click, and the buttons are greyed out while a turn runs. If a button is missing, type the prompt exactly as written: a typo in a name or a topic word changes who answers.
+A walkthrough to follow on stage. Each prompt in it is a button in the app. In the team chat, the **Demo prompts** list under the box holds the step buttons. In Rosa's room, the prompt is the first starter prompt. A click puts the exact text in the box but does not send it: check the text, then press Enter. The lists stay open after a click and after you send, so you can click the same button again or any other; only you close the team chat list, with its **Demo prompts** button. The buttons are greyed out while a turn runs. If a button is missing, type the prompt exactly as written: a typo in a name or a topic word changes who answers.
 
 Each prompt was checked against the app with the fake model, so the right teammates are brought in. Who is brought in, the labels and the routing notes do not change. The model writes the replies, so their wording changes from run to run, and it can slip. These prompts have not yet been run with the real model, so the notes below say what to look for, not what will happen: they describe what each agent's brief asks for. If a reply states something as checked or makes a call, say so on stage. That is why every reply is labelled and people decide. Whether a teammate has something to add, and so whether Sofia sums up, can change (see step 5).
 
@@ -15,7 +15,7 @@ In this phase no documents are connected and the agents have no tools. Every rep
 - [ ] The app is running (`npm run demo`; see "Demo at any time" in `README.md`) and http://127.0.0.1:3200 is open. On the DD workspace page (the landing page) the **Status** panel says **All checks pass**, with Model connection "Set up", Agent specs "25 agents loaded" and Chat database "OK". The panel only checks that the settings are there, not that they are the real ones: the warm-up question below checks that.
 - [ ] The DD workspace shows the DD setup at **Phase 2** with **Orphan** and **Paediatric requirements** ticked, and says **14 of 25 agents selected for this DD.** Steps 3 to 5 need Rosa, Carlos, Dara, Oona and Pia switched on, and the optional part of step 4 needs Eitan switched off. These are the defaults. If a rehearsal left the setup at Phase 3 or Filed, click **Phase 2** again: the agents the stage brought in leave, and any switch you flipped by hand stays as you left it, so check Eitan and Rosa afterwards.
 - [ ] Send one warm-up question in a room you will not show (for example Clara's). Check that it streams and is a real answer. If it starts with "Fake reply from", the app is on rehearsal settings: stop it (`npm run demo:stop`, or Ctrl+C if you used `npm start`) and start the live demo again (`npm run demo`).
-- [ ] Click **New conversation** in each room you will use: Rosa's room and the team chat. Old threads are archived, not deleted. Rosa's room shows its starter prompts only while it is empty.
+- [ ] Click **New conversation** in each room you will use: Rosa's room and the team chat. Old threads are archived, not deleted. Rosa's room keeps its starter prompts after the first question.
 - [ ] One browser tab per room: the DD workspace, Rosa's room and the team chat. Never open the same room in two tabs: while a turn runs, a question sent from the other tab is refused.
 
 ## Walkthrough
@@ -47,7 +47,7 @@ A switch you flip by hand is yours: changing the stage or the classification nev
 
 ### 2. A 1:1 room: Rosa, the regulatory lead (about 40 s)
 
-Click **Chat with Rosa** on her card, or Rosa in the left rail. Her empty room shows starter prompts above the box. Click the first one, check the text in the box and press Enter:
+Click **Chat with Rosa** on her card, or Rosa in the left rail. Her room shows starter prompts above the box. Click the first one, check the text in the box and press Enter:
 
 ```text
 ABC-123 (illustrative) is an oral small molecule for a rare disease. What commitments would a buyer inherit?
@@ -62,7 +62,7 @@ Point out:
 
 ### 3. The team chat: two @mentions and Sofia's summary (about 60 s)
 
-Click **Team chat** in the left rail. While the room is empty, the demo prompts are open under the box (if not, click **Demo prompts**). Click **Step 3 · @Rosa @Carlos: a new manufacturing site**, check the text in the box and press Enter:
+Click **Team chat** in the left rail. The demo prompts are open under the box (if you closed the list, click **Demo prompts** to open it). Click **Step 3 · @Rosa @Carlos: a new manufacturing site**, check the text in the box and press Enter:
 
 ```text
 @Rosa @Carlos Suppose the seller of ABC-123 (illustrative) moves manufacturing to a new site before filing. What should our DD check?
@@ -77,7 +77,7 @@ Point out:
 
 ### 4. Routing by topic, without @mentions (about 45 s)
 
-Click **Demo prompts**, then **Step 4 · Designations: rare disease, paediatric**. Check the text and press Enter:
+In the **Demo prompts** list, click **Step 4 · Designations: rare disease, paediatric**. Check the text and press Enter:
 
 ```text
 Which designations could matter for a rare disease asset with a paediatric angle?
@@ -88,17 +88,19 @@ Point out:
 - Nobody was mentioned, yet routing brings in the specialists for the topic: **Oona** (orphan designation) answers first, then **Pia** (paediatric) is asked to add to it. Sofia sums up if both have contributed.
 - **How this turn ran** shows why. Route: "Routing terms in the question chose the agents", and **Matched terms: Oona: rare disease · Pia: paediatric**. Code does the routing, not a model guess: at most 3 selected specialists, ranked by how many of their terms match.
 
-Optional, if you have time (about 45 s more: the whole turn runs again). Add a term that belongs to a teammate who is switched off, to show that nothing is skipped silently. Click **Demo prompts**, then **Step 4b · Optional: adds breakthrough therapy**. Check the text and press Enter:
+Optional, if you have time (about 45 s more: the whole turn runs again). Add a term that belongs to a teammate who is switched off, to show that nothing is skipped silently. In the **Demo prompts** list, click **Step 4b · Optional: adds breakthrough therapy**. Check the text and press Enter:
 
 ```text
 Which designations could matter for a rare disease asset with a paediatric angle, and could it qualify for breakthrough therapy?
 ```
 
-A line appears in the thread: "Eitan matches this question but is not selected for this DD; switch them on in the team overview to bring them in."
+A line appears in the thread: "Eitan matches this question but is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview)." An **Add Eitan** button sits right under it.
+
+Optional (about 45 s more): click **Add Eitan**. The button becomes "Added: Eitan can join from your next question." and the **@Eitan** chip appears above the box. Click **Step 4b** again and press Enter: Eitan (expedited programmes) now answers, because his terms match and he is on the team. The **Team for this DD** list above the box does the same for any agent, in both directions. Afterwards switch Eitan off there, so the steps below run as written.
 
 ### 5. A teammate with nothing to add (about 30 s)
 
-Click **Demo prompts**, then **Step 5 · @Carlos @Dara: stability gaps**. Check the text and press Enter:
+In the **Demo prompts** list, click **Step 5 · @Carlos @Dara: stability gaps**. Check the text and press Enter:
 
 ```text
 @Carlos @Dara Which stability gaps most often delay a filing?
@@ -112,7 +114,7 @@ Point out:
 
 ### 6. A decision reserved for people (about 20 s)
 
-Click **Demo prompts**, then **Step 6 · Should we buy this asset?**. Check the text and press Enter:
+In the **Demo prompts** list, click **Step 6 · Should we buy this asset?**. Check the text and press Enter:
 
 ```text
 Should we buy this asset?
@@ -125,7 +127,7 @@ Point out:
 
 ### 7. Emeka lists what each claim would need (about 30 s)
 
-Click **Demo prompts**, then **Step 7 · @Emeka: claims that need a source**. Check the text and press Enter:
+In the **Demo prompts** list, click **Step 7 · @Emeka: claims that need a source**. Check the text and press Enter:
 
 ```text
 @Emeka Which claims in the replies above need a source, and what kind? List the three that matter most.
@@ -139,7 +141,7 @@ Point out:
 
 ### 8. Saskia drafts a sanitised question for a cleared expert (optional, about 30 s)
 
-Click **Demo prompts**, then **Step 8 · @Saskia: sanitise a question**. Check the text and press Enter:
+In the **Demo prompts** list, click **Step 8 · @Saskia: sanitise a question**. Check the text and press Enter:
 
 ```text
 @Saskia Sanitise this question for a cleared CMC expert: "Does adding a second drug substance site for ABC-123 (illustrative) need new comparability data before the Phase 3 start in 2027?"

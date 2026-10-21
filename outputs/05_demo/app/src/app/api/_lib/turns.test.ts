@@ -165,7 +165,7 @@ describe('POST /api/rooms/team/turns: the team chat', () => {
 
     expect(textsOf(api, offTurn.threadId)).toEqual([
       ['human', null, text],
-      ['note', null, 'Lena is not selected for this DD; switch them on in the team overview to bring them in.'],
+      ['note', null, 'Lena is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).'],
       ['agent', 'Rosa', 'Rosa answer.'],
     ]);
 
