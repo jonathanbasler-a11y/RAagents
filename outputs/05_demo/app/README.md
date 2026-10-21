@@ -2,6 +2,8 @@
 
 Next.js 16 (App Router, TypeScript strict), Vitest and ESLint. Named agent personas from `outputs/04_agents/` with a team chat and one 1:1 room per agent.
 
+**Just want to try it?** `TRY-IT.md` is the short guide for running your own copy, in practice mode without a key or in live mode with your own.
+
 ## Run
 
 From this folder (`outputs/05_demo/app`).
