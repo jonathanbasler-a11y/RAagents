@@ -4,9 +4,6 @@
 cd "$(dirname "$0")" || exit 1
 # A bare PATH may lack the folder that holds sysctl; add it behind the existing entries.
 PATH="$PATH:/usr/sbin:/sbin"
-# Remove the "downloaded from the internet" mark from this folder so the Mac does not
-# ask again for every file in it. Errors are ignored.
-xattr -dr com.apple.quarantine . 2>/dev/null
 if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ]; then
   NODE="runtime/darwin-arm64/bin/node"
 else

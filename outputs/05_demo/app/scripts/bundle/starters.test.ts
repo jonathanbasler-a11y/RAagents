@@ -111,8 +111,9 @@ describe('Mac starters (.command), read as text', () => {
         expect(text.indexOf(pathLine)).toBeLessThan(text.indexOf('sysctl -n hw.optional.arm64'));
       });
 
-      it('clears the quarantine mark on the folder and ignores errors', () => {
-        expect(text).toContain('xattr -dr com.apple.quarantine . 2>/dev/null');
+      it('leaves the "downloaded from the internet" marks alone: no xattr, no mention of quarantine', () => {
+        expect(text).not.toMatch(/xattr/);
+        expect(text).not.toMatch(/quarantine/i);
       });
 
       it('runs the launcher with its own mode as the last word, and no other mode', () => {
@@ -286,10 +287,13 @@ describe.skipIf(!POSIX)('Mac starters, run against stand-in programs', () => {
     expect(out).toContain(`NODE-STUB arch=${expected}`);
   });
 
-  it('clears the quarantine mark on its own folder before it starts the launcher', () => {
-    const world = makeMacWorld();
-    const { xattr } = macRunSync(world, MAC_NAMES[0], { arm64: '1' });
-    expect(xattr).toBe(`xattr -dr com.apple.quarantine . in ${realpathSync(world.folder)}\n`);
+  it('never calls xattr: it does not change the marks the Mac put on the downloaded files', () => {
+    for (const name of MAC_NAMES) {
+      const world = makeMacWorld();
+      const { xattr, out } = macRunSync(world, name, { arm64: '1' });
+      expect(out).toContain('NODE-STUB arch=arm64');
+      expect(xattr).toBe('');
+    }
   });
 
   it('makes the bundled Node executable when the ZIP tool dropped the bit', () => {
