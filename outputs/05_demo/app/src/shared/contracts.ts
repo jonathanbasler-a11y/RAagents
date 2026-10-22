@@ -957,6 +957,10 @@ export const API_ERROR_CODES = [
   'finding_tagged',
   'checklist_needs_finding',
   'checklist_item_not_found',
+  'gate_not_found',
+  'gate_reason_required',
+  'gate_facts_changed',
+  'gate_decision_not_found',
   'llm_not_configured',
   'internal',
 ] as const;
