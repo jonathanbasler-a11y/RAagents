@@ -3,16 +3,19 @@ import {
   CHECKLIST_ITEM_IDS,
   type Briefing,
   type BriefingFinding,
+  type BriefingGate,
   type BriefingWarning,
   type ChecklistEntry,
   type ChecklistItemId,
   type DataRoomDocument,
   type Finding,
   type FindingTag,
+  type GateView,
   type OpenQuestion,
 } from './contracts';
 import { SOURCE_TYPE_LABELS } from './data-room';
 import { FINDING_BASIS_WORDS, FINDING_CONFIDENCE_WORDS } from './findings';
+import { GATE_OPTION_LABELS } from './gates';
 
 // The briefing: what the regulatory lead takes into the cross-functional discussion. It is NOT a decision. It lists what
 // was checked, the accepted and tagged findings sorted as positives, risks and neutral, the open questions, and the
@@ -33,6 +36,8 @@ export interface BriefingInput {
   openQuestions: readonly OpenQuestion[];
   /** Every checklist item, in order (Store.listChecklist). */
   checklist: readonly ChecklistEntry[];
+  /** The gates as they stand (Store.listGates). The gates are built from a briefing, so the caller builds this one without them first. */
+  gates?: readonly GateView[];
 }
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
@@ -129,6 +134,14 @@ export function buildBriefing(input: BriefingInput): Briefing {
     });
   }
 
+  const outdated = (input.gates ?? []).filter((gate) => gate.status === 'outdated');
+  if (outdated.length > 0) {
+    warnings.push({
+      code: 'gate_outdated',
+      message: `${outdated.length === 1 ? 'A gate was' : 'Gates were'} decided on facts that have changed since: ${outdated.map((gate) => gate.title).join(', ')}.`,
+    });
+  }
+
   return {
     asOf: input.dataRoom?.asOf ?? null,
     documents: (input.dataRoom?.documents ?? []).map((document) => ({
@@ -149,6 +162,19 @@ export function buildBriefing(input: BriefingInput): Briefing {
     ptrsInputs: tagged.filter((entry) => entry.checklistItem === 'ptrs-inputs'),
     openQuestions: [...input.openQuestions].sort(byId).map((question) => ({ id: question.id, claim: question.claim, reason: question.reason, documentId: question.documentId })),
     couldNotCheck: cannot.map((row) => ({ item: row.item, label: row.label, reason: row.reason ?? '' })),
+    gateDecisions: (input.gates ?? []).map((gate) => {
+      const latest = gate.decisions[0];
+      return {
+        gate: gate.id,
+        title: gate.title,
+        status: gate.status,
+        latest:
+          latest === undefined
+            ? null
+            : { id: latest.id, option: latest.option, recommended: latest.recommended, reason: latest.reason, actor: latest.actor, createdAt: latest.createdAt },
+        dissents: (latest?.dissents ?? []).map((note) => ({ role: note.role, reason: note.reason })),
+      };
+    }),
   };
 }
 
@@ -177,6 +203,30 @@ function section(title: string, findings: readonly BriefingFinding[]): string[] 
   return [`## ${title}`, '', ...(findings.length === 0 ? ['None accepted and tagged yet.', ''] : findings.flatMap(findingBlock))];
 }
 
+export const GATE_DECISIONS_NOTE = 'Gate decisions are about the due diligence process. They are not a view on the deal.';
+
+/** What a gate says in the briefing, after its title: not decided, or who decided what, when and why. The page and the Markdown both use it. */
+export function gateSentence(row: BriefingGate): string {
+  const latest = row.latest;
+  if (latest === null) return 'Not decided yet.';
+  const followed = latest.option === latest.recommended ? 'the recommended call' : `not the recommended call (${GATE_OPTION_LABELS[latest.recommended]})`;
+  const head = row.status === 'outdated' ? 'Decided on earlier facts' : 'Decided';
+  const call = row.status === 'outdated' ? GATE_OPTION_LABELS[latest.option] : `${GATE_OPTION_LABELS[latest.option]}, ${followed}`;
+  const reason = latest.reason === null ? '' : ` Reason: ${latest.reason}${latest.reason.endsWith('.') ? '' : '.'}`;
+  const stale = row.status === 'outdated' ? ' The facts changed since; decide again.' : '';
+  return `${head}: ${call}, on ${latest.createdAt.slice(0, 10)} by ${latest.actor}.${reason}${stale}`;
+}
+
+function gateLines(rows: readonly BriefingGate[]): string[] {
+  const lines = ['## Gate decisions', '', GATE_DECISIONS_NOTE, ''];
+  for (const row of rows) {
+    lines.push(`- **${row.title}**: ${gateSentence(row)}`);
+    for (const note of row.dissents) lines.push(`  - Dissent from ${note.role}: ${note.reason}`);
+  }
+  lines.push('');
+  return lines;
+}
+
 /** The briefing as Markdown. `generatedAt` is passed in so the text is the same for the same register and the same time. */
 export function briefingToMarkdown(briefing: Briefing, generatedAt: string): string {
   const lines: string[] = [
@@ -192,6 +242,7 @@ export function briefingToMarkdown(briefing: Briefing, generatedAt: string): str
     '',
     ...(briefing.warnings.length === 0 ? ['No warnings.'] : briefing.warnings.map((warning) => `- ${warning.message}`)),
     '',
+    ...(briefing.gateDecisions.length === 0 ? [] : gateLines(briefing.gateDecisions)),
     '## What was checked',
     '',
     ...briefing.checklist.map((row) => {

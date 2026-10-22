@@ -1496,6 +1496,7 @@ export const BRIEFING_WARNING_CODES = [
   'checked_on_withdrawn',
   'items_not_checked',
   'items_could_not_check',
+  'gate_outdated',
 ] as const;
 export type BriefingWarningCode = (typeof BRIEFING_WARNING_CODES)[number];
 
@@ -1512,6 +1513,15 @@ export interface BriefingChecklistRow {
   reason: string | null;
   /** Ids of the accepted findings tagged to this item, in id order. */
   findingIds: string[];
+}
+
+/** One gate in the briefing: whether a person decided it, the latest decision, and the dissents recorded under that decision. */
+export interface BriefingGate {
+  gate: GateId;
+  title: string;
+  status: GateStatus;
+  latest: { id: string; option: GateOption; recommended: GateOption; reason: string | null; actor: string; createdAt: string } | null;
+  dissents: Array<{ role: string; reason: string }>;
 }
 
 export interface Briefing {
@@ -1532,6 +1542,8 @@ export interface Briefing {
   openQuestions: Array<{ id: string; claim: string; reason: string; documentId: string | null }>;
   /** The checklist items a person marked "could not check", with the reason. */
   couldNotCheck: Array<{ item: ChecklistItemId; label: string; reason: string }>;
+  /** The three gates and what people decided at them; empty when the caller gave no gates. */
+  gateDecisions: BriefingGate[];
 }
 
 /** GET /api/briefing */

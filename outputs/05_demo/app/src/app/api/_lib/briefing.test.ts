@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { captureLogs } from '@/server/llm/test-support/fake-gateway';
-import type { ApiErrorBody, BriefingResponse } from '@/shared/contracts';
+import type { ApiErrorBody, BriefingResponse, GatesResponse } from '@/shared/contracts';
 import type { CheckedFinding } from '@/shared/findings';
 import { FROZEN_NOW } from '@/server/chat/test-support';
 import { getBriefing } from './briefing';
-import { apiHarness, jsonOf, type ApiHarness } from './test-support';
+import { getGates, postGateDecision } from './gates';
+import { apiHarness, jsonOf, postRequest, type ApiHarness } from './test-support';
 
 // GET /api/briefing: the briefing built from the live register, as JSON or as a Markdown download. Reading only.
 
@@ -74,6 +75,37 @@ describe('GET /api/briefing', () => {
     expect(body.briefing.counts).toMatchObject({ acceptedTagged: 1, drafts: 1, rejected: 1, openQuestions: 1 });
     expect(body.briefing.openQuestions).toMatchObject([{ id: 'Q-001', claim: 'The study met its endpoint.', documentId: 'DR-04' }]);
     expect(body.briefing.warnings.map((warning) => warning.code)).toContain('drafts_pending');
+  });
+
+  it('shows the three gates, and what a person decided at one, in the JSON and in the Markdown', async () => {
+    const api = setup();
+    const gates = await jsonOf<GatesResponse>(getGates(api.deps));
+    const scope = gates.gates.find((gate) => gate.id === 'scope')!;
+    await postGateDecision(postRequest('/api/gates/scope/decision', { option: 'proceed', factsHash: scope.factsHash }), api.deps, 'scope');
+
+    const body = await jsonOf<BriefingResponse>(getBriefing(new Request('http://localhost/api/briefing'), api.deps));
+    const markdown = await getBriefing(new Request('http://localhost/api/briefing?format=markdown'), api.deps).text();
+
+    expect(body.briefing.gateDecisions.map((row) => [row.gate, row.status])).toEqual([
+      ['scope', 'decided'],
+      ['evidence', 'not_decided'],
+      ['release', 'not_decided'],
+    ]);
+    expect(body.briefing.gateDecisions[0].latest).toMatchObject({ id: 'GD-1', option: 'proceed' });
+    expect(markdown).toContain('## Gate decisions');
+    expect(markdown).toContain('- **Scope and activation**: Decided: Go ahead, the recommended call');
+  });
+
+  it('warns when a gate was decided on facts that have since changed', async () => {
+    const api = setup();
+    const gates = await jsonOf<GatesResponse>(getGates(api.deps));
+    const evidence = gates.gates.find((gate) => gate.id === 'evidence')!;
+    await postGateDecision(postRequest('/api/gates/evidence/decision', { option: 'seek_more', factsHash: evidence.factsHash }), api.deps, 'evidence');
+    api.runtime.store.decideFinding('demo', 'F-002', 'rejected', null);
+
+    const body = await jsonOf<BriefingResponse>(getBriefing(new Request('http://localhost/api/briefing'), api.deps));
+
+    expect(body.briefing.warnings.map((warning) => warning.code)).toContain('gate_outdated');
   });
 
   it('follows the checklist as it is now', async () => {

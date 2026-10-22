@@ -76,6 +76,7 @@ export function briefing(options: BriefingOptions = {}): Briefing {
     ptrsInputs: some(ptrs),
     openQuestions: Array.from({ length: openQuestions }, (_, index) => ({ id: `Q-${index + 1}`, claim: 'c', reason: 'r', documentId: null })),
     couldNotCheck: [],
+    gateDecisions: [],
   };
 }
 

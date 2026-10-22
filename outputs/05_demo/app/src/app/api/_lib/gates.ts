@@ -1,11 +1,11 @@
 import 'server-only';
 import { GateDecisionNotFoundError, GateFactsChangedError, GateReasonRequiredError } from '@/server/chat/store';
-import type { GateId, GateTeam, GatesResponse } from '@/shared/contracts';
+import type { GateId, GatesResponse } from '@/shared/contracts';
 import { ALWAYS_HUMAN, DISAGREEMENT_RULE, isGateId } from '@/shared/gates';
 import type { ApiDeps } from './deps';
 import { apiError, json, logFailure } from './http';
 import { checkSameOriginJson, readJsonBody } from './request-guard';
-import { currentSelection } from './selection';
+import { currentTeam } from './selection';
 
 // The gates over HTTP. Reading is open to anyone who can reach the app. A decision, or a dissent under one, is the
 // person's: a same-origin JSON post with a strictly validated body. The facts and the recommended call are built on the
@@ -15,11 +15,10 @@ import { currentSelection } from './selection';
 
 function gatesBody(deps: ApiDeps): GatesResponse {
   const { store, workspaceId } = deps.runtime();
-  const team: GateTeam = { selected: currentSelection(deps).selected.length, total: deps.registry.listAgents().length };
   return {
     workspaceId,
     generatedAt: deps.now().toISOString(),
-    gates: store.listGates(workspaceId, team),
+    gates: store.listGates(workspaceId, currentTeam(deps)),
     alwaysHuman: [...ALWAYS_HUMAN],
     disagreementRule: DISAGREEMENT_RULE,
   };
@@ -76,8 +75,7 @@ async function postToGate(
 export function postGateDecision(request: Request, deps: ApiDeps, gate: string): Promise<Response> {
   return postToGate(request, deps, gate, 'decision', (api, id, body) => {
     const { store, workspaceId } = api.runtime();
-    const team: GateTeam = { selected: currentSelection(api).selected.length, total: api.registry.listAgents().length };
-    store.decideGate(workspaceId, id, body, team);
+    store.decideGate(workspaceId, id, body, currentTeam(api));
   });
 }
 

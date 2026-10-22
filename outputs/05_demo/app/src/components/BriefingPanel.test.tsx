@@ -6,6 +6,7 @@ import type { ApiResult, ChatApi } from '@/client/chat-client';
 import { buildBriefing } from '@/shared/briefing';
 import { CHECKLIST_ITEM_IDS, LOCAL_PERSON, type BriefingResponse, type Finding, type FindingTag } from '@/shared/contracts';
 import { BriefingPanel } from './BriefingPanel';
+import { decision, dissent, gateOf, gatesResponse } from '@/shared/gates-fixtures';
 import { finding } from './findings-fixtures';
 
 const ok = <T,>(data: T): ApiResult<T> => ({ ok: true, data });
@@ -53,6 +54,47 @@ function mount(initial: BriefingResponse | ApiResult<BriefingResponse> = MIXED()
 }
 
 const section = (name: string) => screen.getByRole('region', { name });
+
+describe('BriefingPanel: the gate decisions', () => {
+  it('has no gate section when the briefing carries no gates', async () => {
+    mount();
+
+    await screen.findByRole('heading', { name: 'Before you read' });
+    expect(screen.queryByRole('region', { name: 'Gate decisions' })).not.toBeInTheDocument();
+  });
+
+  it('shows the three gates after "Before you read" and before "What was checked", with who decided what and the dissents', async () => {
+    const first = gatesResponse().gates;
+    const followed = decision(first[0], 'proceed', { id: 'GD-1', createdAt: '2026-10-22T09:00:00.000Z' });
+    const stale = decision(gateOf(first, 'release'), 'seek_more', { id: 'GD-2', createdAt: '2026-10-22T10:00:00.000Z', factsHash: 'older-facts' });
+    const note = dissent(followed, { role: 'CMC regulatory agent owner', reason: 'The site data is not in yet.' });
+    mount(response({ gates: gatesResponse({}, { decisions: [followed, stale], dissents: [note] }).gates }));
+
+    const gates = await screen.findByRole('region', { name: 'Gate decisions' });
+    const before = screen.getByRole('region', { name: 'Before you read' });
+    const checked = screen.getByRole('region', { name: 'What was checked' });
+    const order = (a: HTMLElement, b: HTMLElement) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(order(before, gates)).toBe(true);
+    expect(order(gates, checked)).toBe(true);
+    expect(within(gates).getByText(/not a view on the deal/)).toBeInTheDocument();
+    const rows = within(gates).getAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent('Scope and activation: Decided: Go ahead, the recommended call, on 2026-10-22 by person (local, not authenticated).');
+    expect(rows[0]).toHaveTextContent('Dissent from CMC regulatory agent owner: The site data is not in yet.');
+    expect(rows[1]).toHaveTextContent('The evidence is enough: Not decided yet.');
+    expect(rows[2]).toHaveTextContent('Release the briefing: Decided on earlier facts: Ask for more information');
+    expect(rows[2]).toHaveTextContent('The facts changed since; decide again.');
+  });
+
+  it('puts the warning about a gate decided on earlier facts under "Before you read"', async () => {
+    const first = gatesResponse().gates;
+    const stale = decision(gateOf(first, 'scope'), 'proceed', { factsHash: 'older-facts' });
+    mount(response({ gates: gatesResponse({}, { decisions: [stale] }).gates }));
+
+    const warnings = await screen.findByRole('region', { name: 'Before you read' });
+
+    expect(within(warnings).getByText('A gate was decided on facts that have changed since: Scope and activation.')).toBeInTheDocument();
+  });
+});
 
 afterEach(() => {
   Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
