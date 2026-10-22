@@ -73,7 +73,7 @@ describe('demo prompts in the team chat bring in the teammates LIVE-DEMO.md name
       source: 'keyword',
       primary: 'sp-orphan',
       secondaries: ['sp-paed'],
-      notes: ['Eitan matches this question but is not selected for this DD; switch them on in the team overview to bring them in.'],
+      notes: ['Eitan matches this question but is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).'],
       synthesis: true,
     });
   });

@@ -7,6 +7,7 @@ import { FINDINGS_REQUEST_TEXT } from '@/shared/findings';
 import { chatClient, type ChatApi } from '@/client/chat-client';
 import { isSetupMissing, useHealth } from '@/client/use-health';
 import { useChatRoom, type RoomPhase } from '@/client/use-chat-room';
+import { AddAgentOffer } from './AddAgentOffer';
 import { Avatar } from './Avatar';
 import { EvidenceBanner, SetupBanner } from './Banners';
 import { Composer } from './Composer';
@@ -16,6 +17,7 @@ import { useFindings } from './FindingsProvider';
 import { AUTONOMY_LABELS, isMentionable } from './labels';
 import { AgentBubble, HumanBubble, SystemLine } from './MessageBubble';
 import { useSelection } from './SelectionProvider';
+import { TeamPicker } from './TeamPicker';
 import { TurnPanel } from './TurnPanel';
 
 /** The live demo's team chat prompts (LIVE-DEMO.md steps 3 to 8), under the composer's "Demo prompts". */
@@ -84,9 +86,9 @@ export function ChatRoom({ roomId, agents, client = chatClient }: ChatRoomProps)
   }, [isTeam, selection.selected, roster]);
 
   // A 1:1 room's starters: the walkthrough's prompt for this room first (Rosa: step 2), then the
-  // agent's example prompts. The team chat offers the walkthrough's prompts instead.
-  const starterPrompts =
-    empty && !isTeam ? [...new Set([...demoPromptsFor(roomId).map((prompt) => prompt.text), ...(agent?.examplePrompts ?? [])])] : [];
+  // agent's example prompts. They stay after the conversation has started, so each can be used
+  // again. The team chat offers the walkthrough's prompts instead.
+  const starterPrompts = isTeam ? [] : [...new Set([...demoPromptsFor(roomId).map((prompt) => prompt.text), ...(agent?.examplePrompts ?? [])])];
 
   // Follow the conversation while the reader is at the bottom; leave them alone if they
   // scrolled up, until they send: their own question and its reply always come into view.
@@ -240,6 +242,8 @@ export function ChatRoom({ roomId, agents, client = chatClient }: ChatRoomProps)
               );
             case 'turn':
               return <TurnPanel key={item.key} turn={item.turn} />;
+            case 'offer':
+              return <AddAgentOffer key={item.key} agents={item.agentIds.flatMap((id) => agentsById.get(id) ?? [])} />;
           }
         })}
         {room.phase === 'polling' && <p className="sysline">In progress. Checking for the result every 2 seconds…</p>}
@@ -274,6 +278,8 @@ export function ChatRoom({ roomId, agents, client = chatClient }: ChatRoomProps)
         </div>
       )}
 
+      {isTeam && <TeamPicker agents={roster} />}
+
       <Composer
         label={agent ? `Message ${agent.name}` : 'Message the team'}
         placeholder={agent ? `Ask ${agent.name} a question…` : 'Ask the team. Use @Name to bring in specific agents…'}
@@ -283,7 +289,6 @@ export function ChatRoom({ roomId, agents, client = chatClient }: ChatRoomProps)
         mentionChips={mentionChips}
         starterPrompts={starterPrompts}
         demoPrompts={isTeam ? TEAM_DEMO_PROMPTS : undefined}
-        demoPromptsOpenByDefault={empty}
       />
     </section>
   );

@@ -86,6 +86,12 @@ describe('SelectionSwitch', () => {
     expect(toggle).toHaveAttribute('aria-checked', 'true');
   });
 
+  it('shows nothing without a selection provider, and not "Loading selection…"', () => {
+    const { container } = render(<SelectionSwitch agent={LENA} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('shows "Always on" for a locked team role and never calls the API', async () => {
     const user = userEvent.setup();
     const client = selectionClient(['ev']);

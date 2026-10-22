@@ -91,9 +91,9 @@ function joinsByRuleNote(agent: AgentSpec): string {
 }
 
 const notSelectedNote = (agent: AgentSpec) =>
-  `${agent.name} is not selected for this DD; switch them on in the team overview to bring them in.`;
+  `${agent.name} is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).`;
 const notSelectedMatchNote = (agent: AgentSpec) =>
-  `${agent.name} matches this question but is not selected for this DD; switch them on in the team overview to bring them in.`;
+  `${agent.name} matches this question but is not selected for this DD; add them to the team to bring them in (the Add button, the team list or the team overview).`;
 const unknownMentionNote = (token: string) => `@${token} is not the name of an agent, so it brought nobody in.`;
 
 /** Decides who answers a team question. Pure: the same input always gives the same route. */
