@@ -6,6 +6,7 @@ import { networkInterfaces, tmpdir, uptime } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { TIMEOUTS } from './launcher-lib.mjs';
 
 // Parsed JSON from the fake server: its shape is checked by the assertions.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -415,15 +416,18 @@ describe('stop', () => {
   it(
     'leaves alone a program that only has the recorded number',
     async () => {
+      // The record must be older than the start-up grace (a younger one counts as "still starting") and written
+      // after this machine started (an older one counts as gone; the launcher allows a minute of slack). This case
+      // is about a live program that is not the demo, so its age sits between the two.
+      const ageMs = Math.min(5_000_000, Math.max(TIMEOUTS.startupGraceMs + 15_000, Math.floor(uptime() * 500)));
+      expect(uptime() * 1000 + 60_000, 'this case needs the computer to have been running for more than 75 seconds').toBeGreaterThan(ageMs);
       const world = newWorld();
       mkdirSync(world.data, { recursive: true });
       const stranger = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)']);
       try {
         writeFileSync(
           join(world.data, 'demo.pid'),
-          // Written after this machine started (half its uptime ago, at most about 83 minutes): a record from before the boot
-          // is stale for another reason, and this test is about a live pid that is not the demo.
-          JSON.stringify({ mode: 'live', port: await freePort(), serverPid: stranger.pid, fakePid: null, fakePort: null, startedAtMs: Date.now() - Math.min(5_000_000, Math.floor(uptime() * 500)), commit: null }),
+          JSON.stringify({ mode: 'live', port: await freePort(), serverPid: stranger.pid, fakePid: null, fakePort: null, startedAtMs: Date.now() - ageMs, commit: null }),
         );
 
         const result = await run('stop', world);
