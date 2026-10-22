@@ -528,7 +528,8 @@ describe('identifyServer: is this pid really ours?', () => {
     const waits = vi.spyOn(AbortSignal, 'timeout');
     let calls = 0;
     const timedOut = () => {
-      const error = new Error('The operation was aborted due to timeout');
+      // The launcher reads only the name, as Node's own timeout error carries it.
+      const error = new Error('slow answer (stand-in)');
       error.name = 'TimeoutError';
       return error;
     };
