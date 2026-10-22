@@ -172,7 +172,7 @@ export function buildBriefing(input: BriefingInput): Briefing {
           latest === undefined
             ? null
             : { id: latest.id, option: latest.option, recommended: latest.recommended, reason: latest.reason, actor: latest.actor, createdAt: latest.createdAt },
-        dissents: (latest?.dissents ?? []).map((note) => ({ role: note.role, reason: note.reason })),
+        dissents: (latest?.dissents ?? []).map((note) => ({ id: note.id, role: note.role, reason: note.reason })),
       };
     }),
   };

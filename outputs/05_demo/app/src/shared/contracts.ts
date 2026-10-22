@@ -1521,7 +1521,7 @@ export interface BriefingGate {
   title: string;
   status: GateStatus;
   latest: { id: string; option: GateOption; recommended: GateOption; reason: string | null; actor: string; createdAt: string } | null;
-  dissents: Array<{ role: string; reason: string }>;
+  dissents: Array<{ id: string; role: string; reason: string }>;
 }
 
 export interface Briefing {
@@ -1570,6 +1570,11 @@ export type GateOption = (typeof GATE_OPTIONS)[number];
 export interface GateTeam {
   selected: number;
   total: number;
+  /**
+   * Which agents are selected. Only the scope gate's hash reads it (a different team of the same size is another
+   * view); it is never shown.
+   */
+  members?: readonly string[];
 }
 
 /** One line of what the code found, for the person deciding. */

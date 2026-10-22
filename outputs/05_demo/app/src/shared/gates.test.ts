@@ -12,6 +12,7 @@ import {
   hashFacts,
   isGateId,
   isGateOption,
+  type GatesInput,
 } from './gates';
 import { baseInput, decision, dissent, factText, gateOf, type BriefingOptions } from './gates-fixtures';
 
@@ -277,6 +278,98 @@ describe('status and history', () => {
     const view = buildGates(baseInput({}, { decisions: [decision(gateOf(first, 'scope'), 'proceed')] }));
 
     expect(gateOf(view, 'evidence').decisions).toEqual([]);
+  });
+});
+
+describe('a dissent never changes a decision', () => {
+  it('leaves every gate\'s hash and status as they were, including a release decided go ahead', () => {
+    const first = buildGates(baseInput());
+    const evidenceDecision = decision(gateOf(first, 'evidence'), 'proceed');
+    const afterEvidence = buildGates(baseInput({}, { decisions: [evidenceDecision] }));
+    const releaseDecision = decision(gateOf(afterEvidence, 'release'), 'proceed');
+    const decided = [evidenceDecision, releaseDecision];
+    const before = buildGates(baseInput({}, { decisions: decided }));
+    expect(gateOf(before, 'release').status).toBe('decided');
+
+    const after = buildGates(baseInput({}, { decisions: decided, dissents: [dissent(evidenceDecision), dissent(releaseDecision), dissent(releaseDecision)] }));
+
+    expect(after.map((view) => [view.id, view.status, view.factsHash])).toEqual(before.map((view) => [view.id, view.status, view.factsHash]));
+    expect(factText(gateOf(after, 'release'), 'Dissents recorded')).toBe('3');
+  });
+});
+
+describe('a scope gate that is stopped or paused leads the later gates', () => {
+  const scopeThen = (option: GateOption, options: BriefingOptions = {}) => {
+    const first = buildGates(baseInput(options));
+    const taken = decision(gateOf(first, 'scope'), option, { reason: 'Because.' });
+    return buildGates(baseInput(options, { decisions: [taken] }));
+  };
+
+  it.each(['stop', 'pause'] as GateOption[])('recommends pausing the evidence and release gates after scope was decided %s, whatever the evidence is', (option) => {
+    for (const id of ['evidence', 'release'] as const) {
+      const view = gateOf(scopeThen(option), id);
+      expect(view.recommended, `${id} after ${option}`).toBe('pause');
+      expect(view.recommendedBecause, id).toBe(`The scope gate was decided: ${GATE_OPTION_LABELS[option].toLowerCase()}. Decide it again before this gate.`);
+      expect(view.wouldChange, id).toEqual(['Deciding the scope gate again: go ahead.']);
+      expect(factText(view, 'Scope gate'), id).toBe(`Decided: ${GATE_OPTION_LABELS[option].toLowerCase()}.`);
+    }
+  });
+
+  it('says so even when the scope decision was taken on facts that have since changed', () => {
+    const first = buildGates(baseInput());
+    const stale = decision(gateOf(first, 'scope'), 'stop', { reason: 'x', factsHash: 'older-facts' });
+
+    const view = gateOf(buildGates(baseInput({}, { decisions: [stale] })), 'evidence');
+
+    expect(view.recommended).toBe('pause');
+  });
+
+  it('changes nothing when scope was decided go ahead, pause-free, or not decided at all', () => {
+    const plain = buildGates(baseInput());
+    const gone = scopeThen('proceed');
+
+    for (const id of ['evidence', 'release'] as const) {
+      expect(gateOf(gone, id).recommended, id).toBe(gateOf(plain, id).recommended);
+      expect(gateOf(gone, id).factsHash, id).toBe(gateOf(plain, id).factsHash);
+      expect(factText(gateOf(gone, id), 'Scope gate'), id).toBeUndefined();
+    }
+  });
+
+  it('uses the latest scope decision: stopping and then deciding go ahead frees the later gates', () => {
+    const first = buildGates(baseInput());
+    const stop = decision(gateOf(first, 'scope'), 'stop', { id: 'GD-1', reason: 'x', createdAt: '2026-10-22T09:00:00.000Z' });
+    const again = decision(gateOf(first, 'scope'), 'proceed', { id: 'GD-2', createdAt: '2026-10-22T10:00:00.000Z' });
+
+    const view = gateOf(buildGates(baseInput({}, { decisions: [stop, again] })), 'evidence');
+
+    expect(view.recommended).toBe('proceed');
+    expect(factText(view, 'Scope gate')).toBeUndefined();
+  });
+
+  it('makes an evidence decision taken earlier outdated once scope is stopped', () => {
+    const first = buildGates(baseInput());
+    const evidenceDecision = decision(gateOf(first, 'evidence'), 'proceed');
+    const stop = decision(gateOf(first, 'scope'), 'stop', { id: 'GD-9', reason: 'x', createdAt: '2026-10-22T12:00:00.000Z' });
+
+    expect(gateOf(buildGates(baseInput({}, { decisions: [evidenceDecision, stop] })), 'evidence').status).toBe('outdated');
+  });
+});
+
+describe('the team behind the scope gate\'s hash', () => {
+  const team = (members?: string[]) => ({ selected: 2, total: 25, ...(members === undefined ? {} : { members }) });
+  const scopeHash = (extra: Partial<GatesInput>) => gateOf(buildGates(baseInput({}, extra)), 'scope').factsHash;
+
+  it('changes when a different agent is selected, though the count is the same, and not when only the order changes', () => {
+    expect(scopeHash({ team: team(['cmcreg', 'reglead']) })).not.toBe(scopeHash({ team: team(['o-pv', 'reglead']) }));
+    expect(scopeHash({ team: team(['cmcreg', 'reglead']) })).toBe(scopeHash({ team: team(['reglead', 'cmcreg']) }));
+  });
+
+  it('shows the count only, as before, and leaves the hash as it was when no members are given', () => {
+    const view = gateOf(buildGates(baseInput({}, { team: team(['cmcreg', 'reglead']) })), 'scope');
+
+    expect(factText(view, 'Team')).toBe('2 of 25 agents are selected for this DD.');
+    expect(JSON.stringify(view.facts)).not.toContain('cmcreg');
+    expect(scopeHash({ team: team() })).toBe(scopeHash({ team: team() }));
   });
 });
 

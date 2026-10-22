@@ -160,6 +160,21 @@ describe('the team size the gates show', () => {
     expect(() => store.decideGate('demo', 'scope', { option: 'proceed', factsHash: 'x' }, { selected: 30, total: 25 })).toThrow(RangeError);
   });
 
+  it('refuses members that are not a list of agent ids', () => {
+    const store = openStore();
+
+    for (const members of ['reglead', [1, 2], [null]]) {
+      expect(() => store.listGates('demo', { selected: 2, total: 25, members } as unknown as GateTeam), JSON.stringify(members)).toThrow(RangeError);
+    }
+  });
+
+  it('knows which agents are on the team: the same count with other agents is another view of the scope gate', () => {
+    const store = openStore();
+    const scopeHash = (members: string[]) => (store.listGates('demo', { selected: members.length, total: 25, members }).find((gate) => gate.id === 'scope') as GateView).factsHash;
+
+    expect(scopeHash(['cmcreg', 'reglead'])).not.toBe(scopeHash(['o-pv', 'reglead']));
+  });
+
   it('accepts the edges: nobody selected, and everybody', () => {
     const store = openStore();
 

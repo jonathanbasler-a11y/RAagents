@@ -264,6 +264,105 @@ describe('GatesPanel: deciding', () => {
     await waitFor(() => expect(within(fresh).getByText('Every draft is decided, every accepted finding is tagged, and every checklist item is set to checked or not applicable.')).toBeInTheDocument());
     expect(within(fresh).getAllByRole('radio').every((radio) => !(radio as HTMLInputElement).checked)).toBe(true);
   });
+
+  const factsChange = async () => {
+    await act(async () => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+  };
+  const DRAFTS_GONE = 'Every draft is decided, every accepted finding is tagged, and every checklist item is set to checked or not applicable.';
+
+  it('keeps what the person wrote when the facts change under it, clears the choice, and says why', async () => {
+    const user = userEvent.setup();
+    const client = fakeClient(gatesResponse({ drafts: 3 }));
+    renderPanel(client);
+    const evidence = await card(EVIDENCE);
+    await user.click(within(evidence).getByRole('radio', { name: /^Go ahead/ }));
+    await user.type(within(evidence).getByRole('textbox', { name: /^Reason \(required/ }), 'half written');
+
+    client.getGates.mockResolvedValue(ok(gatesResponse({ drafts: 0 })));
+    await factsChange();
+
+    const fresh = await card(EVIDENCE);
+    await waitFor(() => expect(within(fresh).getByText(/The facts changed while you were here/)).toBeInTheDocument());
+    expect(within(fresh).getByRole('textbox', { name: /^Reason/ })).toHaveValue('half written');
+    expect(within(fresh).getAllByRole('radio').every((radio) => !(radio as HTMLInputElement).checked)).toBe(true);
+    expect(within(fresh).getByRole('button', { name: 'Record decision' })).toBeDisabled();
+
+    await user.click(within(fresh).getByRole('radio', { name: /^Pause/ }));
+    expect(within(fresh).queryByText(/The facts changed while you were here/)).not.toBeInTheDocument();
+  });
+
+  it('does not say the facts changed to a person who had typed and chosen nothing', async () => {
+    const client = fakeClient(gatesResponse({ drafts: 3 }));
+    renderPanel(client);
+    await card(EVIDENCE);
+
+    client.getGates.mockResolvedValue(ok(gatesResponse({ drafts: 0 })));
+    await factsChange();
+
+    const fresh = await card(EVIDENCE);
+    await waitFor(() => expect(within(fresh).getByText(DRAFTS_GONE)).toBeInTheDocument());
+    expect(within(fresh).queryByText(/The facts changed while you were here/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the reason after a refused decision (409), with the message and the new facts', async () => {
+    const user = userEvent.setup();
+    const client = fakeClient(gatesResponse({ drafts: 3 }));
+    client.submitGateDecision.mockResolvedValue({
+      ok: false,
+      status: 409,
+      error: { error: 'gate_facts_changed', message: 'The facts changed since you opened this gate. Reload and look again.', correlationId: 'corr-9' },
+      message: 'The facts changed since you opened this gate. Reload and look again.',
+    });
+    renderPanel(client);
+    const evidence = await card(EVIDENCE);
+    await user.click(within(evidence).getByRole('radio', { name: /^Go ahead/ }));
+    await user.type(within(evidence).getByRole('textbox', { name: /^Reason \(required/ }), 'My own words');
+    client.getGates.mockResolvedValue(ok(gatesResponse({ drafts: 0 })));
+
+    await user.click(within(evidence).getByRole('button', { name: 'Record decision' }));
+
+    const fresh = await card(EVIDENCE);
+    await waitFor(() => expect(within(fresh).getByText(DRAFTS_GONE)).toBeInTheDocument());
+    expect(within(fresh).getByRole('textbox', { name: /^Reason/ })).toHaveValue('My own words');
+    expect(within(fresh).getByText(/Not saved: The facts changed since you opened this gate/)).toBeInTheDocument();
+  });
+
+  it('starts the form again once a decision is recorded (here or elsewhere): the reason belonged to the choice before it', async () => {
+    const user = userEvent.setup();
+    const client = fakeClient(gatesResponse({ drafts: 3 }));
+    renderPanel(client);
+    const evidence = await card(EVIDENCE);
+    await user.click(within(evidence).getByRole('radio', { name: /^Go ahead/ }));
+    await user.type(within(evidence).getByRole('textbox', { name: /^Reason \(required/ }), 'Because.');
+    const first = gateOf(gatesResponse({ drafts: 3 }).gates, 'evidence');
+    client.submitGateDecision.mockResolvedValue(ok(gatesResponse({ drafts: 3 }, { decisions: [decision(first, 'proceed', { reason: 'Because.' })] })));
+
+    await user.click(within(evidence).getByRole('button', { name: 'Record decision' }));
+
+    await waitFor(async () => expect(within(await card(EVIDENCE)).getByRole('textbox', { name: /^Reason \(/ })).toHaveValue(''));
+    expect(within(await card(EVIDENCE)).getAllByRole('radio').every((radio) => !(radio as HTMLInputElement).checked)).toBe(true);
+    expect(within(await card(EVIDENCE)).queryByText(/The facts changed while you were here/)).not.toBeInTheDocument();
+  });
+
+  it('drops the prompt for a missing reason when the facts change, since it was about the facts before', async () => {
+    const user = userEvent.setup();
+    const client = fakeClient(gatesResponse({ drafts: 3 }));
+    renderPanel(client);
+    const evidence = await card(EVIDENCE);
+    await user.click(within(evidence).getByRole('radio', { name: /^Go ahead/ }));
+    await user.click(within(evidence).getByRole('button', { name: 'Record decision' }));
+    expect(within(evidence).getByRole('alert')).toHaveTextContent('Give a reason');
+
+    client.getGates.mockResolvedValue(ok(gatesResponse({ drafts: 0 })));
+    await factsChange();
+
+    const fresh = await card(EVIDENCE);
+    await waitFor(() => expect(within(fresh).getByText(DRAFTS_GONE)).toBeInTheDocument());
+    expect(within(fresh).queryByRole('alert')).not.toBeInTheDocument();
+  });
 });
 
 describe('GatesPanel: history and dissent', () => {
@@ -368,5 +467,24 @@ describe('GatesPanel: history and dissent', () => {
     const other = within(scope).getAllByRole('listitem').find((item) => item.getAttribute('data-decision') === 'GD-1') as HTMLElement;
     expect(within(other).queryByRole('alert')).not.toBeInTheDocument();
     expect(within(await card(EVIDENCE)).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows a failed dissent only under the decision it was for, even when another form tried before', async () => {
+    const user = userEvent.setup();
+    const client = fakeClient(withHistory());
+    const refused = (message: string) => ({ ok: false as const, status: 404, error: { error: 'gate_decision_not_found' as const, message, correlationId: 'c' }, message });
+    client.submitGateDissent.mockResolvedValueOnce(refused('First failure.')).mockResolvedValueOnce(refused('Second failure.'));
+    renderPanel(client);
+    const scope = await card(SCOPE);
+    const item = (id: string) => within(scope).getAllByRole('listitem').find((entry) => entry.getAttribute('data-decision') === id) as HTMLElement;
+    for (const id of ['GD-2', 'GD-1']) {
+      await user.click(within(item(id)).getByText('Add a dissent'));
+      await user.type(within(item(id)).getByRole('textbox', { name: 'Function the dissent speaks for' }), 'Quality');
+      await user.type(within(item(id)).getByRole('textbox', { name: 'Reason for the dissent' }), 'No.');
+      await user.click(within(item(id)).getByRole('button', { name: 'Record dissent' }));
+    }
+
+    expect(within(item('GD-1')).getByRole('alert')).toHaveTextContent('Second failure.');
+    expect(within(item('GD-2')).queryByRole('alert')).not.toBeInTheDocument();
   });
 });

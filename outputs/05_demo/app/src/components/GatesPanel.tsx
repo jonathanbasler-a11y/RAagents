@@ -34,7 +34,7 @@ function DissentForm({ gate, decisionId }: { gate: GateView['id']; decisionId: s
   const [attempted, setAttempted] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const busy = saving !== null;
-  const mine = attempted && saveError?.kind === 'dissent' && saveError.gate === gate ? saveError : null;
+  const mine = attempted && saveError?.kind === 'dissent' && saveError.gate === gate && saveError.decisionId === decisionId ? saveError : null;
 
   const submit = () => {
     if (role.trim() === '' || reason.trim() === '') {
@@ -122,7 +122,19 @@ function GateCard({ gate }: { gate: GateView }) {
   const [option, setOption] = useState<GateOption | null>(null);
   const [reason, setReason] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [factsMoved, setFactsMoved] = useState(false);
+  const [seen, setSeen] = useState({ hash: gate.factsHash, decisions: gate.decisions.length });
   const busy = saving !== null;
+  // What the person sees can move under an open card. A decision recorded (here or elsewhere) ends the form; changed facts
+  // keep what they wrote but clear the choice, so nobody records a choice against facts they have not seen.
+  if (seen.hash !== gate.factsHash || seen.decisions !== gate.decisions.length) {
+    const decided = seen.decisions !== gate.decisions.length;
+    setSeen({ hash: gate.factsHash, decisions: gate.decisions.length });
+    setLocalError(null);
+    if (decided) setReason('');
+    setFactsMoved(!decided && (option !== null || reason.trim() !== ''));
+    setOption(null);
+  }
   const needsReason = option !== null && option !== gate.recommended;
   const mine = saveError?.kind === 'decision' && saveError.gate === gate.id ? saveError : null;
   const reasonLabel = needsReason ? 'Reason (required: you chose something other than the recommended call)' : 'Reason (optional)';
@@ -145,6 +157,11 @@ function GateCard({ gate }: { gate: GateView }) {
         <span className={gate.status === 'decided' ? 'badge' : 'badge badge-warn'}>{GATE_STATUS_LABELS[gate.status]}</span>
       </header>
       <p>{gate.question}</p>
+      {factsMoved && (
+        <p className="note" role="status">
+          The facts changed while you were here. What you wrote is kept; choose again.
+        </p>
+      )}
       {gate.status === 'outdated' && (
         <p className="note" role="status">
           The facts changed since the latest decision: decide again if it still holds.
@@ -172,6 +189,7 @@ function GateCard({ gate }: { gate: GateView }) {
               checked={option === entry.option}
               onChange={() => {
                 setOption(entry.option);
+                setFactsMoved(false);
                 setLocalError(null);
               }}
             />
@@ -256,9 +274,8 @@ export function GatesPanel() {
           </ul>
           <p className="note">{data.disagreementRule}</p>
         </section>
-        {/* The key changes when what is true or what is saved changes, so a card starts again from it (a decision, another tab, new facts). */}
         {data.gates.map((gate) => (
-          <GateCard key={`${gate.id}|${gate.factsHash}|${gate.status}|${gate.decisions.length}`} gate={gate} />
+          <GateCard key={gate.id} gate={gate} />
         ))}
       </>
     );

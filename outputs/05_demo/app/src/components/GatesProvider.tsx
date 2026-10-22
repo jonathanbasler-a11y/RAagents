@@ -29,7 +29,7 @@ export interface GatesContextState {
   /** The gate and kind of the write in progress. One write at a time. */
   saving: { gate: GateId; kind: 'decision' | 'dissent' } | null;
   /** The last write that was not saved, with the gate and kind it was for. */
-  saveError: (GatesProblem & { gate: GateId; kind: 'decision' | 'dissent' }) | null;
+  saveError: (GatesProblem & { gate: GateId; kind: 'decision' | 'dissent'; decisionId?: string }) | null;
   loadError: GatesProblem | null;
   /** Answers whether the decision was saved. Ignored (false) while another write is in progress. */
   decide(gate: GateId, request: GateDecisionRequest): Promise<boolean>;
@@ -120,7 +120,7 @@ export function GatesProvider({ children, client = chatClient }: { children: Rea
   }, []);
 
   const write = useCallback(
-    async (gate: GateId, kind: 'decision' | 'dissent', send: () => Promise<ApiResult<GatesResponse>>): Promise<boolean> => {
+    async (gate: GateId, kind: 'decision' | 'dissent', send: () => Promise<ApiResult<GatesResponse>>, decisionId?: string): Promise<boolean> => {
       if (savingNow.current) return false;
       savingNow.current = true;
       setSaving({ gate, kind });
@@ -128,7 +128,7 @@ export function GatesProvider({ children, client = chatClient }: { children: Rea
       try {
         const result = await send();
         if (!result.ok) {
-          setSaveError({ ...problemOf(result), gate, kind });
+          setSaveError({ ...problemOf(result), gate, kind, ...(decisionId === undefined ? {} : { decisionId }) });
           // A 409 means the facts are not what the screen showed: read what is true now, and keep the message.
           if (result.status === 409) void refresh();
           return false;
@@ -145,7 +145,7 @@ export function GatesProvider({ children, client = chatClient }: { children: Rea
   );
 
   const decide = useCallback((gate: GateId, request: GateDecisionRequest) => write(gate, 'decision', () => client.submitGateDecision(gate, request)), [client, write]);
-  const dissent = useCallback((gate: GateId, request: GateDissentRequest) => write(gate, 'dissent', () => client.submitGateDissent(gate, request)), [client, write]);
+  const dissent = useCallback((gate: GateId, request: GateDissentRequest) => write(gate, 'dissent', () => client.submitGateDissent(gate, request), request.decisionId), [client, write]);
 
   const value = useMemo<GatesContextState>(
     () => ({ status, data, saving, saveError, loadError, decide, dissent, refresh, reload }),

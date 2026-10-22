@@ -91,7 +91,7 @@ function Body({ briefing, generatedAt }: { briefing: Briefing; generatedAt: stri
               <li key={row.gate}>
                 <strong>{row.title}</strong>: {gateSentence(row)}
                 {row.dissents.map((note) => (
-                  <p key={`${note.role}|${note.reason}`} className="gate-dissent">
+                  <p key={note.id} className="gate-dissent">
                     Dissent from {note.role}: {note.reason}
                   </p>
                 ))}

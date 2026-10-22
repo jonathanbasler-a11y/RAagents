@@ -67,6 +67,21 @@ describe('GET /api/gates', () => {
     expect(team?.text).toBe(`${selected} of ${total} agents are selected for this DD.`);
   });
 
+  it('sees which agents are selected, not only how many: swapping one for another makes the scope gate outdated', async () => {
+    const api = setup();
+    api.runtime.store.setSelection('demo', ['lead']);
+    const before = gateOf(await read(api), 'scope');
+    expect(
+      (await jsonOf<GatesResponse>(await decide(api, 'scope', { option: 'proceed', factsHash: before.factsHash }))).gates.find((gate) => gate.id === 'scope')?.status,
+    ).toBe('decided');
+
+    api.runtime.store.setSelection('demo', ['cmc']);
+    const after = gateOf(await read(api), 'scope');
+
+    expect(after.facts.find((fact) => fact.label === 'Team')?.text).toBe(before.facts.find((fact) => fact.label === 'Team')?.text);
+    expect(after.status).toBe('outdated');
+  });
+
   it('is read-only: asking changes nothing', async () => {
     const api = setup();
 

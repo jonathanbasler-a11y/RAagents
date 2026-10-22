@@ -85,6 +85,20 @@ describe('BriefingPanel: the gate decisions', () => {
     expect(rows[2]).toHaveTextContent('The facts changed since; decide again.');
   });
 
+  it('gives two dissents with the same words their own place in the list', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const first = gatesResponse().gates;
+    const taken = decision(first[0], 'proceed', { id: 'GD-1' });
+    const notes = [dissent(taken, { role: 'Quality', reason: 'Not yet.' }), dissent(taken, { role: 'Quality', reason: 'Not yet.' })];
+    mount(response({ gates: gatesResponse({}, { decisions: [taken], dissents: notes }).gates }));
+
+    const gates = await screen.findByRole('region', { name: 'Gate decisions' });
+
+    expect(within(gates).getAllByText('Dissent from Quality: Not yet.')).toHaveLength(2);
+    expect(errors.mock.calls.flat().join(' ')).not.toContain('same key');
+    errors.mockRestore();
+  });
+
   it('puts the warning about a gate decided on earlier facts under "Before you read"', async () => {
     const first = gatesResponse().gates;
     const stale = decision(gateOf(first, 'scope'), 'proceed', { factsHash: 'older-facts' });

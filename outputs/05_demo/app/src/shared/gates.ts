@@ -114,12 +114,39 @@ interface Base {
   recommended: GateOption;
   recommendedBecause: string;
   wouldChange: string[];
+  /** Facts shown to the person but left out of the hash, because they must not reopen a decision. */
+  notHashed?: string[];
+  /** Something that changes the hash without being shown. */
+  hashExtra?: unknown;
 }
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 const lower = (option: GateOption) => GATE_OPTION_LABELS[option].toLowerCase();
 
-function scopeBase({ setup, team, briefing }: GatesInput): Base {
+/**
+ * A scope gate that was stopped or paused leads the gates after it: whatever the evidence says, the call there is to pause
+ * until a person decides scope again. The latest scope decision counts, even if its facts have changed since.
+ */
+function ledByScope(base: Base, scope: GateView): Base {
+  const latest = scope.decisions[0];
+  if (latest === undefined || (latest.option !== 'stop' && latest.option !== 'pause')) return base;
+  return {
+    ...base,
+    facts: [...base.facts, { label: 'Scope gate', text: `Decided: ${lower(latest.option)}.` }],
+    recommended: 'pause',
+    recommendedBecause: `The scope gate was decided: ${lower(latest.option)}. Decide it again before this gate.`,
+    wouldChange: ['Deciding the scope gate again: go ahead.'],
+  };
+}
+
+/** The scope gate's facts, plus the selected agents' ids (sorted) in the hash: another team of the same size is another view. */
+function scopeBase(input: GatesInput): Base {
+  const base = scopeFacts(input);
+  const { members } = input.team;
+  return members === undefined ? base : { ...base, hashExtra: [...members].sort() };
+}
+
+function scopeFacts({ setup, team, briefing }: GatesInput): Base {
   const documents = briefing.documents;
   const readable = documents.filter((document) => document.provided && !document.withdrawn).length;
   const notProvided = documents.filter((document) => !document.provided).length;
@@ -248,8 +275,11 @@ function releaseBase(input: GatesInput, evidence: GateView): Base {
     { label: 'Inputs for the PTRS', text: `${plural(briefing.ptrsInputs.length, 'finding', 'findings')}; the app computes no number.` },
     { label: 'Dissents recorded', text: String(input.dissents.length) },
   ];
+  // A dissent is shown but never hashed: it stays on the record and must not reopen the decision it is under.
+  const notHashed = ['Dissents recorded'];
   if (latest === undefined) {
     return {
+      notHashed,
       facts,
       recommended: 'seek_more',
       recommendedBecause: 'The evidence gate has not been decided.',
@@ -258,6 +288,7 @@ function releaseBase(input: GatesInput, evidence: GateView): Base {
   }
   if (latest.option !== 'proceed') {
     return {
+      notHashed,
       facts,
       recommended: 'seek_more',
       recommendedBecause: `The evidence gate was decided: ${lower(latest.option)}, not go ahead.`,
@@ -266,6 +297,7 @@ function releaseBase(input: GatesInput, evidence: GateView): Base {
   }
   if (!current) {
     return {
+      notHashed,
       facts,
       recommended: 'seek_more',
       recommendedBecause: 'The evidence gate was decided go ahead, but the facts changed since. Decide it again.',
@@ -273,6 +305,7 @@ function releaseBase(input: GatesInput, evidence: GateView): Base {
     };
   }
   return {
+    notHashed,
     facts,
     recommended: 'proceed',
     recommendedBecause: 'The evidence gate was decided: go ahead, and the facts have not changed since.',
@@ -281,7 +314,8 @@ function releaseBase(input: GatesInput, evidence: GateView): Base {
 }
 
 function finish(id: GateId, base: Base, input: GatesInput): GateView {
-  const factsHash = hashFacts(JSON.stringify({ facts: base.facts, recommended: base.recommended }));
+  const hashed = base.facts.filter((fact) => !(base.notHashed ?? []).includes(fact.label));
+  const factsHash = hashFacts(JSON.stringify({ facts: hashed, recommended: base.recommended, ...(base.hashExtra === undefined ? {} : { extra: base.hashExtra }) }));
   const own = input.decisions
     .filter((entry) => entry.gate === id)
     // Numbers grow with time, so the number alone puts the newest first (GD-10 after GD-9).
@@ -308,8 +342,8 @@ function finish(id: GateId, base: Base, input: GatesInput): GateView {
 /** The three gates, in order, as they stand now. */
 export function buildGates(input: GatesInput): GateView[] {
   const scope = finish('scope', scopeBase(input), input);
-  const evidence = finish('evidence', evidenceBase(input), input);
-  const release = finish('release', releaseBase(input, evidence), input);
+  const evidence = finish('evidence', ledByScope(evidenceBase(input), scope), input);
+  const release = finish('release', ledByScope(releaseBase(input, evidence), scope), input);
   return [scope, evidence, release];
 }
 

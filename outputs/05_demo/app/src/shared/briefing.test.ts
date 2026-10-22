@@ -302,7 +302,7 @@ describe('buildBriefing: the gate decisions', () => {
 
     const row = build({ gates: views({ decisions: [early, late], dissents: notes }) }).gateDecisions.find((entry) => entry.gate === 'scope');
 
-    expect(row?.dissents).toEqual([{ role: 'CMC regulatory agent owner', reason: 'The site data is not in yet.' }]);
+    expect(row?.dissents).toEqual([{ id: notes[1].id, role: 'CMC regulatory agent owner', reason: 'The site data is not in yet.' }]);
   });
 
   it('warns about a gate decided on facts that have since changed, naming it, and about nothing else', () => {

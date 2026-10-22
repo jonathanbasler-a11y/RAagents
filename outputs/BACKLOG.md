@@ -49,7 +49,7 @@ Built and checked in practice mode on a Mac (see `DECISIONS.md`, 2026-10-22). Op
 
 ## Backlog, in order
 
-2. **Gates in the app: built (phase C)** [3, playbook layer]. At a few points the app stops and shows the choices (go ahead, pause, ask for more information, stop), what each costs, our recommended call, and the evidence that would change it. A person decides through an authenticated action, and it is recorded. Open question 22.
+2. **Gates in the app: built (phase C)** [3, playbook layer]. At a few points the app stops and shows the choices (go ahead, pause, ask for more information, stop), what each costs, our recommended call, and the evidence that would change it. A person decides through a form in the app and it is recorded (today stamped "person (local, not authenticated)"; a login is open questions 29 and 34). Open question 22.
 3. **"Always human" list and the disagreement rule: built (phase C)** [3, human layer]. Includes accepting incomplete evidence and settling disagreement between specialists. Settle the lead-versus-specialist case, which the other team left open. Open question 22.
 4. **"Why an agent" field and a deliberately-not-agents list** [3, agent library]. Add the field to `outputs/04_agents/README.md`, write the list, and use both to choose the 6 to 8 MVP agents (open question 12).
 5. **Permission ceiling** [3, trust layer]. Agents observe and recommend; no autonomy level ever concludes. Write it into the autonomy section of the concept.

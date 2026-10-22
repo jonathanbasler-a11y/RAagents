@@ -815,6 +815,9 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
     if (!Number.isInteger(team?.selected) || !Number.isInteger(team?.total) || team.selected < 0 || team.total < team.selected) {
       throw new RangeError('team must be whole numbers with selected no more than total');
     }
+    if (team.members !== undefined && (!Array.isArray(team.members) || team.members.some((id) => typeof id !== 'string'))) {
+      throw new RangeError('team members must be a list of agent ids');
+    }
     const decisions = (sql.gateDecisionsOf.all(workspaceId) as Array<Record<string, unknown>>).map(
       (row): GateDecision => ({
         id: row.id as string,
