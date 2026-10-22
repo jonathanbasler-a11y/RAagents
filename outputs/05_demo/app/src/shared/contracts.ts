@@ -884,6 +884,23 @@ export interface Store {
   listChecklist(workspaceId: WorkspaceId): ChecklistEntry[];
   /** The checklist's audit trail, oldest first. */
   listChecklistEvents(workspaceId: WorkspaceId): ChecklistEvent[];
+  /**
+   * The three gates as they stand now: the facts and the recommended call are built here, from this workspace's DD setup,
+   * data room, findings, checklist and earlier decisions (no model), with every decision and dissent. Read-only.
+   */
+  listGates(workspaceId: WorkspaceId, team: GateTeam): GateView[];
+  /**
+   * Records a person's decision at a gate. The ONLY writer of a gate decision. The facts and the recommended call are
+   * rebuilt inside the transaction and never taken from the request. Throws GateFactsChangedError (the request carries the
+   * facts hash of an older view), GateReasonRequiredError (the option differs from the recommended call and no reason was
+   * given) or RangeError (an unknown gate or option, a reason that is not text or is too long).
+   */
+  decideGate(workspaceId: WorkspaceId, gate: GateId, request: unknown, team: GateTeam): GateDecision;
+  /**
+   * Records a dissent under an existing decision of the same gate. The ONLY writer of a dissent; it never changes the
+   * decision. Throws GateDecisionNotFoundError or RangeError (a role or reason that is missing, not text or too long).
+   */
+  recordGateDissent(workspaceId: WorkspaceId, gate: GateId, request: unknown): GateDissent;
   close(): void;
 }
 
@@ -1532,6 +1549,12 @@ export type GateId = (typeof GATE_IDS)[number];
 /** The four choices at every gate. */
 export const GATE_OPTIONS = ['proceed', 'pause', 'seek_more', 'stop'] as const;
 export type GateOption = (typeof GATE_OPTIONS)[number];
+
+/** The team size the gates show: the store does not know the roster, so the API passes it in. */
+export interface GateTeam {
+  selected: number;
+  total: number;
+}
 
 /** One line of what the code found, for the person deciding. */
 export interface GateFact {

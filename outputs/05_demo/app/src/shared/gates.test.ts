@@ -372,6 +372,19 @@ describe('status and history', () => {
     expect(view.status).toBe('decided');
   });
 
+  it('puts decisions made in the same millisecond in the order of their numbers: GD-10 is newer than GD-9', () => {
+    const first = buildGates(baseInput());
+    const at = '2026-10-22T10:00:00.000Z';
+    const nine = decision(gateOf(first, 'scope'), 'proceed', { id: 'GD-9', createdAt: at });
+    const ten = decision(gateOf(first, 'scope'), 'proceed', { id: 'GD-10', createdAt: at });
+    const notes = [dissent(ten, { id: 'GX-10', createdAt: at }), dissent(ten, { id: 'GX-9', createdAt: at })];
+
+    const view = gateOf(buildGates(baseInput({}, { decisions: [nine, ten], dissents: notes })), 'scope');
+
+    expect(view.decisions.map((entry) => entry.id)).toEqual(['GD-10', 'GD-9']);
+    expect(view.decisions[0].dissents.map((entry) => entry.id)).toEqual(['GX-9', 'GX-10']);
+  });
+
   it('a decision on other facts counts as outdated even when an older one matched', () => {
     const now = buildGates(baseInput());
     const matched = decision(gateOf(now, 'scope'), 'proceed', { createdAt: '2026-10-22T09:00:00.000Z' });

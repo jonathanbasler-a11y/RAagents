@@ -4,7 +4,6 @@ import type {
   AgentTurnState,
   AutonomyLevel,
   ChatErrorCode,
-  ClassificationId,
   ContributionRole,
   ChecklistState,
   FindingBasis,

@@ -8,6 +8,13 @@ import type {
   ChecklistState,
   FindingTag,
   FindingTagInput,
+  GateDecision,
+  GateDissent,
+  GateFact,
+  GateId,
+  GateOption,
+  GateTeam,
+  GateView,
   AgentId,
   AppendResult,
   ChatErrorCode,
@@ -40,7 +47,10 @@ import type {
 } from '@/shared/contracts';
 import { CHECKLIST_ITEM_IDS, CLASSIFICATION_IDS, DEVELOPMENT_STAGES, LOCAL_PERSON } from '@/shared/contracts';
 import { neutraliseUntrusted } from '@/server/prompts/fence';
+import { buildBriefing } from '@/shared/briefing';
 import { checkStateChange, checkTagInput, isChecklistItemId } from '@/shared/checklist';
+import { DEFAULT_DD_SETUP } from '@/shared/dd-setup';
+import { buildGates, checkGateDecision, checkGateDissent, isGateId } from '@/shared/gates';
 import { checkProposedFinding, foldForMatch, type ProposalContext } from '@/shared/findings';
 import { MAX_REASON_CHARS, checkAsOf, checkNewDocument, compareDocumentIds, nextDocumentId } from '@/shared/data-room';
 import { immediateTransaction, migrateChatSchema } from './schema';
@@ -177,6 +187,36 @@ export class ChecklistNeedsFindingError extends Error {
   constructor(item: string) {
     super(`${item} cannot be marked checked: no accepted finding is tagged to it`);
     this.name = 'ChecklistNeedsFindingError';
+  }
+}
+
+/** Thrown by decideGate when the request carries the facts hash of an older view. The API answers 409 gate_facts_changed. */
+export class GateFactsChangedError extends Error {
+  readonly code = 'gate_facts_changed' as const;
+
+  constructor(gate: string) {
+    super(`the facts of the ${gate} gate changed since the decision was prepared`);
+    this.name = 'GateFactsChangedError';
+  }
+}
+
+/** Thrown by decideGate when the option differs from the recommended call and no reason was given. The API answers 400 gate_reason_required. */
+export class GateReasonRequiredError extends Error {
+  readonly code = 'gate_reason_required' as const;
+
+  constructor(gate: string) {
+    super(`a reason is required: the choice at the ${gate} gate differs from the recommended call`);
+    this.name = 'GateReasonRequiredError';
+  }
+}
+
+/** Thrown by recordGateDissent for a decision that does not exist in this workspace and gate. The API answers 404 gate_decision_not_found. */
+export class GateDecisionNotFoundError extends Error {
+  readonly code = 'gate_decision_not_found' as const;
+
+  constructor(decisionId: string) {
+    super(`there is no decision ${decisionId} at this gate`);
+    this.name = 'GateDecisionNotFoundError';
   }
 }
 
@@ -601,6 +641,18 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
     insertChecklistEvent: db.prepare('INSERT INTO checklist_events (workspace_id, item, state, reason, at, actor) VALUES (?, ?, ?, ?, ?, ?)'),
     checklistStatesOf: db.prepare('SELECT item, state, reason, changed_at, changed_by FROM checklist_states WHERE workspace_id = ?'),
     checklistEventsOf: db.prepare('SELECT id, item, state, reason, at, actor FROM checklist_events WHERE workspace_id = ? ORDER BY id'),
+    insertGateDecision: db.prepare(
+      `INSERT INTO gate_decisions (workspace_id, id, gate, option, recommended, reason, facts_json, facts_hash, actor, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ),
+    gateDecisionsOf: db.prepare('SELECT * FROM gate_decisions WHERE workspace_id = ? ORDER BY rowid'),
+    gateDecisionOf: db.prepare('SELECT gate FROM gate_decisions WHERE workspace_id = ? AND id = ?'),
+    nextGateDecisionNumber: db.prepare("SELECT COALESCE(MAX(CAST(SUBSTR(id, 4) AS INTEGER)), 0) + 1 AS next FROM gate_decisions WHERE workspace_id = ?"),
+    insertGateDissent: db.prepare(
+      `INSERT INTO gate_dissents (workspace_id, id, decision_id, gate, role, reason, actor, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ),
+    gateDissentsOf: db.prepare('SELECT * FROM gate_dissents WHERE workspace_id = ? ORDER BY rowid'),
+    nextGateDissentNumber: db.prepare("SELECT COALESCE(MAX(CAST(SUBSTR(id, 4) AS INTEGER)), 0) + 1 AS next FROM gate_dissents WHERE workspace_id = ?"),
     openQuestionsOf: db.prepare("SELECT * FROM open_questions WHERE workspace_id = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER)"),
     nextQuestionNumber: db.prepare("SELECT COALESCE(MAX(CAST(SUBSTR(id, 3) AS INTEGER)), 0) + 1 AS next FROM open_questions WHERE workspace_id = ?"),
     insertOpenQuestion: db.prepare(
@@ -758,7 +810,48 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
     return { stage: row.stage as DdSetup['stage'], classifications: known };
   }
 
-  return {
+  /** The gates as they stand, from this workspace's own records. Reads only; `store` is the object returned below. */
+  function readGates(workspaceId: WorkspaceId, team: GateTeam): GateView[] {
+    if (!Number.isInteger(team?.selected) || !Number.isInteger(team?.total) || team.selected < 0 || team.total < team.selected) {
+      throw new RangeError('team must be whole numbers with selected no more than total');
+    }
+    const decisions = (sql.gateDecisionsOf.all(workspaceId) as Array<Record<string, unknown>>).map(
+      (row): GateDecision => ({
+        id: row.id as string,
+        workspaceId,
+        gate: row.gate as GateId,
+        option: row.option as GateOption,
+        reason: (row.reason as string | null) ?? null,
+        recommended: row.recommended as GateOption,
+        facts: JSON.parse(row.facts_json as string) as GateFact[],
+        factsHash: row.facts_hash as string,
+        actor: row.actor as string,
+        createdAt: row.created_at as string,
+      }),
+    );
+    const dissents = (sql.gateDissentsOf.all(workspaceId) as Array<Record<string, unknown>>).map(
+      (row): GateDissent => ({
+        id: row.id as string,
+        decisionId: row.decision_id as string,
+        workspaceId,
+        gate: row.gate as GateId,
+        role: row.role as string,
+        reason: row.reason as string,
+        actor: row.actor as string,
+        createdAt: row.created_at as string,
+      }),
+    );
+    const briefing = buildBriefing({
+      dataRoom: store.getDataRoom(workspaceId),
+      findings: store.listFindings(workspaceId),
+      tags: store.listFindingTags(workspaceId),
+      openQuestions: store.listOpenQuestions(workspaceId),
+      checklist: store.listChecklist(workspaceId),
+    });
+    return buildGates({ setup: readDdSetup(workspaceId) ?? DEFAULT_DD_SETUP, team, briefing, decisions, dissents });
+  }
+
+  const store: Store = {
     getActiveThread(workspaceId, roomId) {
       requireNonEmpty('workspaceId', workspaceId);
       requireNonEmpty('roomId', roomId);
@@ -1297,8 +1390,59 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       );
     },
 
+    listGates(workspaceId, team) {
+      requireNonEmpty('workspaceId', workspaceId);
+      return readGates(workspaceId, team);
+    },
+
+    decideGate(workspaceId, gate, request, team) {
+      requireNonEmpty('workspaceId', workspaceId);
+      if (!isGateId(gate)) throw new RangeError(`${String(gate)} is not a gate`);
+      const at = timestamp();
+      return immediateTransaction(db, () => {
+        // The facts and the recommended call are rebuilt here, from this workspace's records; the request supplies neither.
+        const view = readGates(workspaceId, team).find((entry) => entry.id === gate) as GateView;
+        const checked = checkGateDecision(view, request);
+        if (!checked.ok) {
+          if (checked.code === 'facts_changed') throw new GateFactsChangedError(gate);
+          if (checked.code === 'reason_required') throw new GateReasonRequiredError(gate);
+          throw new RangeError(checked.message);
+        }
+        const id = `GD-${Number((sql.nextGateDecisionNumber.get(workspaceId) as { next: number }).next)}`;
+        sql.insertGateDecision.run(workspaceId, id, gate, checked.option, view.recommended, checked.reason, JSON.stringify(view.facts), view.factsHash, LOCAL_PERSON, at);
+        return {
+          id,
+          workspaceId,
+          gate,
+          option: checked.option,
+          reason: checked.reason,
+          recommended: view.recommended,
+          facts: view.facts,
+          factsHash: view.factsHash,
+          actor: LOCAL_PERSON,
+          createdAt: at,
+        } satisfies GateDecision;
+      });
+    },
+
+    recordGateDissent(workspaceId, gate, request) {
+      requireNonEmpty('workspaceId', workspaceId);
+      if (!isGateId(gate)) throw new RangeError(`${String(gate)} is not a gate`);
+      const checked = checkGateDissent(request);
+      if (!checked.ok) throw new RangeError(checked.message);
+      const at = timestamp();
+      return immediateTransaction(db, () => {
+        const decision = sql.gateDecisionOf.get(workspaceId, checked.decisionId) as { gate: string } | undefined;
+        if (decision === undefined || decision.gate !== gate) throw new GateDecisionNotFoundError(checked.decisionId);
+        const id = `GX-${Number((sql.nextGateDissentNumber.get(workspaceId) as { next: number }).next)}`;
+        sql.insertGateDissent.run(workspaceId, id, checked.decisionId, gate, checked.role, checked.reason, LOCAL_PERSON, at);
+        return { id, decisionId: checked.decisionId, workspaceId, gate, role: checked.role, reason: checked.reason, actor: LOCAL_PERSON, createdAt: at } satisfies GateDissent;
+      });
+    },
+
     close() {
       if (db.isOpen) db.close();
     },
   };
+  return store;
 }

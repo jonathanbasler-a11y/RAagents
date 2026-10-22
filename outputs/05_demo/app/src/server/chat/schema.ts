@@ -1,6 +1,6 @@
 import 'server-only';
 import type { SqliteDatabase } from '@/server/db/sqlite';
-import { CHECKLIST_ITEM_IDS, CHECKLIST_STATES, FINDING_CATEGORIES, PROPOSAL_REFUSAL_CODES } from '@/shared/contracts';
+import { CHECKLIST_ITEM_IDS, CHECKLIST_STATES, FINDING_CATEGORIES, GATE_IDS, GATE_OPTIONS, PROPOSAL_REFUSAL_CODES } from '@/shared/contracts';
 
 // The reasons an open question can carry come from the contract, so the list in the database cannot drift from it.
 const REASON_CODES_SQL = PROPOSAL_REFUSAL_CODES.map((code) => `'${code}'`).join(', ');
@@ -9,6 +9,9 @@ const sqlList = (values: readonly string[]) => values.map((value) => `'${value}'
 const CHECKLIST_ITEMS_SQL = sqlList(CHECKLIST_ITEM_IDS);
 const CHECKLIST_STATES_SQL = sqlList(CHECKLIST_STATES);
 const FINDING_CATEGORIES_SQL = sqlList(FINDING_CATEGORIES);
+// And the gates and their four options.
+const GATES_SQL = sqlList(GATE_IDS);
+const GATE_OPTIONS_SQL = sqlList(GATE_OPTIONS);
 
 /**
  * The chat schema, one entry per version: entry i takes a database from version i to
@@ -421,6 +424,71 @@ export const CHAT_MIGRATIONS: readonly string[] = [
   BEFORE DELETE ON checklist_events
   BEGIN
     SELECT RAISE(ABORT, 'a checklist event cannot be deleted');
+  END;
+  `,
+
+  // Version 6: gates. A person decides at one of three gates. Every decision is kept, with the facts and the recommended
+  // call as they were shown; a decision that differs from the recommended call needs a reason (the database checks it too).
+  // A dissent is recorded under a decision of the same gate and never changes it. Both tables are append-only.
+  `
+  CREATE TABLE gate_decisions (
+    workspace_id TEXT NOT NULL,
+    id TEXT NOT NULL,
+    gate TEXT NOT NULL CHECK (gate IN (${GATES_SQL})),
+    option TEXT NOT NULL CHECK (option IN (${GATE_OPTIONS_SQL})),
+    recommended TEXT NOT NULL CHECK (recommended IN (${GATE_OPTIONS_SQL})),
+    reason TEXT CHECK (reason IS NULL OR length(reason) BETWEEN 1 AND 600),
+    facts_json TEXT NOT NULL,
+    facts_hash TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (workspace_id, id),
+    CHECK (option = recommended OR reason IS NOT NULL)
+  ) STRICT;
+
+  CREATE TRIGGER gate_decisions_no_update
+  BEFORE UPDATE ON gate_decisions
+  BEGIN
+    SELECT RAISE(ABORT, 'a gate decision cannot be changed');
+  END;
+
+  CREATE TRIGGER gate_decisions_no_delete
+  BEFORE DELETE ON gate_decisions
+  BEGIN
+    SELECT RAISE(ABORT, 'a gate decision cannot be deleted');
+  END;
+
+  CREATE TABLE gate_dissents (
+    workspace_id TEXT NOT NULL,
+    id TEXT NOT NULL,
+    decision_id TEXT NOT NULL,
+    gate TEXT NOT NULL CHECK (gate IN (${GATES_SQL})),
+    role TEXT NOT NULL CHECK (length(role) BETWEEN 1 AND 60),
+    reason TEXT NOT NULL CHECK (length(reason) BETWEEN 1 AND 600),
+    actor TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (workspace_id, id)
+  ) STRICT;
+
+  CREATE TRIGGER gate_dissents_need_decision
+  BEFORE INSERT ON gate_dissents
+  WHEN NOT EXISTS (
+    SELECT 1 FROM gate_decisions WHERE workspace_id = NEW.workspace_id AND id = NEW.decision_id AND gate = NEW.gate
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'a dissent needs a decision of the same gate');
+  END;
+
+  CREATE TRIGGER gate_dissents_no_update
+  BEFORE UPDATE ON gate_dissents
+  BEGIN
+    SELECT RAISE(ABORT, 'a gate dissent cannot be changed');
+  END;
+
+  CREATE TRIGGER gate_dissents_no_delete
+  BEFORE DELETE ON gate_dissents
+  BEGIN
+    SELECT RAISE(ABORT, 'a gate dissent cannot be deleted');
   END;
   `,
 ];

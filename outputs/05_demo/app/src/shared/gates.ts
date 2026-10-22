@@ -9,6 +9,7 @@ import {
   type GateId,
   type GateOption,
   type GateStatus,
+  type GateTeam,
   type GateView,
 } from './contracts';
 import { CLASSIFICATION_LABELS } from './dd-setup';
@@ -100,7 +101,7 @@ export function hashFacts(text: string): string {
 
 export interface GatesInput {
   setup: DdSetup;
-  team: { selected: number; total: number };
+  team: GateTeam;
   /** The briefing as it is now (buildBriefing): the gates read its counts, checklist and warnings. */
   briefing: Briefing;
   /** Every recorded decision, in any order. */
@@ -283,7 +284,7 @@ function finish(id: GateId, base: Base, input: GatesInput): GateView {
   const factsHash = hashFacts(JSON.stringify({ facts: base.facts, recommended: base.recommended }));
   const own = input.decisions
     .filter((entry) => entry.gate === id)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id, 'en', { numeric: true }));
   const status: GateStatus = own.length === 0 ? 'not_decided' : own[0].factsHash === factsHash ? 'decided' : 'outdated';
   return {
     id,
@@ -298,7 +299,7 @@ function finish(id: GateId, base: Base, input: GatesInput): GateView {
     status,
     decisions: own.map((entry) => ({
       ...entry,
-      dissents: input.dissents.filter((note) => note.decisionId === entry.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)),
+      dissents: input.dissents.filter((note) => note.decisionId === entry.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id, 'en', { numeric: true })),
     })),
   };
 }
