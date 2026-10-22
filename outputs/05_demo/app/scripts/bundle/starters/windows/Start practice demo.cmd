@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-cd /d "%~dp0"
+pushd "%~dp0"
 set "EXITCODE=1"
 if not exist "runtime\win32-x64\node.exe" goto missing
 if not exist "launcher\bundle\launcher.mjs" goto missing

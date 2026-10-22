@@ -303,22 +303,25 @@ describe('applyPreset', () => {
     expect(text).toContain('LLM_MODEL=m-$&-1\n');
   });
 
-  it('copies the preset comments into a notes block right under the template header', () => {
-    const { text } = applyPreset(TEMPLATE, '# Use the team gateway.\n# Ask the AI team for a key.\nLLM_MODEL=m\n');
-    expect(text.split('\n').slice(0, 8)).toEqual([
-      '# Header line one',
-      '# Header line two',
-      '',
-      '# Notes from the person who prepared this',
-      '# Use the team gateway.',
-      '# Ask the AI team for a key.',
-      '',
-      'LLM_BASE_URL=',
-    ]);
+  it('never copies the preset\'s comment lines into the ZIP, and says how many it left out', () => {
+    const { text, notesLeftOut } = applyPreset(TEMPLATE, '# Use the team gateway.\n# Ask the AI team for a key.\nLLM_MODEL=m\n');
+
+    expect(text).not.toContain('team gateway');
+    expect(text).not.toContain('Ask the AI team');
+    expect(text).not.toContain('Notes from');
+    expect(notesLeftOut).toBe(2);
+    expect(text).toBe(TEMPLATE.replace('LLM_MODEL=', 'LLM_MODEL=m'));
   });
 
-  it('adds no notes block when the preset has no comments', () => {
-    expect(applyPreset(TEMPLATE, 'LLM_MODEL=m\n').text).not.toContain('Notes from');
+  it('keeps out notes that hold a key in a form the key check does not recognise', () => {
+    for (const note of ['# llm_api_key=sk1234567890abcdef1234', '# old key: sk-ant-api03-abcdefghijklmnop', '# Authorization: Bearer abc123def456ghi789']) {
+      const { text } = applyPreset(TEMPLATE, `${note}\nLLM_MODEL=m\n`);
+      expect(text, note).not.toContain(note.slice(2));
+    }
+  });
+
+  it('reports no notes left out when the preset has no comments', () => {
+    expect(applyPreset(TEMPLATE, 'LLM_MODEL=m\n').notesLeftOut).toBe(0);
   });
 
   it('refuses a preset with an API key, and the error names the key but never its value', () => {
@@ -612,6 +615,17 @@ describe('zipProblems: the check of a finished ZIP', () => {
     expect(problems('windows', listing('windows', (rows) => rows.set('runtime/win32-x64/node.exe', PLAIN)))).toEqual([]);
   });
 
+  it('a path longer than 140 characters inside the ZIP is a problem: Windows unzips into a folder of its own, and the whole path must stay under 260', () => {
+    const name = (length: number) => `HybridDemo/app/${'x'.repeat(length - 'HybridDemo/app/'.length - 3)}.js`;
+    expect(name(140)).toHaveLength(140);
+
+    expect(problems('windows', listing('windows', () => {}, [row(PLAIN, name(140))]))).toEqual([]);
+    expect(problems('windows', listing('windows', () => {}, [row(PLAIN, name(141))]))).toEqual([
+      `${name(141).slice('HybridDemo/'.length)} has a path of 141 characters; keep every path at 140 or less, so Windows can unzip it into a long folder.`,
+    ]);
+    expect(problems('mac', listing('mac', () => {}, [row(PLAIN, name(141))]))).toHaveLength(1);
+  });
+
   it('anything outside the one top folder is a problem', () => {
     const text = listing('mac', () => {}, [row(PLAIN, 'Other/notes.txt')]);
     expect(problems('mac', text)).toEqual(['Other/notes.txt is outside the HybridDemo folder.']);
@@ -729,7 +743,7 @@ describe.skipIf(!HAS_TOOLS)('with the system archive tools', () => {
       'scripts/fake-llm.mjs': 'export {};\n',
       'scripts/bundle/starters/READ-ME-FIRST.mac.txt': 'mac readme\r\n',
       'scripts/bundle/starters/READ-ME-FIRST.windows.txt': 'windows readme\n',
-      'scripts/bundle/starters/my-settings.template.env': '# Header\n\nLLM_BASE_URL=\nLLM_API_KEY=\nLLM_MODEL=\nLLM_API_KEY_HEADER=\nLLM_MAX_TOKENS=\n',
+      'scripts/bundle/starters/my-settings.template.txt': '# Header\n\nLLM_BASE_URL=\nLLM_API_KEY=\nLLM_MODEL=\nLLM_API_KEY_HEADER=\nLLM_MAX_TOKENS=\n',
       'scripts/bundle/starters/mac/Start practice demo.command': '#!/bin/sh\r\necho practice\r\n',
       'scripts/bundle/starters/mac/Start live demo.command': '#!/bin/sh\necho live\n',
       'scripts/bundle/starters/mac/Stop demo.command': '#!/bin/sh\necho stop\n',
@@ -812,18 +826,21 @@ describe.skipIf(!HAS_TOOLS)('with the system archive tools', () => {
     });
 
     it('a preset prefills the non-secret lines in the settings file of both ZIPs', async () => {
-      const { out, options, deps } = setup();
+      const { out, options, deps, logs } = setup();
       const preset = join(temp(), 'preset.env');
       writeFileSync(preset, '# Team gateway\nLLM_BASE_URL=https://gateway.example/v1\nLLM_MODEL=some-model\n');
       await runBuild({ ...options, preset }, deps);
-      const text = extract(join(out, 'HybridTeamDemo-mac.zip'), 'HybridDemo/my-settings.env');
-      expect(text).toContain('LLM_BASE_URL=https://gateway.example/v1\n');
-      expect(text).toContain('# Notes from the person who prepared this\n# Team gateway\n');
-      expect(text).toContain('LLM_API_KEY=\n');
+      for (const zip of ['HybridTeamDemo-mac.zip', 'HybridTeamDemo-windows.zip']) {
+        const text = extract(join(out, zip), 'HybridDemo/my-settings.env').replace(/\r\n/g, '\n');
+        expect(text, zip).toContain('LLM_BASE_URL=https://gateway.example/v1\n');
+        expect(text, zip).not.toContain('Team gateway');
+        expect(text, zip).toContain('LLM_API_KEY=\n');
+      }
+      expect(logs.join('\n')).toMatch(/left out 1 comment line;/);
     });
 
     it('a settings template that holds a key stops the build even without a preset', async () => {
-      const { options, deps } = setup({ 'scripts/bundle/starters/my-settings.template.env': `LLM_API_KEY=${KEY_VALUE}\n` });
+      const { options, deps } = setup({ 'scripts/bundle/starters/my-settings.template.txt': `LLM_API_KEY=${KEY_VALUE}\n` });
       await expect(runBuild(options, deps)).rejects.toThrow(/LLM_API_KEY must stay empty/);
     });
 
@@ -974,6 +991,32 @@ describe.skipIf(!HAS_TOOLS)('with the system archive tools', () => {
       );
       expect(calls).toBe(0);
       expect(existsSync(join(out, 'HybridTeamDemo-mac.zip'))).toBe(true);
+    });
+
+    it('--skip-build refuses an app whose payload step failed (a check found a problem), and says to run once without it', async () => {
+      const { options, deps, out } = setup();
+      await runBuild(options, deps);
+      const failing = async ({ outDir }: { outDir: string }) => {
+        put(join(outDir, 'app'), { 'server.js': 'console.log(1)' });
+        throw new Error('a setting from the build machine ended up inside the payload; do not ship it');
+      };
+      await expect(runBuild(options, { ...deps, assemble: failing })).rejects.toThrow(/do not ship it/);
+      const zipBefore = readFileSync(join(out, 'HybridTeamDemo-mac.zip'));
+
+      await expect(runBuild({ ...options, skipBuild: true }, deps)).rejects.toThrow(/did not pass its checks.*without --skip-build/);
+
+      expect(readFileSync(join(out, 'HybridTeamDemo-mac.zip')).equals(zipBefore)).toBe(true);
+    });
+
+    it('--skip-build refuses an app assembled before the checks were recorded (no marker), and accepts it after a full run', async () => {
+      const { options, deps, out } = setup();
+      await runBuild(options, deps);
+      rmSync(join(out, '.payload-verified'));
+
+      await expect(runBuild({ ...options, skipBuild: true }, deps)).rejects.toThrow(/did not pass its checks/);
+
+      await runBuild(options, deps);
+      await expect(runBuild({ ...options, skipBuild: true }, deps)).resolves.toBeDefined();
     });
 
     it('starts each build from an empty payload folder, so nothing stale ships', async () => {

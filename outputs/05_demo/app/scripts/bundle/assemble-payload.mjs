@@ -13,6 +13,7 @@
 //
 // The server finds its build folder through a name written into server.js, so the folder keeps the name it
 // was built with (".next-bundle" by default) and is not renamed to ".next".
+import { APP_LLM_NAMES } from '../demo/demo-lib.mjs';
 
 import { spawn } from 'node:child_process';
 import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -241,12 +242,20 @@ function copyFiltered(from, to, isExcluded = () => false) {
 }
 
 /**
- * The environment of the build: standalone output on, into the named folder, no telemetry.
+ * The environment of the build: standalone output on, into the named folder, no telemetry, and no
+ * model settings. Inherited LLM_* names are dropped, and the app's names are set to "": Next.js never
+ * replaces a name that is already set, even to "", so .env.local's values stay out of the build
+ * (the source-code launcher's build does the same, scripts/demo/demo-lib.mjs).
  * @param {string} distDir
  * @param {Record<string, string | undefined>} [base]
+ * @returns {Record<string, string | undefined>}
  */
 export function buildEnv(distDir, base = process.env) {
-  return { ...base, BUNDLE_BUILD: '1', NEXT_DIST_DIR: distDir, NEXT_TELEMETRY_DISABLED: '1' };
+  /** @type {Record<string, string | undefined>} */
+  const env = {};
+  for (const [name, value] of Object.entries(base)) if (!name.startsWith('LLM_')) env[name] = value;
+  for (const name of APP_LLM_NAMES) env[name] = '';
+  return { ...env, BUNDLE_BUILD: '1', NEXT_DIST_DIR: distDir, NEXT_TELEMETRY_DISABLED: '1' };
 }
 
 function runBuild({ appDir, distDir, log }) {
@@ -349,11 +358,16 @@ export async function assemblePayload({ appDir, repoRoot, outDir, distDir = DEFA
 
   // The copy filter already left platform packages out; list what the standalone tree had, so the report is honest.
   const removedPlatformPackages = listPlatformPackages(join(serverRoot, 'node_modules'));
+  // A payload that fails a check is deleted before the error, so no later step (--skip-build) can ship it.
   const native = findNativeBinaries(out);
-  if (native.length > 0) throw new Error(`the payload still holds native binaries, so it is not platform-neutral: ${native.slice(0, 5).join(', ')}`);
+  if (native.length > 0) {
+    rmSync(out, { recursive: true, force: true });
+    throw new Error(`the payload still holds native binaries, so it is not platform-neutral: ${native.slice(0, 5).join(', ')}`);
+  }
 
   const secretHits = findSecretsInTree(out, collectBuildSecrets(app));
   if (secretHits.length > 0) {
+    rmSync(out, { recursive: true, force: true });
     const where = secretHits.slice(0, 5).map((hit) => `${hit.label} in ${hit.file}`).join('; ');
     throw new Error(`a setting from the build machine ended up inside the payload (${where}); do not ship it`);
   }

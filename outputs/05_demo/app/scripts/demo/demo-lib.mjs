@@ -195,7 +195,7 @@ export function serverEnv({ mode, baseEnv, appDir, distDir = DIST_DIR, fakeBaseU
 }
 
 /** The LLM_* names the app reads (src/server/llm/config.ts). */
-const APP_LLM_NAMES = [
+export const APP_LLM_NAMES = [
   'LLM_BASE_URL',
   'LLM_API_KEY',
   'LLM_API_KEY_HEADER',

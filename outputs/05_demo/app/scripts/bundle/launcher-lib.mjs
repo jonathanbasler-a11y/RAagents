@@ -234,6 +234,36 @@ export function pathsFor({ platform, root, env, fakeLlm }) {
 }
 
 /**
+ * Is this port free for the demo? First a connection attempt to 127.0.0.1: a program that holds the
+ * port, on loopback or on every address, answers there, so the port is taken (no answer within a
+ * second counts as taken too). Then a short listen on 127.0.0.1 confirms the demo can have it.
+ * Nothing ever listens beyond loopback: listening on every address, even for a moment, makes a
+ * firewall ask for permission, and allowing it on Windows needs administrator rights.
+ * @param {number} port
+ * @param {{ connect: (options: { port: number, host: string }) => import('node:net').Socket, createServer: () => import('node:net').Server }} net
+ * @returns {Promise<boolean>}
+ */
+export async function isPortFree(port, net) {
+  const answered = await new Promise((done) => {
+    const socket = net.connect({ port, host: HOST });
+    /** @param {boolean} value */
+    const finish = (value) => {
+      socket.destroy();
+      done(value);
+    };
+    socket.setTimeout(1000, () => finish(true));
+    socket.once('connect', () => finish(true));
+    socket.once('error', (/** @type {NodeJS.ErrnoException} */ error) => finish(error.code !== 'ECONNREFUSED'));
+  });
+  if (answered) return false;
+  return new Promise((done) => {
+    const server = net.createServer();
+    server.once('error', () => done(false));
+    server.listen(port, HOST, () => server.close(() => done(true)));
+  });
+}
+
+/**
  * The first port to try: HYBRID_PORT, else 3200.
  * @param {Readonly<Record<string, string | undefined>>} env
  */

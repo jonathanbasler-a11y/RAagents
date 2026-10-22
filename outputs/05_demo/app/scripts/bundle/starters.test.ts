@@ -66,8 +66,24 @@ describe('starter files exist exactly as the bundle contract names them', () => 
 
   it('has the guides and the settings template', () => {
     expect(readdirSync(STARTERS).sort()).toEqual(
-      ['READ-ME-FIRST.mac.txt', 'READ-ME-FIRST.windows.txt', 'mac', 'my-settings.template.env', 'windows'].sort(),
+      ['READ-ME-FIRST.mac.txt', 'READ-ME-FIRST.windows.txt', 'mac', 'my-settings.template.txt', 'windows'].sort(),
     );
+  });
+
+  // A file the repository will not commit exists only on the machine that made it: a fresh clone
+  // could not build the ZIPs. The template was once named *.env, which .gitignore and the pre-commit
+  // hook both refuse, so it was never committed.
+  it('every starter source file is one the repository commits: not git-ignored, not refused by the pre-commit hook', () => {
+    const files = [
+      ...readdirSync(STARTERS).filter((name) => !['mac', 'windows'].includes(name)),
+      ...MAC_NAMES.map((name) => join('mac', name)),
+      ...WIN_NAMES.map((name) => join('windows', name)),
+    ].map((name) => join(STARTERS, name));
+    const hookRefuses = /(^|\/)(\.env(\..*)?|[^/]*\.env)$/;
+    expect(files.filter((file) => hookRefuses.test(file))).toEqual([]);
+    const ignored = spawnSync('git', ['check-ignore', '--', ...files], { cwd: APP, encoding: 'utf8' });
+    // Exit 1: none of them is ignored. Exit 0 prints the ignored ones; anything else is a git problem.
+    expect({ status: ignored.status, ignored: ignored.stdout.trim() }).toEqual({ status: 1, ignored: '' });
   });
 });
 
@@ -399,7 +415,8 @@ describe('Windows starters (.cmd), read as text', () => {
         const lines = text.split('\r\n');
         expect(lines[0]).toBe('@echo off');
         expect(lines[1]).toBe('chcp 65001 >nul');
-        expect(lines[2]).toBe('cd /d "%~dp0"');
+        // pushd, not cd /d: cd cannot switch to a network folder (\\server\share, a redirected Desktop); pushd maps a drive letter.
+        expect(lines[2]).toBe('pushd "%~dp0"');
       });
 
       it('runs the launcher with its own mode, using the contract paths, and no other mode', () => {
@@ -491,7 +508,7 @@ function runCmd(text: string, world: CmdWorld) {
   /** Runs one simple command; returns a new program counter for goto, or null. */
   const execute = (command: string): number | null => {
     let m: RegExpExecArray | null;
-    if (command === '@echo off' || command.startsWith('chcp ') || command.startsWith('cd /d ')) return null;
+    if (command === '@echo off' || command.startsWith('chcp ') || command.startsWith('pushd ')) return null;
     if (command === 'echo.') output.push('');
     else if ((m = /^echo (.*)$/.exec(command))) output.push(m[1]);
     else if ((m = /^set "([A-Z]+)=(.*)"$/.exec(command))) vars.set(m[1], expand(m[2]));
@@ -656,8 +673,8 @@ describe('plain-text guides (READ ME FIRST)', () => {
   });
 });
 
-describe('my-settings.template.env', () => {
-  const text = read('my-settings.template.env');
+describe('my-settings.template.txt', () => {
+  const text = read('my-settings.template.txt');
   const lines = text.split('\n');
   const assignments = lines.filter((l) => /^[A-Z_]+=/.test(l));
 
@@ -735,7 +752,8 @@ describe('my-settings.template.env', () => {
     expect(settings.LLM_MODEL).toBe('some-model');
     expect(settings.LLM_MAX_TOKENS).toBe('2000');
     expect(settings.LLM_API_KEY).toBe('');
-    expect(merged.text).toContain('# Use the shared gateway.');
+    expect(merged.text).not.toContain('Use the shared gateway');
+    expect(merged.notesLeftOut).toBe(1);
     expect(() => applyPreset(text, `${preset}LLM_API_KEY=abc\n`)).toThrow(/LLM_API_KEY/);
   });
 });
@@ -751,7 +769,7 @@ describe("the builder's own scan of what goes into each ZIP", () => {
     mkdirSync(top);
     for (const name of target === 'mac' ? MAC_NAMES : WIN_NAMES) copyFileSync(join(STARTERS, target, name), join(top, name));
     copyFileSync(join(STARTERS, `READ-ME-FIRST.${target}.txt`), join(top, 'READ ME FIRST.txt'));
-    copyFileSync(join(STARTERS, 'my-settings.template.env'), join(top, 'my-settings.env'));
+    copyFileSync(join(STARTERS, 'my-settings.template.txt'), join(top, 'my-settings.env'));
     return { root, top };
   }
 
@@ -761,7 +779,7 @@ describe("the builder's own scan of what goes into each ZIP", () => {
 
   it('would catch a key-shaped value in the settings file (so the scan above can fail)', () => {
     const { root, top } = stage('mac');
-    writeFileSync(join(top, 'my-settings.env'), `${read('my-settings.template.env')}LLM_API_KEY=sk-0123456789abcdef0123456789\n`);
+    writeFileSync(join(top, 'my-settings.env'), `${read('my-settings.template.txt')}LLM_API_KEY=sk-0123456789abcdef0123456789\n`);
     expect(scanStagedTree(root)).toEqual([{ file: 'HybridDemo/my-settings.env', rule: 'api-key-value' }]);
   });
 });

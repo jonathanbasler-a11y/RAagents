@@ -26,7 +26,7 @@ Three steps:
 2. Double-click "Start practice demo". Your browser opens the demo.
 3. When you are done, double-click "Stop demo".
 
-The first time, your computer may warn you because the file comes from the internet. That is normal. A file called "READ ME FIRST" in the folder shows the two or three clicks that get past it. On a Mac it looks like "cannot be opened because Apple cannot check it"; on Windows it looks like "Windows protected your PC".
+The first time, your computer may warn you because the file comes from the internet. That is normal. A file called "READ ME FIRST" in the folder shows the clicks that get past it. On a Mac they come once for each starter you use, so expect them more than once on the first day. On a Mac it looks like "cannot be opened because Apple cannot check it"; on Windows it looks like "Windows protected your PC".
 
 Practice mode needs no key and no network. Its replies are stand-ins, not AI, and each one says so. For real AI answers there is also "Start live demo". That needs your own key for a model gateway, which you would ask your IT or AI team for. In live mode every question you type, and the documents of the demo's data room, go to that gateway. Please do not type or paste anything confidential. The fictional case in the demo is enough to try everything.
 
@@ -54,7 +54,7 @@ Download: [DOWNLOAD LINK]
 2. Double-click "Start practice demo". Your browser opens the demo.
 3. When you are done, double-click "Stop demo".
 
-**The first-time warning.** Your computer does not know the files, because they come from the internet and are not signed by a company. On a Mac you may see "cannot be opened because Apple cannot check it": open System Settings, then Privacy & Security, scroll down, click Open Anyway next to the message about "Start practice demo" and confirm. On Windows you may see "Windows protected your PC": click More info, then Run anyway; or "The publisher could not be verified": click Run. The "READ ME FIRST" file in the folder shows this step by step. If a security setting blocks the double-click completely, the same file has a short fallback for the Terminal (Mac) or Command Prompt (Windows).
+**The first-time warning.** Your computer does not know the files, because they come from the internet and are not signed by a company. On a Mac you may see "cannot be opened because Apple cannot check it": open System Settings, then Privacy & Security, scroll down, click Open Anyway next to the message about "Start practice demo" and confirm. The Mac asks once for each starter, and may ask once more for the program inside the folder. On Windows you may see "Windows protected your PC": click More info, then Run anyway; or "The publisher could not be verified": click Run. The "READ ME FIRST" file in the folder shows this step by step. If a security setting blocks the double-click completely, the same file has a short fallback for the Terminal (Mac) or Command Prompt (Windows).
 
 **Practice or live.**
 

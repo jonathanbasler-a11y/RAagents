@@ -210,6 +210,15 @@ describe('small helpers', () => {
     expect(env).toMatchObject({ PATH: '/bin', BUNDLE_BUILD: '1', NEXT_DIST_DIR: '.next-bundle', NEXT_TELEMETRY_DISABLED: '1' });
   });
 
+  it('builds with no model settings: inherited LLM_* names are dropped and the app\'s names are blank, so .env.local cannot fill them', () => {
+    const env = buildEnv('.next-bundle', { PATH: '/bin', LLM_API_KEY: 'from-the-shell', LLM_SOMETHING_ELSE: 'x', LLM_BASE_URL: 'https://example.invalid/v1' });
+
+    expect(Object.entries(env).filter(([name, value]) => name.startsWith('LLM_') && value !== '')).toEqual([]);
+    // Next.js never replaces a name that is already set, even to "": blank is what keeps the file's values out.
+    for (const name of ['LLM_BASE_URL', 'LLM_API_KEY', 'LLM_MODEL', 'LLM_JUDGE_API_KEY']) expect(env[name]).toBe('');
+    expect(env.PATH).toBe('/bin');
+  });
+
   it('measures files and bytes', () => {
     const root = temp();
     put(root, { 'a.txt': '12345', 'b/c.txt': '123' });
@@ -394,6 +403,25 @@ describe('assemblePayload', () => {
     await assemblePayload({ appDir, repoRoot, outDir: join(temp(), 'app'), log: quiet, build });
 
     expect(build).toHaveBeenCalledWith(expect.objectContaining({ appDir, distDir: '.next-bundle' }));
+  });
+
+  it('deletes the payload when a setting of the build machine is found in it, so no later step can ship it', async () => {
+    const { repoRoot, appDir } = fakeRepo({ extraStandalone: { 'server-extra.js': 'const k = "from-the-file-0001";' } });
+    put(appDir, { '.env.local': 'LLM_API_KEY=from-the-file-0001\n' });
+    const outDir = join(temp(), 'app');
+
+    await expect(assemblePayload({ appDir, repoRoot, outDir, log: quiet, build: noBuild })).rejects.toThrow(/do not ship it/);
+
+    expect(existsSync(outDir)).toBe(false);
+  });
+
+  it('deletes the payload when a native binary is left in it', async () => {
+    const { repoRoot, appDir } = fakeRepo({ extraStandalone: { 'node_modules/some-addon/build/addon.node': 'bin' } });
+    const outDir = join(temp(), 'app');
+
+    await expect(assemblePayload({ appDir, repoRoot, outDir, log: quiet, build: noBuild })).rejects.toThrow(/native binaries/);
+
+    expect(existsSync(outDir)).toBe(false);
   });
 
   it('replaces an earlier payload in the same folder', async () => {

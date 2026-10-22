@@ -42,7 +42,8 @@ const STARTERS = {
   mac: { dir: 'scripts/bundle/starters/mac', names: STARTER_NAMES.mac, readme: 'scripts/bundle/starters/READ-ME-FIRST.mac.txt' },
   windows: { dir: 'scripts/bundle/starters/windows', names: STARTER_NAMES.windows, readme: 'scripts/bundle/starters/READ-ME-FIRST.windows.txt' },
 };
-const SETTINGS_TEMPLATE = 'scripts/bundle/starters/my-settings.template.env';
+// Not *.env: .gitignore and the pre-commit hook refuse that pattern, so a file named so is never committed.
+const SETTINGS_TEMPLATE = 'scripts/bundle/starters/my-settings.template.txt';
 const MANIFEST_FILE = 'scripts/bundle/node-runtimes.json';
 
 /** The folder holding the assembled app (server.js inside), whichever way the payload step lays it out. @param {string} payloadDir */
@@ -112,6 +113,9 @@ export async function runBuild(options, deps = {}) {
     settingsText = preset.text;
     log(`Preset: filled ${preset.applied.length ? preset.applied.join(', ') : 'no lines'}.`);
     if (preset.ignored.length > 0) log(`Preset: ignored these other names: ${preset.ignored.join(', ')}.`);
+    if (preset.notesLeftOut > 0) {
+      log(`Preset: left out ${preset.notesLeftOut} comment line${preset.notesLeftOut === 1 ? '' : 's'}; notes never go into the ZIPs (put them in your message instead).`);
+    }
   }
 
   /** @type {string[]} */
@@ -132,10 +136,16 @@ export async function runBuild(options, deps = {}) {
   // 3. The app, built once and shared by both ZIPs.
   mkdirSync(out, { recursive: true });
   const payloadDir = join(out, '.payload');
+  // Written beside the payload (so it is never zipped) only after the payload step succeeded with every check.
+  const verifiedMarker = join(out, '.payload-verified');
   if (options.skipBuild) {
     if (!findPayloadRoot(payloadDir)) throw new Error('--skip-build: there is no assembled app to reuse yet. Run once without --skip-build.');
+    if (!existsSync(verifiedMarker)) {
+      throw new Error('--skip-build: the app assembled by the earlier run did not pass its checks (or comes from an older version). Run once without --skip-build.');
+    }
     log('Reusing the app assembled by the earlier run.');
   } else {
+    rmSync(verifiedMarker, { force: true });
     let assemble = deps.assemble;
     if (!assemble) {
       try {
@@ -155,6 +165,7 @@ export async function runBuild(options, deps = {}) {
   }
   const payloadRoot = findPayloadRoot(payloadDir);
   if (!payloadRoot) throw new Error('the app build produced no server.js, so there is nothing to ship.');
+  if (!options.skipBuild) writeFileSync(verifiedMarker, 'The payload step finished with every check passed.\n');
 
   // 4. Stage and scan EVERY target first. Nothing is zipped, and nothing in the output folder is touched,
   //    until all of them are clean.

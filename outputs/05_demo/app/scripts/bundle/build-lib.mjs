@@ -84,7 +84,7 @@ Options
                       With a full cache nothing is downloaded (works offline).
   --preset <file>     A private file that prefills the settings file with the NON-secret lines
                       (LLM_BASE_URL, LLM_API_KEY_HEADER, LLM_MODEL, LLM_MAX_TOKENS) and adds its
-                      comment lines as notes. Refused if it holds an API key. Never commit it.
+                      comment lines are left out of the ZIPs. Refused if it holds an API key. Never commit it.
   --only <mac|windows>  Build one ZIP only.
   --skip-build        Reuse the app already assembled by an earlier run (in <out>/.payload)
                       instead of building it again.
@@ -376,23 +376,24 @@ export function assertKeysEmpty(text) {
 
 /**
  * Prefills the non-secret lines of the settings template from a private preset file.
- * Throws when the preset holds an API key (a line, or a note that looks like one).
- * Returns the text and key NAMES only.
+ * Throws when the preset holds an API key (a line, or a note shaped like a key line).
+ * The preset's comment lines never reach the ZIP: a note can hold a key in a form no check
+ * recognises, so they are counted and left out (put notes in the message to colleagues instead).
+ * Returns the text, key NAMES only, and how many notes were left out.
  * @param {string} templateText @param {string} presetText
- * @returns {{ text: string, applied: string[], ignored: string[] }}
+ * @returns {{ text: string, applied: string[], ignored: string[], notesLeftOut: number }}
  */
 export function applyPreset(templateText, presetText) {
   /** @type {Map<string, string>} */
   const values = new Map();
-  /** @type {string[]} */
-  const comments = [];
+  let notesLeftOut = 0;
   splitLines(presetText).forEach((line, index) => {
     const trimmed = line.trim();
     if (trimmed.startsWith('#')) {
       if (KEY_ASSIGNMENT.test(trimmed)) {
         throw new Error(`the preset has a note on line ${index + 1} that looks like it holds an API key. Remove it.`);
       }
-      comments.push(trimmed);
+      notesLeftOut += 1;
       return;
     }
     const match = ENV_LINE.exec(line);
@@ -406,25 +407,16 @@ export function applyPreset(templateText, presetText) {
 
   const applied = PRESET_KEYS.filter((key) => (values.get(key) ?? '') !== '');
   const ignored = [...values.keys()].filter((key) => !applied.includes(key)).sort();
-  let lines = splitLines(templateText);
+  const lines = splitLines(templateText);
   for (const key of applied) {
     const value = /** @type {string} */ (values.get(key));
     const index = lines.findIndex((line) => ENV_LINE.exec(line)?.[1] === key);
     if (index < 0) throw new Error(`the settings template has no ${key} line to fill in.`);
     lines[index] = `${key}=${value}`;
   }
-
-  if (comments.length > 0) {
-    let headerEnd = 0;
-    while (headerEnd < lines.length && lines[headerEnd].trimStart().startsWith('#')) headerEnd += 1;
-    const rest = lines.slice(headerEnd);
-    const block = ['', '# Notes from the person who prepared this', ...comments];
-    if (rest.length > 0 && rest[0].trim() !== '') block.push('');
-    lines = [...lines.slice(0, headerEnd), ...block, ...rest];
-  }
   const text = lines.join('\n');
   assertKeysEmpty(text);
-  return { text, applied, ignored };
+  return { text, applied, ignored, notesLeftOut };
 }
 
 // ---- Modes and line endings -------------------------------------------------------------------
@@ -690,6 +682,13 @@ const LISTING_ROW = /^([-dl][-rwxsStT]{9})\s+(?:\S+\s+){7}(.+)$/;
 const MAX_PROBLEMS_SHOWN = 10;
 
 /**
+ * The longest path allowed inside a ZIP, counted from HybridDemo/. Windows' Extract All stops at 260
+ * characters for the whole path, and it first creates a folder of its own (often under a long OneDrive
+ * Desktop), so this leaves about 118 characters for that folder. The longest path was 124 on 2026-10-22.
+ */
+export const MAX_PATH_IN_ZIP = 140;
+
+/**
  * Checks the listing of a finished ZIP against the contract: one top folder, every required member
  * there, and the Mac starters and runtimes executable (a double-click on a file that lost its
  * executable bit does nothing, and the person cannot tell why). Returns plain sentences.
@@ -707,6 +706,11 @@ export function zipProblems(listing, { target, runtimeEntries }) {
     const name = match[2];
     if (name.startsWith(`${TOP_FOLDER}/`)) entries.set(name.slice(TOP_FOLDER.length + 1), match[1]);
     else problems.push(`${name} is outside the ${TOP_FOLDER} folder.`);
+    if (name.startsWith(`${TOP_FOLDER}/`) && name.length > MAX_PATH_IN_ZIP) {
+      problems.push(
+        `${name.slice(TOP_FOLDER.length + 1)} has a path of ${name.length} characters; keep every path at ${MAX_PATH_IN_ZIP} or less, so Windows can unzip it into a long folder.`,
+      );
+    }
   }
   if (entries.size === 0 && problems.length === 0) return ['the ZIP holds no files or could not be read.'];
   for (const required of requiredMembers(target, runtimeEntries)) {

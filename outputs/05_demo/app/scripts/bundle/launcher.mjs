@@ -14,12 +14,12 @@
 
 import { execFile, spawn } from 'node:child_process';
 import * as fs from 'node:fs';
-import { createServer } from 'node:net';
+import { connect, createServer } from 'node:net';
 import { uptime } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import tls from 'node:tls';
 import { fileURLToPath } from 'node:url';
-import { HOST, TIMEOUTS, interruptCleanup, pathsFor, runCommand, trustSystemCertificates } from './launcher-lib.mjs';
+import { HOST, TIMEOUTS, interruptCleanup, isPortFree, pathsFor, runCommand, trustSystemCertificates } from './launcher-lib.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // launcher/bundle/ sits two folders below the HybridDemo folder.
@@ -73,18 +73,6 @@ function launch(command, args) {
   });
 }
 
-/** Is nothing using this port, on loopback or on every address? @param {number} port */
-async function isPortFree(port) {
-  /** @param {string | undefined} host */
-  const tryListen = (host) =>
-    new Promise((done) => {
-      const server = createServer();
-      server.once('error', () => done(false));
-      server.listen(port, host, () => server.close(() => done(true)));
-    });
-  return (await tryListen(HOST)) && (await tryListen(undefined));
-}
-
 /** A port the system picks, for the stand-in model. */
 function ephemeralPort() {
   return new Promise((done, reject) => {
@@ -117,7 +105,7 @@ function main() {
     kill,
     run,
     launch,
-    isPortFree,
+    isPortFree: (/** @type {number} */ port) => isPortFree(port, { connect, createServer }),
     ephemeralPort,
     sleep: (/** @type {number} */ ms) => new Promise((done) => setTimeout(done, ms)),
     now: () => Date.now(),

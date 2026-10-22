@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import * as fs from 'node:fs';
-import { createServer, type Server } from 'node:net';
+import { connect, createServer, type Server } from 'node:net';
 import { createServer as createHttpServer, request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, win32 } from 'node:path';
@@ -19,6 +19,7 @@ import {
   editorCommand,
   findFreePort,
   formatRecord,
+  isPortFree,
   identifyServer,
   interruptCleanup,
   isPlaceholder,
@@ -1918,5 +1919,107 @@ describe('a real port check helper stays honest', () => {
       });
 
     expect(await findFreePort({ start: port, isFree })).toBeGreaterThan(port);
+  });
+});
+
+describe('isPortFree, the probe the launcher uses, with the real network functions', () => {
+  let held: Server | null = null;
+  afterEach(() => held?.close());
+
+  /** The real functions, with every address the probe listens on written down. */
+  function watchedNet() {
+    const listenedOn: Array<string | undefined> = [];
+    const connectedTo: Array<string | undefined> = [];
+    return {
+      listenedOn,
+      connectedTo,
+      net: {
+        createServer: () => {
+          const server = createServer();
+          const listen = server.listen.bind(server) as (...args: unknown[]) => Server;
+          (server as unknown as { listen: (...args: unknown[]) => Server }).listen = (...args: unknown[]) => {
+            listenedOn.push(typeof args[1] === 'string' ? args[1] : undefined);
+            return listen(...args);
+          };
+          return server;
+        },
+        connect: (options: { port: number; host?: string }) => {
+          connectedTo.push(options.host);
+          return connect(options);
+        },
+      },
+    };
+  }
+
+  async function heldPort(): Promise<number> {
+    held = createServer();
+    await new Promise<void>((done) => held!.listen(0, '127.0.0.1', done));
+    return (held.address() as { port: number }).port;
+  }
+
+  async function releasedPort(): Promise<number> {
+    const port = await heldPort();
+    await new Promise<void>((done) => held!.close(() => done()));
+    held = null;
+    return port;
+  }
+
+  it('says a port is free when nothing uses it, and listens only on 127.0.0.1 to find out (no firewall question on any computer)', async () => {
+    const port = await releasedPort();
+    const watch = watchedNet();
+
+    expect(await isPortFree(port, watch.net)).toBe(true);
+
+    expect(watch.listenedOn.length).toBeGreaterThan(0);
+    expect(watch.listenedOn.every((host) => host === '127.0.0.1')).toBe(true);
+    expect(watch.connectedTo.every((host) => host === '127.0.0.1')).toBe(true);
+  });
+
+  it('says a port is taken when another program accepts connections on it', async () => {
+    const port = await heldPort();
+    const watch = watchedNet();
+
+    expect(await isPortFree(port, watch.net)).toBe(false);
+    expect(watch.listenedOn.every((host) => host === '127.0.0.1')).toBe(true);
+  });
+
+  it('says a port is taken when a program answers there, even if listening on 127.0.0.1 would work (a program on every address)', async () => {
+    const port = await heldPort();
+    // Stands in for a computer where the loopback listen succeeds beside a program that holds every address.
+    const listenAlwaysWorks = {
+      connect: (options: { port: number; host?: string }) => connect(options),
+      createServer: () => {
+        const server = createServer();
+        (server as unknown as { listen: (...args: unknown[]) => Server }).listen = (...args: unknown[]) => {
+          const ready = args.find((arg) => typeof arg === 'function') as (() => void) | undefined;
+          queueMicrotask(() => ready?.());
+          return server;
+        };
+        (server as unknown as { close: (done?: () => void) => Server }).close = (done?: () => void) => {
+          queueMicrotask(() => done?.());
+          return server;
+        };
+        return server;
+      },
+    };
+
+    expect(await isPortFree(port, listenAlwaysWorks)).toBe(false);
+  });
+
+  it('says a port is taken when it cannot listen there, even if nothing answered', async () => {
+    const port = await releasedPort();
+    const refusesToListen = {
+      connect: (options: { port: number; host?: string }) => connect(options),
+      createServer: () => {
+        const server = createServer();
+        (server as unknown as { listen: () => Server }).listen = () => {
+          queueMicrotask(() => server.emit('error', Object.assign(new Error('in use'), { code: 'EADDRINUSE' })));
+          return server;
+        };
+        return server;
+      },
+    };
+
+    expect(await isPortFree(port, refusesToListen)).toBe(false);
   });
 });
