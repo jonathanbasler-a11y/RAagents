@@ -2,11 +2,10 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { get as httpGet } from 'node:http';
 import { connect, createServer } from 'node:net';
-import { networkInterfaces, tmpdir, uptime } from 'node:os';
+import { networkInterfaces, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { TIMEOUTS } from './launcher-lib.mjs';
 
 // Parsed JSON from the fake server: its shape is checked by the assertions.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -416,18 +415,25 @@ describe('stop', () => {
   it(
     'leaves alone a program that only has the recorded number',
     async () => {
-      // The record must be older than the start-up grace (a younger one counts as "still starting") and written
-      // after this machine started (an older one counts as gone; the launcher allows a minute of slack). This case
-      // is about a live program that is not the demo, so its age sits between the two.
-      const ageMs = Math.min(5_000_000, Math.max(TIMEOUTS.startupGraceMs + 15_000, Math.floor(uptime() * 500)));
-      expect(uptime() * 1000 + 60_000, 'this case needs the computer to have been running for more than 75 seconds').toBeGreaterThan(ageMs);
+      // The recorded process is alive and answers on the recorded port, but not as the demo: unconfirmed, at any
+      // record age and on any machine (a freshly started CI machine included). The age rules (starting, gone) are
+      // unit-tested with a controlled clock in launcher-lib.test.ts.
       const world = newWorld();
       mkdirSync(world.data, { recursive: true });
-      const stranger = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)']);
+      const port = await freePort();
+      const stranger = spawn(process.execPath, [
+        '-e',
+        `require('node:http').createServer((q, r) => { r.statusCode = 404; r.end('not the demo'); }).listen(${port}, '127.0.0.1'); setTimeout(() => {}, 60000);`,
+      ]);
       try {
+        const deadline = Date.now() + 10_000;
+        while (!(await listening(port))) {
+          if (Date.now() > deadline) throw new Error('the stand-in program did not start listening');
+          await new Promise((done) => setTimeout(done, 50));
+        }
         writeFileSync(
           join(world.data, 'demo.pid'),
-          JSON.stringify({ mode: 'live', port: await freePort(), serverPid: stranger.pid, fakePid: null, fakePort: null, startedAtMs: Date.now() - ageMs, commit: null }),
+          JSON.stringify({ mode: 'live', port, serverPid: stranger.pid, fakePid: null, fakePort: null, startedAtMs: Date.now() - 5_000, commit: null }),
         );
 
         const result = await run('stop', world);
