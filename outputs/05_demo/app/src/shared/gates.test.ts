@@ -407,9 +407,9 @@ describe('guards and words', () => {
   });
 
   it('states the disagreement rule: the lead decides and the dissent stays on the record', () => {
-    expect(DISAGREEMENT_RULE).toContain('lead');
-    expect(DISAGREEMENT_RULE.toLowerCase()).toContain('dissent');
-    expect(DISAGREEMENT_RULE.toLowerCase()).toContain('record');
+    expect(DISAGREEMENT_RULE).toBe(
+      'When the lead and a specialist disagree, the lead decides. The dissent is recorded under the decision and stays on the record; it never blocks the decision.',
+    );
   });
 
   it('no gate recommends or asks for a view on the deal: only the always-human list names it, as a person\'s decision', () => {

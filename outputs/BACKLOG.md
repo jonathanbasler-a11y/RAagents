@@ -11,7 +11,7 @@ B2. **Findings register: built and merged** (PR 19; in demo version 8; see `DECI
 B3a. **Checklist and tags: built and merged** (PR 20; see `DECISIONS.md`).
 B3b. **Briefing: built** on `feature/briefing` (see `DECISIONS.md`): assembled by code from accepted, tagged findings and the checklist. Next on the route: C (gates), then D (finish the concept, canvas and deck with the demo as it now is).
 B. **Data room, findings register, checklist, briefing.** A fictional practice pack first, ready for public sources (URL and date; the as-of date enforced in code). Read-only document tools for the agents, which edits the shared rules, so it needs a fresh baseline and a measured run first. The findings register enforces "no source, no finding" in code; a person accepts or rejects each finding; the checklist keeps "checked", "checked: not applicable", "not checked" and "could not check" apart; the briefing is built from accepted findings with the inputs for the probability of technical and regulatory success. Also correct the claim in `learnings-from-the-other-team.md` that "no source, no finding" is enforced in code today (it is not).
-C. **Gates** (items 2 and 3 below): go ahead, pause, ask for more, stop; the recommended call and the evidence that would change it; a recorded human decision; the always-human list. Open question 22.
+C. **Gates: built** on `feature/gates` (see `DECISIONS.md`, 2026-10-22): three process gates (scope, evidence, release), the recommended call and what would move it from code, a recorded human decision with a reason whenever it differs, dissent recorded and never blocking, the always-human list, and a section in the briefing. Items 2 and 3 below are done; the follow-ups are listed under "Found while building the gates".
 D. **Concept, canvas and deck** (`outputs/01_concept`, `02_canvas`, `03_deck`): drafted alongside B and C, finished last.
 
 Not in the MVP: items 11, 13, 14 and 15 below, the Ona connection (question 19), the other team's files (question 20), and giving agents the DD setup in their prompt.
@@ -35,14 +35,22 @@ Built and checked in practice mode on a Mac (see `DECISIONS.md`, 2026-10-22). Op
 - **Signing.** The ZIPs are not signed or notarised; that needs a developer certificate and would remove the first-run warnings.
 - **Shared team workspace on the gateway** (owner, 2026-10-21): `--preset` can prefill the non-secret lines once it exists.
 
+## Found while building the gates (owner decides the order)
+
+- **Provisional findings.** The other team marks findings that depend on an open gate as provisional and widens ranges until the gate clears. Not done: gate decisions do not change findings.
+- **Who may decide.** A role for the lead and a login (open questions 29 and 34). Until then the stamp is "person (local, not authenticated)".
+- **A correction of a decision** (open question 33), and a dated, named snapshot of the briefing (open question 32) that would now also hold the gate decisions.
+- **More gates.** The other team has five (scope and activation, evidence sufficient, accept validated specialist findings, the lead's PTRS position, continue to valuation). Three are built; a gate on accepting the specialist findings and one on the PTRS position fit what exists, but need a PTRS field first.
+- **Measure the recommended call.** The rules are tested, not measured: whether the advice matches what leads would decide needs real past due diligences, which each company can run internally.
+
 ## Built, waiting for a measured baseline
 
 1. **Practice case with an answer key** (owner's choice, 2026-10-15). Built 2026-10-16: pack `practice-01` (11 fictional documents, 1 withheld on purpose, 11 planted issues of 8 kinds), 11 evaluation cases, and the machinery (documents ride on the turn as fenced blocks; the loader refuses a later-dated or non-fictional document). A live trial of the 11 cases is recorded in `DECISIONS.md`. Still to do: a full baseline of all cases on the setup that will actually be demoed (after open question 21 is settled, so the baseline describes the final prompt setup), then use the case as the live demo case.
 
 ## Backlog, in order
 
-2. **Gates in the app** [3, playbook layer]. At a few points the app stops and shows the choices (go ahead, pause, ask for more information, stop), what each costs, our recommended call, and the evidence that would change it. A person decides through an authenticated action, and it is recorded. Open question 22.
-3. **"Always human" list and the disagreement rule** [3, human layer]. Includes accepting incomplete evidence and settling disagreement between specialists. Settle the lead-versus-specialist case, which the other team left open. Open question 22.
+2. **Gates in the app: built (phase C)** [3, playbook layer]. At a few points the app stops and shows the choices (go ahead, pause, ask for more information, stop), what each costs, our recommended call, and the evidence that would change it. A person decides through an authenticated action, and it is recorded. Open question 22.
+3. **"Always human" list and the disagreement rule: built (phase C)** [3, human layer]. Includes accepting incomplete evidence and settling disagreement between specialists. Settle the lead-versus-specialist case, which the other team left open. Open question 22.
 4. **"Why an agent" field and a deliberately-not-agents list** [3, agent library]. Add the field to `outputs/04_agents/README.md`, write the list, and use both to choose the 6 to 8 MVP agents (open question 12).
 5. **Permission ceiling** [3, trust layer]. Agents observe and recommend; no autonomy level ever concludes. Write it into the autonomy section of the concept.
 6. **Absence wording** [3, evidence layer]. "Not found in the data room", never "does not exist", through the measured `agent-eval` order, since a shared prompt change re-baselines every agent.

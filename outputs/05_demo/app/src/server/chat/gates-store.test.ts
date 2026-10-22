@@ -145,6 +145,29 @@ describe('listGates', () => {
   });
 });
 
+describe('the team size the gates show', () => {
+  it('refuses a team that cannot be: negative, more selected than the whole roster, or not whole numbers', () => {
+    const store = openStore();
+    const bad: GateTeam[] = [
+      { selected: -1, total: 25 },
+      { selected: 26, total: 25 },
+      { selected: 1.5, total: 25 },
+      { selected: 14, total: Number.NaN },
+      { selected: Number.POSITIVE_INFINITY, total: Number.POSITIVE_INFINITY },
+    ];
+
+    for (const team of bad) expect(() => store.listGates('demo', team), JSON.stringify(team)).toThrow(RangeError);
+    expect(() => store.decideGate('demo', 'scope', { option: 'proceed', factsHash: 'x' }, { selected: 30, total: 25 })).toThrow(RangeError);
+  });
+
+  it('accepts the edges: nobody selected, and everybody', () => {
+    const store = openStore();
+
+    expect(() => store.listGates('demo', { selected: 0, total: 25 })).not.toThrow();
+    expect(() => store.listGates('demo', { selected: 25, total: 25 })).not.toThrow();
+  });
+});
+
 describe('decideGate', () => {
   it('records the recommended call without a reason, with the facts as shown, the person and the time', () => {
     const store = seeded();

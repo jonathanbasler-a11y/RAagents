@@ -284,7 +284,8 @@ function finish(id: GateId, base: Base, input: GatesInput): GateView {
   const factsHash = hashFacts(JSON.stringify({ facts: base.facts, recommended: base.recommended }));
   const own = input.decisions
     .filter((entry) => entry.gate === id)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id, 'en', { numeric: true }));
+    // Numbers grow with time, so the number alone puts the newest first (GD-10 after GD-9).
+    .sort((a, b) => b.id.localeCompare(a.id, 'en', { numeric: true }));
   const status: GateStatus = own.length === 0 ? 'not_decided' : own[0].factsHash === factsHash ? 'decided' : 'outdated';
   return {
     id,
@@ -299,7 +300,7 @@ function finish(id: GateId, base: Base, input: GatesInput): GateView {
     status,
     decisions: own.map((entry) => ({
       ...entry,
-      dissents: input.dissents.filter((note) => note.decisionId === entry.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id, 'en', { numeric: true })),
+      dissents: input.dissents.filter((note) => note.decisionId === entry.id).sort((a, b) => a.id.localeCompare(b.id, 'en', { numeric: true })),
     })),
   };
 }

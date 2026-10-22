@@ -551,7 +551,10 @@ describe('the gates', () => {
 
     await client(fetchImpl).submitGateDissent('scope', { decisionId: 'GD-1', role: 'CMC regulatory agent owner', reason: 'No.' });
 
+    await client(fetchImpl).submitGateDissent('a/b?c', { decisionId: 'GD-1', role: 'Quality', reason: 'No.' });
+
     const call = fetchImpl.mock.calls[0];
+    expect(fetchImpl.mock.calls[1][0]).toBe('/api/gates/a%2Fb%3Fc/dissent');
     expect(call[0]).toBe('/api/gates/scope/dissent');
     expect(call[1]?.method).toBe('POST');
     expect(bodyOf(call)).toEqual({ decisionId: 'GD-1', role: 'CMC regulatory agent owner', reason: 'No.' });

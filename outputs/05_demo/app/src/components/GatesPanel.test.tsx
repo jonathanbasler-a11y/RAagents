@@ -220,6 +220,8 @@ describe('GatesPanel: deciding', () => {
 
     expect(within(scope).getByRole('button', { name: 'Saving…' })).toBeDisabled();
     for (const other of screen.getAllByRole('button', { name: 'Record decision' })) expect(other).toBeDisabled();
+    for (const radio of screen.getAllByRole('radio')) expect(radio).toBeDisabled();
+    for (const box of screen.getAllByRole('textbox')) expect(box).toBeDisabled();
     await act(async () => finish(ok(gatesResponse())));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Saving…' })).not.toBeInTheDocument());
   });
@@ -362,5 +364,9 @@ describe('GatesPanel: history and dissent', () => {
     await user.click(within(latest).getByRole('button', { name: 'Record dissent' }));
 
     expect(within(latest).getByRole('alert')).toHaveTextContent('Not saved: There is no such decision at this gate. Reference corr-8');
+    // The other decision's form, and the other gates, show nothing: the failure belongs to the one that tried.
+    const other = within(scope).getAllByRole('listitem').find((item) => item.getAttribute('data-decision') === 'GD-1') as HTMLElement;
+    expect(within(other).queryByRole('alert')).not.toBeInTheDocument();
+    expect(within(await card(EVIDENCE)).queryByRole('alert')).not.toBeInTheDocument();
   });
 });
