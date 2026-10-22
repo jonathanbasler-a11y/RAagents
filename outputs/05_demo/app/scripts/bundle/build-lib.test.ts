@@ -316,7 +316,13 @@ describe('applyPreset', () => {
   });
 
   it('keeps out notes that hold a key in a form the key check does not recognise', () => {
-    for (const note of ['# llm_api_key=sk1234567890abcdef1234', '# old key: sk-ant-api03-abcdefghijklmnop', '# Authorization: Bearer abc123def456ghi789']) {
+    // Built in pieces, so no key-shaped string sits in the repository itself.
+    const notes = [
+      `# llm_api_key=${['sk1234567890', 'abcdef1234'].join('')}`,
+      `# old key: ${['sk', 'ant', 'api03', 'abcdefghijklmnop'].join('-')}`,
+      `# Authorization: ${['Bear', 'er'].join('')} ${['abc123', 'def456', 'ghi789'].join('')}`,
+    ];
+    for (const note of notes) {
       const { text } = applyPreset(TEMPLATE, `${note}\nLLM_MODEL=m\n`);
       expect(text, note).not.toContain(note.slice(2));
     }

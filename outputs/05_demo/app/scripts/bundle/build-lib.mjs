@@ -126,7 +126,8 @@ export function parseArgs(argv, context = {}) {
     skipBuild: false,
     denyList: /** @type {string | null} */ (null),
   };
-  for (let index = 0; index < argv.length; index += 1) {
+  let index = -1;
+  while (++index < argv.length) {
     const arg = argv[index];
     const eq = arg.indexOf('=');
     const name = arg.startsWith('--') && eq > 0 ? arg.slice(0, eq) : arg;

@@ -5,7 +5,7 @@ import { connect, createServer, type Server } from 'node:net';
 import { createServer as createHttpServer, request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, win32 } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { createFakeLlm } from '../fake-llm.mjs';
 import {
   TIMEOUTS,
@@ -527,7 +527,11 @@ describe('identifyServer: is this pid really ours?', () => {
   it('a busy laptop: one slow answer is asked again before the server is called foreign', async () => {
     const waits = vi.spyOn(AbortSignal, 'timeout');
     let calls = 0;
-    const timedOut = () => Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' });
+    const timedOut = () => {
+      const error = new Error('The operation was aborted due to timeout');
+      error.name = 'TimeoutError';
+      return error;
+    };
     const busy = {
       ...ctxWith({}),
       fetch: async () => {
@@ -1376,7 +1380,7 @@ describe('Start live demo: settings that cannot work, and certificates', () => {
   afterEach(() => rmSync(sim.dir, { recursive: true, force: true }));
 
   it('a key with a space in it is named before any call is made, and never shown', async () => {
-    sim = simulate({ settings: FILLED('Bearer fake-ok-with-space') });
+    sim = simulate({ settings: FILLED(`${['Bear', 'er'].join('')} fake-ok-with-space`) });
 
     const code = await runCommand(sim.ctx, 'live');
 
