@@ -3,9 +3,11 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROSTER } from '@/client/test-fixtures';
 import type { TimelineItem } from '@/client/timeline';
+import { gatesResponse } from '@/shared/gates-fixtures';
 import { AppShell } from './AppShell';
 import { DataRoomPanel } from './DataRoomPanel';
 import { DdSetupPanel } from './DdSetupPanel';
+import { GatesPanel } from './GatesPanel';
 import { AgentBubble } from './MessageBubble';
 
 const AGENT_ITEM = {
@@ -35,6 +37,7 @@ function stubServer(dataRoom: { asOf: string; documents: unknown[] } | null) {
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
       const path = String(input);
+      if (path.includes('/api/gates')) return json(gatesResponse());
       if (path.includes('dd-setup')) return json({ workspaceId: 'demo', setup: SETUP, source: 'saved', selection: SELECTION });
       if (path.includes('data-room')) {
         return json({ workspaceId: 'demo', dataRoom: dataRoom && { createdAt: 'x', ...dataRoom }, practiceAvailable: true, limits: LIMITS });
@@ -100,6 +103,19 @@ describe('AppShell DD setup', () => {
     );
 
     expect(await screen.findByRole('radio', { name: 'Phase 2' })).toBeChecked();
+  });
+});
+
+describe('AppShell gates', () => {
+  it('mounts the gates for the pages below it', async () => {
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }}>
+        <GatesPanel />
+      </AppShell>,
+    );
+
+    expect(await screen.findByRole('article', { name: /Scope and activation/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Gates' })).toHaveAttribute('href', '/gates');
   });
 });
 

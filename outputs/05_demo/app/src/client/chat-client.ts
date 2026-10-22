@@ -16,6 +16,9 @@ import type {
   BriefingResponse,
   ChecklistResponse,
   ChecklistStateRequest,
+  GateDecisionRequest,
+  GateDissentRequest,
+  GatesResponse,
   FindingDecisionRequest,
   FindingDecisionResponse,
   FindingsResponse,
@@ -148,6 +151,12 @@ export interface ChatApi {
   getBriefing(): Promise<ApiResult<BriefingResponse>>;
   /** A person moves one checklist item to one of the four states; the reply is the whole checklist. */
   submitChecklistState(item: string, state: ChecklistStateRequest['state'], reason?: string): Promise<ApiResult<ChecklistResponse>>;
+  /** The three gates: the facts, the recommended call, every decision and every dissent. Read only. */
+  getGates(): Promise<ApiResult<GatesResponse>>;
+  /** A person decides at a gate. Sends the choice, a reason (only when there is one) and the facts hash the person saw; the reply is every gate. */
+  submitGateDecision(gate: string, request: GateDecisionRequest): Promise<ApiResult<GatesResponse>>;
+  /** A person records a disagreement under a decision of that gate; the reply is every gate. */
+  submitGateDissent(gate: string, request: GateDissentRequest): Promise<ApiResult<GatesResponse>>;
 }
 
 const UNREACHABLE_MESSAGE = 'Could not reach the server. Check the connection and try again.';
@@ -324,6 +333,19 @@ export function createChatClient(deps: ChatClientDeps = {}): ChatApi {
     getBriefing: () => requestJson<BriefingResponse>('/api/briefing', { headers: { Accept: 'application/json' } }),
     submitChecklistState: (item, state, reason) =>
       postJson<ChecklistResponse>(`/api/checklist/${encodeURIComponent(item)}`, { state, ...(reason ? { reason } : {}) } satisfies ChecklistStateRequest),
+    getGates: () => requestJson<GatesResponse>('/api/gates', { headers: { Accept: 'application/json' } }),
+    submitGateDecision: (gate, request) =>
+      postJson<GatesResponse>(`/api/gates/${encodeURIComponent(gate)}/decision`, {
+        option: request.option,
+        ...(request.reason ? { reason: request.reason } : {}),
+        factsHash: request.factsHash,
+      } satisfies GateDecisionRequest),
+    submitGateDissent: (gate, request) =>
+      postJson<GatesResponse>(`/api/gates/${encodeURIComponent(gate)}/dissent`, {
+        decisionId: request.decisionId,
+        role: request.role,
+        reason: request.reason,
+      } satisfies GateDissentRequest),
     withdrawDocument: (documentId, reason) =>
       postJson<DataRoomDocumentResponse>(`/api/data-room/documents/${encodeURIComponent(documentId)}`, { action: 'withdraw', reason } satisfies WithdrawDocumentRequest),
   };
@@ -352,4 +374,7 @@ export const {
   getChecklist,
   getBriefing,
   submitChecklistState,
+  getGates,
+  submitGateDecision,
+  submitGateDissent,
 } = chatClient;

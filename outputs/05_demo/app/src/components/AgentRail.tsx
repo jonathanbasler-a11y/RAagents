@@ -85,6 +85,11 @@ export function AgentRail({ agents }: { agents: PublicAgent[] }) {
           </Link>
         </li>
         <li>
+          <Link href="/gates" className="rail-link" aria-current={pathname === '/gates' ? 'page' : undefined}>
+            Gates
+          </Link>
+        </li>
+        <li>
           <Link href="/team" className="rail-link rail-team" aria-current={pathname === '/team' ? 'page' : undefined}>
             Team chat
           </Link>

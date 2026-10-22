@@ -1519,6 +1519,112 @@ details.spec .kv {
 .fd-tagline {
   font-weight: 600;
 }
+/* ===== Gates ===== */
+.gate-card {
+  margin-bottom: 12px;
+}
+.gate-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.gate-card h4 {
+  margin: 16px 0 6px;
+  font-size: 13px;
+  color: var(--graphite);
+}
+.gate-facts {
+  margin: 8px 0;
+  display: grid;
+  gap: 4px;
+}
+.gate-fact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+.gate-fact dt {
+  font-weight: 600;
+  color: var(--graphite);
+  min-width: 190px;
+}
+.gate-fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.gate-call {
+  margin: 10px 0 2px;
+}
+.gate-change {
+  margin: 0 0 8px;
+  padding-left: 20px;
+  font-size: 13px;
+}
+.gate-options {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+.gate-options legend {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--graphite);
+}
+.gate-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  align-items: start;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.gate-option:first-of-type {
+  border-top: 0;
+}
+.gate-option .note {
+  grid-column: 2;
+  margin: 0;
+}
+.gate-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gate-decision {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.gate-decision p {
+  margin: 2px 0;
+}
+.gate-dissent {
+  padding-left: 10px;
+  border-left: 3px solid var(--line);
+}
+.gate-dissent-form {
+  margin-top: 6px;
+}
+.gate-dissent-form summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--graphite);
+}
+.gate-summary {
+  margin: 6px 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  .gate-fact dt {
+    min-width: 0;
+  }
+}
+
 .cl-card {
   margin-bottom: 12px;
 }

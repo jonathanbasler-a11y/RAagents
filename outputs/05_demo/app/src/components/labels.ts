@@ -10,6 +10,7 @@ import type {
   FindingCategory,
   FindingConfidence,
   FindingStatus,
+  GateStatus,
   ProposalTrace,
   NotConsultedReason,
   PublicAgent,
@@ -160,6 +161,13 @@ export const AUTONOMY_LABELS: Record<AutonomyLevel, string> = {
 };
 
 export { CLASSIFICATION_LABELS };
+
+/** What a gate's status says, in words (a decision was taken on facts that still hold, or on facts that have changed since). */
+export const GATE_STATUS_LABELS: Record<GateStatus, string> = {
+  not_decided: 'Not decided yet',
+  decided: 'Decided',
+  outdated: 'Decided on earlier facts',
+};
 
 export function triggerText(trigger: AgentTrigger | undefined): string | null {
   if (!trigger) return null;

@@ -516,6 +516,59 @@ describe('the checklist and the tags', () => {
   });
 });
 
+describe('the gates', () => {
+  it('reads the gates with a GET and sends nothing', async () => {
+    const payload = { workspaceId: 'demo', generatedAt: '2026-10-22T10:00:00.000Z', gates: [], alwaysHuman: [], disagreementRule: '' };
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(200, payload));
+
+    const result = await client(fetchImpl).getGates();
+
+    expect(result).toEqual({ ok: true, data: payload });
+    expect(fetchImpl.mock.calls[0][0]).toBe('/api/gates');
+    expect(fetchImpl.mock.calls[0][1]?.method ?? 'GET').toBe('GET');
+    expect(fetchImpl.mock.calls[0][1]?.body).toBeUndefined();
+  });
+
+  it('decides with a POST to the gate\'s own address: the option and the facts hash, and the reason only when there is one', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { workspaceId: 'demo', gates: [] }));
+    const chat = client(fetchImpl);
+
+    await chat.submitGateDecision('evidence', { option: 'proceed', reason: 'The seller sends the rest on Friday.', factsHash: 'abc' });
+    await chat.submitGateDecision('scope', { option: 'proceed', factsHash: 'def' });
+    await chat.submitGateDecision('a/b?c', { option: 'stop', reason: '', factsHash: 'x' });
+
+    const [withReason, without, odd] = fetchImpl.mock.calls;
+    expect(withReason[0]).toBe('/api/gates/evidence/decision');
+    expect(withReason[1]?.method).toBe('POST');
+    expect(bodyOf(withReason)).toEqual({ option: 'proceed', reason: 'The seller sends the rest on Friday.', factsHash: 'abc' });
+    expect(bodyOf(without)).toEqual({ option: 'proceed', factsHash: 'def' });
+    expect(odd[0]).toBe('/api/gates/a%2Fb%3Fc/decision');
+    expect(bodyOf(odd)).toEqual({ option: 'stop', factsHash: 'x' });
+  });
+
+  it('records a dissent with a POST to the gate\'s dissent address', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () => jsonResponse(200, { workspaceId: 'demo', gates: [] }));
+
+    await client(fetchImpl).submitGateDissent('scope', { decisionId: 'GD-1', role: 'CMC regulatory agent owner', reason: 'No.' });
+
+    const call = fetchImpl.mock.calls[0];
+    expect(call[0]).toBe('/api/gates/scope/dissent');
+    expect(call[1]?.method).toBe('POST');
+    expect(bodyOf(call)).toEqual({ decisionId: 'GD-1', role: 'CMC regulatory agent owner', reason: 'No.' });
+  });
+
+  it('returns the error body when the facts changed (409) or a reason is missing (400)', async () => {
+    const changed = { error: 'gate_facts_changed', message: 'The facts changed since you opened this gate. Reload and look again.', correlationId: 'c-1' };
+    const reasonless = { error: 'gate_reason_required', message: 'Give a reason: you chose something other than the recommended call.', correlationId: 'c-2' };
+
+    const first = await client(vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(409, changed))).submitGateDecision('scope', { option: 'proceed', factsHash: 'old' });
+    const second = await client(vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(400, reasonless))).submitGateDecision('scope', { option: 'stop', factsHash: 'h' });
+
+    expect(first).toEqual({ ok: false, status: 409, error: changed, message: changed.message });
+    expect(second).toEqual({ ok: false, status: 400, error: reasonless, message: reasonless.message });
+  });
+});
+
 describe('the briefing', () => {
   it('reads the briefing with a GET and sends nothing', async () => {
     const payload = { workspaceId: 'demo', generatedAt: '2026-10-19T10:00:00.000Z', briefing: {} };

@@ -7,6 +7,8 @@ import { ROSTER } from '@/client/test-fixtures';
 import type { DdSetup, DdSetupResponse, HealthResponse, SelectionResponse } from '@/shared/contracts';
 import { selectionAfterSetupChange } from '@/shared/dd-setup';
 import { ChecklistProvider } from './ChecklistProvider';
+import { gatesResponse } from '@/shared/gates-fixtures';
+import { GatesProvider } from './GatesProvider';
 import { DataRoomProvider } from './DataRoomProvider';
 import { FindingsProvider } from './FindingsProvider';
 import { DdSetupProvider } from './DdSetupProvider';
@@ -76,16 +78,21 @@ describe('WorkspaceHome: the findings and the checklist', () => {
         ok({ workspaceId: 'demo', items: ['guidance', 'designations', 'regions', 'bottlenecks', 'ptrs-inputs', 'hta-handover'].map((item) => ({ item: item as never, state: 'not_checked' as const, reason: null, changedAt: null, changedBy: null, acceptedFindings: 0 })) }),
       ),
       submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
+      getGates: vi.fn<ChatApi['getGates']>().mockResolvedValue(ok(gatesResponse())),
+      submitGateDecision: vi.fn<ChatApi['submitGateDecision']>(),
+      submitGateDissent: vi.fn<ChatApi['submitGateDissent']>(),
     };
     render(
       <DataRoomProvider client={client}>
         <FindingsProvider client={client}>
           <ChecklistProvider client={client}>
-            <SelectionProvider client={client}>
-              <DdSetupProvider client={client}>
-                <WorkspaceHome agents={ROSTER} client={client} />
-              </DdSetupProvider>
-            </SelectionProvider>
+            <GatesProvider client={client}>
+              <SelectionProvider client={client}>
+                <DdSetupProvider client={client}>
+                  <WorkspaceHome agents={ROSTER} client={client} />
+                </DdSetupProvider>
+              </SelectionProvider>
+            </GatesProvider>
           </ChecklistProvider>
         </FindingsProvider>
       </DataRoomProvider>,
@@ -95,12 +102,15 @@ describe('WorkspaceHome: the findings and the checklist', () => {
     const findings = screen.getByRole('heading', { name: 'Findings' });
     const checklist = screen.getByRole('heading', { name: 'Checklist' });
     const briefing = screen.getByRole('heading', { name: 'Briefing' });
+    const gates = screen.getByRole('heading', { name: 'Gates' });
     const chat = screen.getByRole('heading', { name: 'Team chat' });
     const before = (first: HTMLElement, second: HTMLElement) => Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect(before(dataRoom, findings)).toBe(true);
     expect(before(findings, checklist)).toBe(true);
     expect(before(checklist, briefing)).toBe(true);
-    expect(before(briefing, chat)).toBe(true);
+    expect(before(briefing, gates)).toBe(true);
+    expect(before(gates, chat)).toBe(true);
+    expect(screen.getByRole('link', { name: 'Open the gates' })).toHaveAttribute('href', '/gates');
     expect(screen.getByRole('link', { name: 'Open the briefing' })).toHaveAttribute('href', '/briefing');
     expect(screen.getByText(/It is not a decision\./)).toBeInTheDocument();
     expect(await screen.findByText('0 checked, 0 not applicable, 0 could not check, 6 not checked (of 6).')).toBeInTheDocument();
