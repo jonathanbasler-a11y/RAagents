@@ -45,6 +45,9 @@ const nextConfig: NextConfig = {
   compress: false,
   poweredByHeader: false,
   distDir: distDirFromEnv(process.env.NEXT_DIST_DIR),
+  // Only the downloadable bundle build (scripts/bundle) asks for a self-contained server folder.
+  // Every other build, and `next start`, is exactly as before.
+  ...(process.env.BUNDLE_BUILD === '1' ? { output: 'standalone' as const } : {}),
   async headers() {
     // "/:path*" matches "/" and every nested path: pages, API routes and static files.
     return [

@@ -25,6 +25,16 @@ Not in the MVP: items 11, 13, 14 and 15 below, the Ona connection (question 19),
 - **Two claims on one sentence.** One draft per quote means a second, different claim on the same sentence is not added. Revisit if it bites.
 - **Re-measure the two practice cases** that dropped in the B1 measurement (comparability gap, interim teaser) with whole-room cases; `eval:propose` shows comparability-gap partly covered.
 
+## Downloadable ZIP (branch `feature/bundle`, not merged)
+
+Built and checked in practice mode on a Mac (see `DECISIONS.md`, 2026-10-22). Open, in order:
+
+- **A first real double-click** of a freshly downloaded ZIP on a colleague's Mac and on a Windows computer: the "Open Anyway" / "Windows protected your PC" steps, a firewall question, and live mode with that person's own key have not been tried.
+- **Stop and a crashed start (Windows).** For a start that crashed in the last two minutes, Stop checks only that the recorded process is alive and the port is closed, not that the process is the demo's; Windows reuses process numbers quickly. Rare, but the fix (identify the process before ending it) is cheap to get wrong.
+- **Two double-clicks right after a crash.** Taking over a stale start lock is not atomic: two launchers could both start a server. Needs an atomic lock (create-exclusive or rename).
+- **Signing.** The ZIPs are not signed or notarised; that needs a developer certificate and would remove the first-run warnings.
+- **Shared team workspace on the gateway** (owner, 2026-10-21): `--preset` can prefill the non-secret lines once it exists.
+
 ## Built, waiting for a measured baseline
 
 1. **Practice case with an answer key** (owner's choice, 2026-10-15). Built 2026-10-16: pack `practice-01` (11 fictional documents, 1 withheld on purpose, 11 planted issues of 8 kinds), 11 evaluation cases, and the machinery (documents ride on the turn as fenced blocks; the loader refuses a later-dated or non-fictional document). A live trial of the 11 cases is recorded in `DECISIONS.md`. Still to do: a full baseline of all cases on the setup that will actually be demoed (after open question 21 is settled, so the baseline describes the final prompt setup), then use the case as the live demo case.

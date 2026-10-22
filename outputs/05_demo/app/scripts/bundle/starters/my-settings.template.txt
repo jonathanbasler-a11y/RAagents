@@ -1,0 +1,23 @@
+# YOUR settings for the live demo. Practice mode does not need this file.
+#
+# Fill in your OWN values below, save the file, then run "Start live demo" again.
+# Never send this file to anyone and never put it in a shared folder:
+# it will hold your own key.
+#
+# Each line is NAME=value, with no spaces and no quotes around the value.
+
+# The address of your model gateway. It starts with https:// and ends with the version part (for example /v1).
+LLM_BASE_URL=
+
+# Your own key for that gateway. Never borrow someone else's key.
+LLM_API_KEY=
+
+# The exact name of the model, as your gateway calls it. No "latest" names.
+LLM_MODEL=
+
+# Optional: the name of the header that carries the key, only if your gateway does
+# not use the usual "Authorization: Bearer". Leave empty otherwise.
+LLM_API_KEY_HEADER=
+
+# Optional: the longest reply, in tokens. Leave empty for the default (1500).
+LLM_MAX_TOKENS=

@@ -20,6 +20,7 @@
     "eval:regrade": "tsx --conditions=react-server scripts/eval-regrade.ts",
     "eval:propose": "tsx --conditions=react-server scripts/eval-propose.ts",
     "check:bundle": "node scripts/check-bundle.mjs",
+    "bundle": "node scripts/bundle/build-bundles.mjs",
     "demo": "node scripts/demo/demo.mjs live",
     "demo:practice": "node scripts/demo/demo.mjs practice",
     "demo:stop": "node scripts/demo/demo.mjs stop",

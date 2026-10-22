@@ -2,19 +2,50 @@
 
 The Digital Human Hybrid Team demo is a web app that runs on your own computer: 25 named AI agents, a team chat and a 1:1 room per agent, a fictional data room, a findings register, the regulatory checklist and the briefing. Your copy is yours alone. Nothing you do in it is seen by anyone else, and nothing is shared between copies.
 
-There are two ways to run it:
+There are two ways to get it running:
 
-- **Practice mode: no key and no network needed after setup.** Every screen works, but the replies come from a stand-in, not from AI, and say so on every message. It is good for clicking through the screens and the flow.
-- **Live mode: real AI answers.** You need your own key for a model gateway (see "What you need").
+- **Path A, the ZIP (Mac and Windows, no installation).** You get one ZIP file, unzip it and double-click. No Terminal, no Node.js to install, no administrator rights. Start here unless you are a developer.
+- **Path B, from the source code (Mac and Linux, with the Terminal).** For people who want the code itself. It is further down.
 
-## What you need
+Either way there are two modes:
 
-- **A Mac or a Linux computer.** The start command does not run on Windows. Windows with WSL (the Linux subsystem) has not been tried.
+- **Practice mode: no key and no network needed.** Every screen works, but the replies come from a stand-in, not from AI, and say so on every message. It is good for clicking through the screens and the flow.
+- **Live mode: real AI answers.** You need your own key for a model gateway (see "What you need for live mode").
+
+## Path A: the ZIP
+
+There is one ZIP per kind of computer: `HybridTeamDemo-mac.zip` (Apple silicon and Intel in the same file) and `HybridTeamDemo-windows.zip` (64-bit Windows). The ZIPs are built on the owner's Mac with `npm run bundle`. They are not in the repository, so the code download on GitHub does not contain them. You get the link from whoever shares the demo with you. Ready-to-send messages for sharing it are in `scripts/bundle/SEND-TO-COLLEAGUES.md`.
+
+Each ZIP holds one folder, `HybridDemo`, with the program, its own copy of Node.js, the fictional practice case and a plain-text file called `READ ME FIRST.txt`.
+
+1. **Unzip** it and open the folder `HybridDemo`. On Windows, right-click the ZIP first, choose Properties, tick Unblock and click OK.
+2. **Double-click `Start practice demo`** (`.command` on a Mac, `.cmd` on Windows). Your browser opens the demo. A yellow banner and the label "Practice reply · not AI · not sourced" on every reply show that the answers are stand-ins.
+3. **Double-click `Stop demo`** when you are done.
+
+**The first time, your computer will warn you.** The files come from the internet and are not signed by a company. On a Mac the message is "cannot be opened because Apple cannot check it": open System Settings, then Privacy & Security, scroll down to the message about "Start practice demo", click Open Anyway and confirm. The Mac asks this once for each starter you use, and may ask once more for the program inside the folder: do the same each time. On Windows the message is "Windows protected your PC": click More info, then Run anyway; or "The publisher could not be verified": click Run. On Windows you can avoid these by ticking Unblock in the ZIP's Properties before unzipping; on a Mac there is no such shortcut. None of this needs administrator rights.
+
+**If a security setting blocks the double-click completely,** `READ ME FIRST.txt` has a short fallback: one command in the Terminal (Mac) or the Command Prompt (Windows).
+
+**Live mode in the ZIP.** Double-click `Start live demo`. The first time, the file `my-settings.env` opens in a text editor. Fill in `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` (see "What you need for live mode"), save, and double-click `Start live demo` again. It then makes one tiny test call with your settings and tells you in plain words if the key is wrong, the model is unknown, the gateway is not reachable (connect to your company network) or the call timed out. It starts only when the test works. Never send `my-settings.env` to anyone.
+
+**Your data.** Chats, the data room and decisions are in the `data` folder next to the program. To start again from empty, stop the demo and delete `data`. To remove everything, stop the demo and delete the `HybridDemo` folder. A newer version arrives as a new ZIP: unzip it into a new folder, because a newer version may change the database.
+
+## What you need for live mode
+
+Your own key for a model gateway that speaks the OpenAI chat completions format with streaming, plus the gateway's address (up to and including `/v1`) and the exact name of a model. Many companies run such a gateway internally; ask your IT or AI team. Use your own key; never borrow someone else's. If your gateway expects the key in a header other than `Authorization: Bearer`, put that header's name in `LLM_API_KEY_HEADER`. The agents were developed and measured with Claude Opus 5.5. Another model will answer differently and has not been measured here.
+
+## Path B: from the source code (Mac and Linux)
+
+The start commands in this path do not run on Windows. Windows users: use Path A.
+
+### What you need
+
+- **A Mac or a Linux computer.**
 - **Node.js 24.** Check with `node --version`; the first number must be 24 or higher. If it is not, install Node 24 from nodejs.org or with your package manager (on a Mac with Homebrew: `brew install node@24`, then follow the line it prints to put it on your PATH).
 - **About 650 MB of disk space** and an internet connection for the first install, which downloads about 540 packages.
-- **For live mode only:** your own key for a model gateway that speaks the OpenAI chat completions format with streaming, plus the gateway's address and the exact name of a model. Many companies run such a gateway internally; ask your IT or AI team. Use your own key; never borrow someone else's. The agents were developed and measured with Claude Opus 5.5. Another model will answer differently and has not been measured here.
+- **For live mode only:** the key, address and model name described under "What you need for live mode".
 
-## Get the code
+### Get the code
 
 On the GitHub page of this repository, click **Code**, then **Download ZIP**, and unzip it. If you use git, clone the repository instead. Then open a terminal in the app folder:
 
@@ -24,7 +55,7 @@ cd outputs/05_demo/app
 
 Every command below runs from this folder.
 
-## Install (once)
+### Install (once)
 
 ```sh
 npm ci --ignore-scripts
@@ -32,7 +63,7 @@ npm ci --ignore-scripts
 
 The flag stops any package from running code on your computer at install time; the app needs none.
 
-## Practice mode
+### Practice mode
 
 ```sh
 npm run demo:practice
@@ -44,7 +75,7 @@ Practice mode shows every screen, the routing in the team chat, the data room an
 
 Stop it with `npm run demo:stop`.
 
-## Live mode
+### Live mode
 
 1. **Create your settings file**, private to you from the start:
 
@@ -70,6 +101,10 @@ Stop it with `npm run demo:stop`.
 
    Open http://127.0.0.1:3200/. If practice mode is still running, stop it first with `npm run demo:stop`.
 
+### Build the ZIPs yourself
+
+`npm run bundle` builds the two ZIPs into `~/HybridDemo-bundles/out` (a folder outside the repository). It needs the source code, a finished install and an internet connection the first time, to download the Node.js runtimes, which it checks against their published checksums. `npm run bundle -- --help` lists the options.
+
 ## What to try
 
 `LIVE-DEMO.md` is the presenter's walkthrough: a 3 to 5 minute path through the team chat, then the data room, the findings, the checklist and the briefing (steps 9 to 9d) in live mode. Its prompts can be copied as they are. If you just want to explore:
@@ -81,20 +116,24 @@ Stop it with `npm run demo:stop`.
 ## Good to know
 
 - **No login, one person.** The app listens only on your own computer (127.0.0.1). Do not open it to the network: it has no login, and anyone who could reach it could change the data. Decisions you make in it are stamped "person (local, not authenticated)".
-- **Where your data goes.** Chats, the data room and decisions are saved in the `.data` folder of your copy. In live mode, every question goes to the gateway you configured, together with the documents of the data room. Use the fictional practice case or public documents only, and paste nothing confidential.
+- **Where your data goes.** Chats, the data room and decisions are saved on your computer: in the `data` folder of the ZIP, or in the `.data` folder of a source copy. In live mode, every question goes to the gateway you configured, together with the documents of the data room. Use the fictional practice case or public documents only, and paste nothing confidential.
 - **What the agents are.** They explain, challenge and flag what needs checking. They decide nothing, and every reply is labelled as model output, not a sourced fact.
-- **Start again from empty:** stop the app (`npm run demo:stop`), delete the `.data` folder, start again.
-- **A newer version:** download the code again into a new folder and repeat the install. Each copy keeps its own data, because a newer version may change the database.
+- **Start again from empty:** ZIP: stop the demo and delete the `data` folder. Source copy: `npm run demo:stop`, delete the `.data` folder, start again.
+- **A newer version:** get the new ZIP, or download the code again, into a new folder. Each copy keeps its own data, because a newer version may change the database.
 
 ## If something goes wrong
 
 | What you see | What to do |
 |---|---|
-| "The demo needs Node 24 or newer" | Install Node 24 (see "What you need") and open a new terminal. |
-| "No model settings file was found" | Create `.env.local` as in "Live mode", step 1, or use `npm run demo:practice`. |
-| `npm run smoke` reports a timeout or "fetch failed" | The gateway is not reachable from here: connect to your company network, or check `LLM_BASE_URL`. |
-| `npm run smoke` reports a refused key or an unknown model | Check `LLM_API_KEY`, `LLM_API_KEY_HEADER` and the exact `LLM_MODEL` name with whoever runs your gateway. |
-| Port 3200 is taken | Start on another port: `DEMO_PORT=3201 npm run demo` (or `npm run demo:practice`), then open http://127.0.0.1:3201/. |
+| (ZIP) The Mac or Windows says the file cannot be opened or is protected | Follow "The first time, your computer will warn you" above. If it still blocks, use the fallback in `READ ME FIRST.txt`. |
+| (ZIP) "Part of the demo is missing" | Unzip the whole ZIP again into a new folder and open the starter from there, not from inside the ZIP. |
+| (ZIP) Live start says the gateway is not reachable | Connect to your company network, or check `LLM_BASE_URL` in `my-settings.env`. |
+| (ZIP) Live start says the key is wrong or the model is unknown | Check `LLM_API_KEY`, `LLM_API_KEY_HEADER` and the exact `LLM_MODEL` name with whoever runs your gateway. |
+| (Source) "The demo needs Node 24 or newer" | Install Node 24 (see "What you need") and open a new terminal. |
+| (Source) "No model settings file was found" | Create `.env.local` as in "Live mode", step 1, or use `npm run demo:practice`. |
+| (Source) `npm run smoke` reports a timeout or "fetch failed" | The gateway is not reachable from here: connect to your company network, or check `LLM_BASE_URL`. |
+| (Source) `npm run smoke` reports a refused key or an unknown model | Check `LLM_API_KEY`, `LLM_API_KEY_HEADER` and the exact `LLM_MODEL` name with whoever runs your gateway. |
+| Port 3200 is taken | The ZIP takes the next free port by itself and opens the browser there. For a source copy: `DEMO_PORT=3201 npm run demo` (or `npm run demo:practice`), then open http://127.0.0.1:3201/. |
 | A reply says "cut off" | Ask for a shorter answer, for example "in five bullets". |
 
 More detail is in `README.md` (running and stopping the app) and in the "If something goes wrong" section of `LIVE-DEMO.md`.
