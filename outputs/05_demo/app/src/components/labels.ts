@@ -21,7 +21,7 @@ import type { DataRoomTrace } from '@/shared/contracts';
 import { CHECKLIST_STATE_WORDS, FINDING_CATEGORY_WORDS } from '@/shared/checklist';
 import { FINDING_BASIS_WORDS, FINDING_CONFIDENCE_WORDS } from '@/shared/findings';
 import type { DocumentTurnState } from '@/shared/data-room';
-import type { SelectionReason } from '@/shared/dd-setup';
+import { CLASSIFICATION_LABELS, type SelectionReason } from '@/shared/dd-setup';
 
 /** Display text written by code. Nothing here comes from a model. */
 
@@ -160,13 +160,7 @@ export const AUTONOMY_LABELS: Record<AutonomyLevel, string> = {
   3: 'L3 Delegate under oversight',
 };
 
-export const CLASSIFICATION_LABELS: Record<ClassificationId, string> = {
-  orphan: 'Orphan',
-  paed: 'Paediatric requirements',
-  exp: 'Expedited programme',
-  combo: 'Combination product',
-  cdx: 'Companion diagnostic',
-};
+export { CLASSIFICATION_LABELS };
 
 export function triggerText(trigger: AgentTrigger | undefined): string | null {
   if (!trigger) return null;

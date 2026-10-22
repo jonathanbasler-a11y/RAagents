@@ -1520,3 +1520,101 @@ export interface BriefingResponse {
   briefing: Briefing;
 }
 
+
+// ---------------------------------------------------------------------------
+// Gates: three points of the due diligence where a person decides, on facts built by code.
+// ---------------------------------------------------------------------------
+
+/** 1 scope: start on this setup and these documents. 2 evidence: the evidence is enough. 3 release: hand the briefing to the cross-functional discussion. */
+export const GATE_IDS = ['scope', 'evidence', 'release'] as const;
+export type GateId = (typeof GATE_IDS)[number];
+
+/** The four choices at every gate. */
+export const GATE_OPTIONS = ['proceed', 'pause', 'seek_more', 'stop'] as const;
+export type GateOption = (typeof GATE_OPTIONS)[number];
+
+/** One line of what the code found, for the person deciding. */
+export interface GateFact {
+  label: string;
+  text: string;
+}
+
+/** A decision a person recorded. Append-only; the facts and the recommended call are kept as they were shown. */
+export interface GateDecision {
+  id: string;
+  workspaceId: WorkspaceId;
+  gate: GateId;
+  option: GateOption;
+  /** Required when `option` differs from `recommended`. */
+  reason: string | null;
+  /** What the code recommended when the person decided. */
+  recommended: GateOption;
+  /** The facts in front of the person. */
+  facts: GateFact[];
+  /** Changes whenever the facts or the recommended call change. */
+  factsHash: string;
+  /** Who decided: LOCAL_PERSON until there is a login. */
+  actor: string;
+  createdAt: string;
+}
+
+/** A disagreement with a decision, recorded under it. It never blocks the decision. */
+export interface GateDissent {
+  id: string;
+  decisionId: string;
+  workspaceId: WorkspaceId;
+  gate: GateId;
+  /** The function the dissent speaks for, for example "CMC regulatory agent owner". */
+  role: string;
+  reason: string;
+  actor: string;
+  createdAt: string;
+}
+
+/**
+ * not_decided: no decision yet. decided: the latest decision was taken on the facts as they are now.
+ * outdated: the facts or the recommended call changed since the latest decision.
+ */
+export type GateStatus = 'not_decided' | 'decided' | 'outdated';
+
+export interface GateView {
+  id: GateId;
+  title: string;
+  question: string;
+  facts: GateFact[];
+  recommended: GateOption;
+  recommendedBecause: string;
+  /** What would move the recommended call, from the same facts. */
+  wouldChange: string[];
+  options: Array<{ option: GateOption; label: string; cost: string }>;
+  /** What the person sees now; a decision must carry it. */
+  factsHash: string;
+  status: GateStatus;
+  /** Every decision, newest first, each with its dissents. */
+  decisions: Array<GateDecision & { dissents: GateDissent[] }>;
+}
+
+/** GET /api/gates */
+export interface GatesResponse {
+  workspaceId: WorkspaceId;
+  generatedAt: string;
+  gates: GateView[];
+  /** The decisions only a person makes. */
+  alwaysHuman: string[];
+  disagreementRule: string;
+}
+
+/** POST /api/gates/[gate]/decision */
+export interface GateDecisionRequest {
+  option: GateOption;
+  reason?: string;
+  /** The factsHash of the gate as the person saw it. */
+  factsHash: string;
+}
+
+/** POST /api/gates/[gate]/dissent */
+export interface GateDissentRequest {
+  decisionId: string;
+  role: string;
+  reason: string;
+}
