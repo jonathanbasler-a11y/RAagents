@@ -157,7 +157,7 @@ const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 /**
  * A value that is filled in but cannot work, in plain words, or null. The same rules the app
  * applies (src/server/llm/config.ts), found here first because a key with a space or a curly quote
- * would otherwise make the connection check fail in a way that looks like a network problem.
+ * would otherwise make the connection check fail as if the network were down.
  * @param {Record<string, string>} llm the filled-in settings (llmSettingsFrom)
  * @returns {string | null}
  */

@@ -241,7 +241,7 @@ describe('small helpers', () => {
 });
 
 describe('scrubBuildPaths', () => {
-  const APP = '/Users/example-owner/work/repo/outputs/05_demo/app';
+  const APP = '/Volumes/Build/example-owner/work/repo/outputs/05_demo/app';
   const manifest = (appDir: string) => JSON.stringify({ config: { outputFileTracingRoot: appDir, turbopack: { root: appDir } }, appDir, relativeAppDir: '.' });
 
   it('replaces the build machine folder in server.js and the server-files manifest, and keeps the manifest valid JSON', () => {
@@ -263,7 +263,7 @@ describe('scrubBuildPaths', () => {
 
   it('replaces the longer folder first, so the repository folder never leaves a half-replaced path behind', () => {
     const out = temp();
-    const repo = '/Users/example-owner/work/repo';
+    const repo = '/Volumes/Build/example-owner/work/repo';
     put(out, { 'server.js': `a="${APP}" b="${repo}/outputs/04_agents"` });
 
     scrubBuildPaths(out, '.next-bundle', [repo, APP]);

@@ -66,6 +66,8 @@ function put(root: string, files: Record<string, string>): string {
 const sha = (data: string | Buffer) => createHash('sha256').update(data).digest('hex');
 /** A home-folder-looking path, assembled so no such literal sits in this file. */
 const homePath = (...rest: string[]) => ['', 'Users', 'someone', ...rest].join('/');
+/** The start of every Mac home path, written in pieces like the helpers above. */
+const MAC_HOMES = ['', 'Users', ''].join('/');
 const winHomePath = () => ['C:', 'Users', 'someone', 'file.txt'].join('\\');
 /** A value shaped like a key: long, with digits. */
 const KEY_VALUE = 'abcd1234'.repeat(4);
@@ -76,8 +78,8 @@ describe('parseArgs', () => {
   it('defaults to the two folders under the home folder and builds both ZIPs', () => {
     expect(parseArgs([], context)).toEqual({
       help: false,
-      out: '/h/RAagents-bundles/out',
-      cache: '/h/RAagents-bundles/cache',
+      out: '/h/HybridDemo-bundles/out',
+      cache: '/h/HybridDemo-bundles/cache',
       preset: null,
       only: null,
       skipBuild: false,
@@ -445,7 +447,7 @@ describe('scanStagedTree: each rule fails on its fixture and passes on a clean o
   it('passes a clean tree, including my-settings.env, empty key lines and ordinary code', () => {
     const root = put(temp(), {
       'my-settings.env': 'LLM_API_KEY=\nLLM_JUDGE_API_KEY=\nLLM_API_KEY_HEADER=api-key\n',
-      'app/server.js': 'const key = process.env.LLM_API_KEY; const url = "/Users/";',
+      'app/server.js': `const key = process.env.LLM_API_KEY; const url = "${MAC_HOMES}";`,
       'app/node_modules/pkg/index.js': 'LLM_API_KEY = process.env.SOMETHING_LONG_ENOUGH_TO_LOOK_LIKE_A_KEY',
       'Start demo.cmd': '@echo off\r\necho plain ascii\r\n',
     });
@@ -483,11 +485,11 @@ describe('scanStagedTree: each rule fails on its fixture and passes on a clean o
     expect(rules(put(temp(), { 'a.json': `{"dir":"${homePath('proj')}"}` }))).toEqual(['a.json:home-path']);
     expect(rules(put(temp(), { 'b.txt': `see ${winHomePath()}` }))).toEqual(['b.txt:home-path']);
     expect(rules(put(temp(), { 'b.txt': `see ${winHomePath().replace(/\\/g, '/')}` }))).toEqual(['b.txt:home-path']);
-    expect(rules(put(temp(), { 'c.txt': 'plain /usr/local/bin and /Users/ alone' }))).toEqual([]);
+    expect(rules(put(temp(), { 'c.txt': `plain /usr/local/bin and ${MAC_HOMES} alone` }))).toEqual([]);
   });
 
   it('home-path: not applied to third-party code (app/node_modules and the app/.next-* build output), where packages keep example paths in comments', () => {
-    const example = '// e.g. "/Users/foo/APP/.next/server/chunk.js" or C:\\Users\\foo\\APP';
+    const example = `// e.g. "${MAC_HOMES}foo/APP/.next/server/chunk.js" or C:\\Users\\foo\\APP`;
     expect(rules(put(temp(), { 'app/node_modules/next/dist/server/patch-error-inspect.js': example }))).toEqual([]);
     expect(rules(put(temp(), { 'app/.next-bundle/server/chunks/a.js': example }))).toEqual([]);
     expect(rules(put(temp(), { 'app/.next/server/a.js': example }))).toEqual([]);

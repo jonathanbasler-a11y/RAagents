@@ -77,8 +77,8 @@ Usage: npm run bundle -- [options]
 
 Options
   --out <dir>         Where the ZIPs go. Must be outside the repository.
-                      Default: ~/RAagents-bundles/out
-  --cache <dir>       Where the downloaded Node.js archives are kept. Default: ~/RAagents-bundles/cache
+                      Default: ~/HybridDemo-bundles/out
+  --cache <dir>       Where the downloaded Node.js archives are kept. Default: ~/HybridDemo-bundles/cache
                       A missing archive is downloaded from nodejs.org and checked against the
                       pinned hash in scripts/bundle/node-runtimes.json; a wrong hash stops the build.
                       With a full cache nothing is downloaded (works offline).
@@ -119,20 +119,20 @@ export function parseArgs(argv, context = {}) {
   const toPath = (/** @type {string} */ value) => resolve(cwd, expandHome(value, home));
   const result = {
     help: false,
-    out: join(home, 'RAagents-bundles', 'out'),
-    cache: join(home, 'RAagents-bundles', 'cache'),
+    out: join(home, 'HybridDemo-bundles', 'out'),
+    cache: join(home, 'HybridDemo-bundles', 'cache'),
     preset: /** @type {string | null} */ (null),
     only: /** @type {'mac' | 'windows' | null} */ (null),
     skipBuild: false,
     denyList: /** @type {string | null} */ (null),
   };
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
     const eq = arg.indexOf('=');
     const name = arg.startsWith('--') && eq > 0 ? arg.slice(0, eq) : arg;
     const inline = arg.startsWith('--') && eq > 0 ? arg.slice(eq + 1) : null;
     const value = () => {
-      const got = inline ?? argv[++i];
+      const got = inline ?? argv[++index];
       if (got === undefined || got === '' || (inline === null && got.startsWith('--'))) {
         throw new Error(`${name} needs a value. Run with --help to see the options.`);
       }
@@ -529,7 +529,7 @@ const HOME_PATH = /(?:\/Users\/|[A-Za-z]:(?:\\{1,2}|\/)Users(?:\\{1,2}|\/))[A-Za
 
 /**
  * Third-party code: the traced packages and the compiled build output. Published packages keep example
- * paths such as "/Users/foo/APP" in comments (stock Next.js does, in files that ship), so the general
+ * Mac and Windows home-folder paths in comments (stock Next.js does, in files that ship), so the general
  * home-path pattern is not applied there. The paths of THIS machine are still refused there (build-path).
  */
 const THIRD_PARTY_CODE = /^app\/(?:node_modules\/|\.next(?:-[A-Za-z0-9_-]+)?\/)/;

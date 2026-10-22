@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 
 // The downloadable bundle needs a self-contained server folder (Next.js "standalone" output). Only the
 // bundle build asks for it, with BUNDLE_BUILD=1. Every other build, and the dev launcher's `next start`,

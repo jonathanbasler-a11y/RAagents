@@ -103,7 +103,7 @@ Stop it with `npm run demo:stop`.
 
 ### Build the ZIPs yourself
 
-`npm run bundle` builds the two ZIPs into `~/RAagents-bundles/out` (a folder outside the repository). It needs the source code, a finished install and an internet connection the first time, to download the Node.js runtimes, which it checks against their published checksums. `npm run bundle -- --help` lists the options.
+`npm run bundle` builds the two ZIPs into `~/HybridDemo-bundles/out` (a folder outside the repository). It needs the source code, a finished install and an internet connection the first time, to download the Node.js runtimes, which it checks against their published checksums. `npm run bundle -- --help` lists the options.
 
 ## What to try
 

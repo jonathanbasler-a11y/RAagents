@@ -87,7 +87,8 @@ export function stripAnswerKey(packYaml) {
     if (topLevelKey) skipping = line.startsWith('issues:');
     if (!skipping) kept.push(line);
   }
-  const text = kept.join('\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '\n');
+  // At most one empty line in a row, and one line end at the close.
+  const text = kept.join('\n').replace(/\n\n\n+/g, '\n\n').replace(/\s+$/, '\n');
   return text.replace(', and its answer key.', '.');
 }
 
@@ -404,7 +405,7 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import
   const repoRoot = resolve(appDir, '..', '..', '..');
   const distArg = process.argv.find((arg) => arg.startsWith('--dist-dir='));
   assemblePayload({ appDir, repoRoot, outDir, distDir: distArg ? distArg.slice('--dist-dir='.length) : DEFAULT_DIST_DIR }).catch((error) => {
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error(String(/** @type {{ message?: unknown }} */ (error)?.message ?? error));
     process.exit(1);
   });
 }

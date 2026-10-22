@@ -172,10 +172,10 @@ describe('pathsFor: every path, on both systems', () => {
   });
 
   it('builds Mac paths with slashes', () => {
-    const paths = pathsFor({ platform: 'darwin', root: '/Users/someuser/My Docs/HybridDemo', env: {} });
+    const paths = pathsFor({ platform: 'darwin', root: '/Volumes/Work Disk/My Docs/HybridDemo', env: {} });
 
-    expect(paths.dataDir).toBe('/Users/someuser/My Docs/HybridDemo/data');
-    expect(paths.settingsFile).toBe('/Users/someuser/My Docs/HybridDemo/my-settings.env');
+    expect(paths.dataDir).toBe('/Volumes/Work Disk/My Docs/HybridDemo/data');
+    expect(paths.settingsFile).toBe('/Volumes/Work Disk/My Docs/HybridDemo/my-settings.env');
   });
 
   it('moves things with the test hooks, on both systems', () => {
@@ -450,9 +450,9 @@ describe('opening the browser and the editor', () => {
     expect(browserCommand({ platform: 'win32', url })).toEqual({ command: 'cmd', args: ['/c', 'start', '', url] });
     expect(browserCommand({ platform: 'linux', url })).toEqual({ command: 'xdg-open', args: [url] });
 
-    expect(editorCommand({ platform: 'darwin', file: '/Users/someuser/My Docs/my-settings.env' })).toEqual({
+    expect(editorCommand({ platform: 'darwin', file: '/Volumes/Work Disk/My Docs/my-settings.env' })).toEqual({
       command: 'open',
-      args: ['-e', '/Users/someuser/My Docs/my-settings.env'],
+      args: ['-e', '/Volumes/Work Disk/My Docs/my-settings.env'],
     });
     expect(editorCommand({ platform: 'win32', file: 'C:\\Users\\Some User\\my-settings.env' })).toEqual({
       command: 'notepad',

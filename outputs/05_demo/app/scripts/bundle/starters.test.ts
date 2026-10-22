@@ -779,7 +779,7 @@ describe("the builder's own scan of what goes into each ZIP", () => {
 
   it('would catch a key-shaped value in the settings file (so the scan above can fail)', () => {
     const { root, top } = stage('mac');
-    writeFileSync(join(top, 'my-settings.env'), `${read('my-settings.template.txt')}LLM_API_KEY=sk-0123456789abcdef0123456789\n`);
+    writeFileSync(join(top, 'my-settings.env'), `${read('my-settings.template.txt')}LLM_API_KEY=${['sk', '0123456789abcdef0123456789'].join('-')}\n`);
     expect(scanStagedTree(root)).toEqual([{ file: 'HybridDemo/my-settings.env', rule: 'api-key-value' }]);
   });
 });
