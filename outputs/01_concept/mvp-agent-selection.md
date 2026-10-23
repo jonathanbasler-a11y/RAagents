@@ -1,6 +1,6 @@
 # Which agents the MVP builds in depth (proposal)
 
-**Status:** proposal for the owner, 2026-10-23. Nothing here is decided. It answers backlog items 4 and 5 and prepares open question 12 (which 6 to 8 agents form the MVP). It lives here and not in `outputs/04_agents/` on purpose: the app reads every Markdown file in that folder except `README.md` as an agent specification. None of the 25 specifications was changed.
+**Status:** proposal for the owner, 2026-10-23. Nothing here is decided. It answers backlog item 4 (item 5, the permission ceiling, is in the concept, section 4) and prepares open question 12 (which 6 to 8 agents form the MVP). It lives here and not in `outputs/04_agents/` on purpose: the app reads every Markdown file in that folder except `README.md` as an agent specification. None of the 25 specifications was changed.
 **Markers:** "my reasoning" is the drafter's view, not a team decision. "To verify" marks something unconfirmed.
 
 ## 1. What "in depth" means, and why choose
@@ -40,7 +40,8 @@ Everything that fails the test is listed in section 5, with what it is instead.
 - **Carlos or Cyrus.** The demo's steps 3 and 5 use Carlos (CMC regulatory), and he is on by default. His remit (quality module readiness, manufacturing sites and their compliance status, comparability) overlaps with both Cyrus and Quinn. I put Cyrus in the set because the DD workstream is named for technical maturity, and keep Carlos in the catalogue, on by default, so the demo flow does not change. This is the call I am least sure of.
 - **Medical affairs (Malik) is not in the set.** Half the cohort is not in RA, and medical affairs is one of the functions that built this concept. DD flags medical questions to the right function; my reasoning is that a regulatory DD needs medical affairs for disease context and evidence gaps, which Clara and Rosa can open, but the owner may want the function represented.
 - **Two remits need rewording before these agents go in depth.** The synthesiser's specification says it writes the briefing, and the evidence checker's says it enforces "No source, no finding". Code now does both for the DD (the briefing is assembled by code; the register checks each quote). What a model adds is a summary of unverified views (Sofia) and a list of what each claim would need (Emeka). The specifications were not changed here (open question 35).
-- **The depth set is a build order, not a team.** In a live DD the team still follows the DD setup: the other 17 agents stay in the catalogue and join by the stage and the asset's classification.
+- **Cyrus, Quinn and Priya are off by default, and no setup rule brings them in.** They have no trigger and `default_selected: false`, so today a person has to switch them on by hand (the same is true of Malik). Building them in depth would need a default or a trigger, which is a specification change and a version bump.
+- **The depth set is a build order, not a team.** In a live DD the team still follows the DD setup. The other 17 agents stay in the catalogue: some are on by default (Clara, Carlos, Ravi, Lena, Ines, Dara and the five team roles), some join by stage or classification, and Malik joins only by hand.
 
 ## 4. The catalogue: one line per agent
 
@@ -62,7 +63,7 @@ Order and names follow the roster in `outputs/04_agents/README.md`. "Set" is my 
 | Eitan, `sp-exp` | 2 | Breakthrough, accelerated and priority pathways per region | Needed only when the classification applies | Catalogue |
 | Chen, `sp-combo` | 2 | Device and drug-device requirements | Needed only for combination products | Catalogue |
 | Dev, `sp-cdx` | 2 | Companion diagnostic co-development and approval | Needed only for companion diagnostics | Catalogue |
-| Rhea, `sp-rm` | 2 | Risk management plans and minimisation measures | Judgment on a plan's adequacy; no trigger yet | Later |
+| Rhea, `sp-rm` | 2 | Risk management plans and minimisation measures | Judgment on a plan's adequacy; joins at Phase 3 or Filed (trigger: late) | Later |
 | Paolo, `sp-promo` | 2 | Promotional claims and materials | Not needed before a filing | Later |
 | Oskar, `orc` | 2 | Planning and assigning; answers when nobody matches | Free questions need a reader; routing itself is code | Depth |
 | Saskia, `san` | 1 | Drafts sanitised questions for cleared experts | Deciding which details identify the asset is judgment; she only drafts and a person approves | Catalogue |
@@ -76,23 +77,23 @@ Order and names follow the roster in `outputs/04_agents/README.md`. "Set" is my 
 
 ## 5. Deliberately not agents
 
-My reasoning, from what exists today. Each of these already runs as code, as a template, or with a person, and should stay there.
+My reasoning, from what exists today. Each of these is, or should be, code, a template or a person's job; the last column says which of them exists today.
 
-| Thing | What it is instead | Why not an agent |
-|---|---|---|
-| The as-of date wall on documents | Code: a rule refuses and never shows a later-dated document | Must never depend on a model's judgment |
-| "No source, no finding" for findings | Code: a claim is kept only if its quote is word for word in a document the agent was shown | A check, not an opinion |
-| The four checklist states and "checked needs an accepted finding" | Code and database | The same rule every time |
-| Routing a question to agents | Code: @mentions, then topic terms, at most three specialists | Repeatable, and must be explainable ("How this turn ran") |
-| Assembling the briefing | Code, with no model | A fixed form built from accepted, tagged findings |
-| The gates' facts and recommended call | Code, from fixed rules | A person must be able to see exactly why |
-| Who sees what (data walls) | Platform access control; not built | Access cannot be decided by a model |
-| Deal-breakers, the overall assessment, the recommendation, going ahead on incomplete evidence, stopping the DD | People (the always-human list) | Accountability |
-| The probability of technical and regulatory success (PTRS) | The calculation's owner; agents describe inputs only | A number with an owner |
-| Reimbursement and HTA assessment | HEOR; flagged and handed over, out of scope | Outside the DD's remit |
-| Approving a sanitised question before it leaves | The RA DD lead | Accountability |
-| Approving a playbook update | The playbook owner | Accountability |
-| Standard forms and region checklists | Templates | Always the same shape |
+| Thing | What it is instead | Why not an agent | Exists today? |
+|---|---|---|---|
+| The as-of date wall on documents | Code: a rule refuses and never shows a later-dated document | Must never depend on a model's judgment | Yes |
+| "No source, no finding" for findings | Code: a claim is kept only if its quote is word for word in a document the agent was shown | A check, not an opinion | Yes, for findings |
+| The four checklist states and "checked needs an accepted finding" | Code and database | The same rule every time | Yes |
+| Routing a question to agents | Code: @mentions (up to four), then topic terms (at most three specialists) | Repeatable, and must be explainable ("How this turn ran") | Yes |
+| Assembling the briefing | Code, with no model | A fixed form built from accepted, tagged findings | Yes |
+| The gates' facts and recommended call | Code, from fixed rules | A person must be able to see exactly why | Yes |
+| Who sees what (data walls) | Platform access control | Access cannot be decided by a model | No |
+| Deal-breakers, the overall assessment, the recommendation, going ahead on incomplete evidence, settling a disagreement between specialists, stopping the DD | People (the always-human list) | Accountability | The list and the gates, yes; the decisions are people's |
+| The probability of technical and regulatory success (PTRS) | The calculation's owner; agents describe inputs only | A number with an owner | The app computes no number |
+| Reimbursement and HTA assessment | HEOR; flagged and handed over, out of scope | Outside the DD's remit | Out of scope |
+| Approving a sanitised question before it leaves | The RA DD lead | Accountability | A rule in Saskia's brief; the app has no approval step |
+| Approving a playbook update | The playbook owner | Accountability | No mechanism in the app |
+| Standard forms and region checklists | Templates | Always the same shape | No |
 
 ## 6. What I did not do
 
@@ -105,3 +106,4 @@ My reasoning, from what exists today. Each of these already runs as code, as a t
 2. Carlos or Cyrus for the CMC place.
 3. Whether medical affairs must be represented.
 4. Whether the synthesiser's and the evidence checker's specifications are reworded now (needs a version bump and a new baseline for those two agents).
+5. Whether Cyrus, Quinn and Priya get a default or a trigger, so that the setup brings them in (a specification change and a version bump).

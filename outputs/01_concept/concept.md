@@ -63,13 +63,13 @@ Agents are built separately from playbooks, so one agent serves many playbooks a
 - **Team-role agents:** orchestrator, red team, synthesiser, evidence checker, and a sanitiser for questions going to people outside the wall.
 - **Stakeholder-perspective agents:** health authority, patient, inspector. Payer/HTA is listed as agreed in principle in the brief, but is not in the current list. **Open owner decision (my proposal):** leave it out of the MVP, because HEOR is out of scope: DD flags reimbursement risks to HEOR and does not assess them.
 
-**A critical point.** The app carries 25 named agents, but the brief asks for a small MVP of 6 to 8 (OQ 12). Many personas are hard to justify; the other team's red team made the same point about its roster. My reasoning: present the 25 as a catalogue, build 6 to 8 in depth, and add a "why an agent, not a rule or template" line to each spec to choose them. The MVP draft: RA strategy, CMC/TD, quality and inspection history, safety/PV, evidence checker, red team and synthesiser, with clinical/label as the eighth if the demo asset needs it (to verify, V2). **Open point:** this list does not include the orchestrator. Whether the orchestrator counts inside the 6 to 8 or comes on top needs an owner decision (OQ 12). The proposal in full, with a "why an agent, not a rule, a template or a person" line for each of the 25 and a list of things that are deliberately not agents, is in `outputs/01_concept/mvp-agent-selection.md` (my proposal; the owner chooses).
+**A critical point.** The app carries 25 named agents, but the brief asks for a small MVP of 6 to 8 (OQ 12). Many personas are hard to justify; the other team's red team made the same point about its roster. My reasoning: present the 25 as a catalogue, build 6 to 8 in depth, and add a "why an agent, not a rule or template" line to each spec to choose them. My proposal (to verify, V2): seven agents (RA strategy, CMC and technical development, quality and inspection history, safety/PV, evidence checker, red team and synthesiser) plus the orchestrator as the eighth. The alternative is clinical regulatory strategy as the eighth, with the orchestrator counted on top. **Open point:** whether the orchestrator counts inside the 6 to 8 or comes on top needs an owner decision (OQ 12). The proposal in full, with a "why an agent, not a rule, a template or a person" line for each of the 25 and a list of things that are deliberately not agents, is in `outputs/01_concept/mvp-agent-selection.md` (my proposal; the owner chooses).
 - **Today:** 25 specifications with persona, guardrails, escalation lines and a human owner role. Only the red team's health-authority-reviewer stance exists as a stakeholder perspective. Agents have no tools and no connected public sources. Two planned remits no longer match what is built: the synthesiser's says it writes the briefing, but code assembles the briefing; the evidence checker's says it enforces "No source, no finding", which code enforces for findings (OQ 35).
 
 ### L4 Orchestration [L4]
 Sends the right agent to the right task. Standard workflow: **plan, assign, assess, challenge, combine, escalate, decide, learn.** "Decide" is always a person. The orchestrator is the engine of this layer, not one of the specialists. Whether it counts in the "6 to 8" MVP agents is an open point (see [L3], OQ 12).
 - **Owner:** the person who activates the team, with a platform owner (proposed).
-- **Today:** routing in code (@mentions, then topic terms, at most three specialists), a synthesiser that summarises after two or more contributions without making a call, and a visible record of who was asked and why. People can add or remove agents from the team chat itself, and an agent the router left out because they are not selected is named with an Add button. The three gates are where a person decides: they are the "escalate" and "decide" steps, for the DD only. **The eight-step workflow is not coded as a workflow:** assign and combine exist in chat form, escalate and decide exist as the gates, and plan and learn do not exist as steps; "challenge" happens only when someone @mentions the red team.
+- **Today:** routing in code (@mentions, up to four; then topic terms, at most three specialists), a synthesiser that summarises after two or more contributions without making a call, and a visible record of who was asked and why. People can add or remove agents from the team chat itself, and an agent the router left out because they are not selected is named with an Add button. The three gates are where a person decides: they are the "escalate" and "decide" steps, for the DD only. **The eight-step workflow is not coded as a workflow:** assign and combine exist in chat form, escalate and decide exist as the gates, and plan and learn do not exist as steps; "challenge" happens only when someone @mentions the red team.
 
 ### L5 Playbook [L5]
 One per use case. It defines the key questions, agents, sources, outputs, decisions reserved for humans and the autonomy ceiling. It doubles as a checklist, so nothing is missed. New guidance reaches it as a proposal from an agent; **the playbook owner approves every change** (my reasoning: the recording suggests agents update playbooks, which would remove the human owner).
@@ -154,12 +154,12 @@ Source: `outputs/DECISIONS.md`, `ORIENTATION.md`.
 | Checklist with four distinct states, and tags | **Built, merged** | Six items. "Checked" only with an accepted finding behind it (code and database refuse it otherwise); "checked: not applicable" and "could not check" need a reason; "not checked" is the default and stays visible. A tag says which item a finding supports and whether it is a positive, a risk or neutral |
 | The briefing | **Built, merged** | Assembled by code on the spot, with no model, from accepted, tagged findings and the checklist. Says first what is missing; drafts and rejected findings never appear; the mitigations section is empty on purpose; Markdown download; says it is not a decision. A gate decided on facts that have since changed is warned about |
 | Gates with a recorded human decision | **Built, merged** | Three gates, facts and recommended call from code, a reason whenever the choice differs, dissent recorded and never blocking, the always-human list on the page. Stamped "person (local, not authenticated)". Not yet in the stable demo copy below |
-| Stable demo copy | **Built** | Version 11 (commit b1282e1), kept apart from development. It includes everything above except the gates; promoting a newer version needs the owner's word |
+| Stable demo copy | **Built** | Version 11 (commit b1282e1), kept apart from development. It includes everything above except the gates and the briefing's warning about gate decisions; promoting a newer version needs the owner's word |
 | Downloadable ZIP of the demo | **Built, merged** | A build tool that makes a ZIP a colleague can start on their own computer, in practice mode or with their own key. A first double-click on a colleague's Mac or Windows computer has not been tried |
 | Known-outcome demo on a public asset | **Not yet built** | Asset not chosen (OQ 5); the demo asset is fictional today |
 | Public sources, tools for agents | **Not yet built** | Agents have no tools; documents ride on each turn; no retrieval for long documents yet |
 | Real login, per-person decision rights and data walls between people | **Not yet built** | One local user |
-| Provisional findings, correcting a decision, a dated snapshot of the briefing | **Not yet built** | Open questions 33 and 32; a snapshot would need the login first |
+| Provisional findings, correcting a decision, a dated snapshot of the briefing | **Not yet built** | Provisional findings are a backlog item; correcting a decision is open question 33 and a snapshot is question 32, which would need the login first |
 | Pre-recorded demo fallback | **Not yet built** | |
 
 ## 8. Risks and honest limits [R1]
@@ -216,6 +216,7 @@ We are merging with the other team; the merge is not done. Their material (folde
 | 23 | Further evaluation case types; a public asset |
 | 24 | "Experiment" or "pilot" |
 | 29 | When the app needs a login, so that decisions are tied to a named person |
+| 32 | Whether a person can save a dated, named snapshot of the briefing |
 | 33 | Whether a gate decision can be corrected |
 | 34 | Who counts as "the lead" once there is a login |
 | 35 | Two planned remits (synthesiser, evidence checker) no longer match what is built |
@@ -223,12 +224,12 @@ We are merging with the other team; the merge is not done. Their material (folde
 ## Appendix B: statements marked "to verify"
 
 - **V1:** The central message and the suggested Box 8 phrases are suggestions; the team has not agreed them (OQ 11).
-- **V2:** The MVP roster of seven agents plus an eighth is my draft, not a team decision (OQ 12).
+- **V2:** The MVP roster (seven agents plus the orchestrator, or plus clinical as the eighth) is my proposal, not a team decision (OQ 12).
 - **V3:** "4 people become 2" is an off-the-cuff remark, not a measured or agreed target.
 - **V4:** Whether the chosen model already knows the asset's outcome.
 - **V5:** Whether enough public sources predate the outcome of the chosen asset.
 - **V6:** The GMP, GCP and PV module contents are a starting list for the owning functions to check.
-- **V7:** Closed on 2026-10-19: the stable demo copy is version 8 (commit 6d8a2bd) and includes the data room and the findings register. Kept here so the numbering stays stable.
+- **V7:** Closed on 2026-10-19: the stable demo copy was version 8 (commit 6d8a2bd) and included the data room and the findings register; it is now version 11 (commit b1282e1, see section 7). Kept here so the numbering stays stable.
 - **V8:** The number of evaluation cases: 72 counted from the case files on 2026-10-23. The evaluation guide in the app folder still says 59 for the general cases, which is out of date (the general cases now number 61).
 - **V9:** Who owns change management; the recording is ambiguous.
 - **V10:** Who the senior stakeholders are and what decision we want from them (OQ 7).

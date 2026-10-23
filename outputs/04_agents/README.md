@@ -171,8 +171,8 @@ From the plan's roster update and mockup v2 (`DATA.agents`), which also hold eac
 | 12 | `sp-exp` | Eitan | E | Expedited programmes | spec | domain | | 2 | false | false | true | false | exp |
 | 13 | `sp-combo` | Chen | C | Combination products | spec | domain | | 2 | false | false | true | false | combo |
 | 14 | `sp-cdx` | Dev | D | Companion diagnostics | spec | domain | | 2 | false | false | true | false | cdx |
-| 15 | `sp-rm` | Rhea | R | Risk management | spec | domain | | 2 | false | false | true | false | |
-| 16 | `sp-promo` | Paolo | P | Promotional review | spec | domain | | 2 | false | false | true | false | |
+| 15 | `sp-rm` | Rhea | R | Risk management | spec | domain | | 2 | false | false | true | false | late |
+| 16 | `sp-promo` | Paolo | P | Promotional review | spec | domain | | 2 | false | false | true | false | filed |
 | 17 | `orc` | Oskar | O | Orchestrator | role | orchestrator | orchestrator | 2 | true | true | false | false | |
 | 18 | `san` | Saskia | S | Sanitiser | role | team-role | sanitiser | 1 | true | true | false | true | |
 | 19 | `ev` | Emeka | E | Evidence checker | role | team-role | evidence-checker | 2 | true | true | false | true | |
