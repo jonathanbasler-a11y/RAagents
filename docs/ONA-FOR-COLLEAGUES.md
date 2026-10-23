@@ -11,7 +11,8 @@ Two things are not tested yet, and the steps below say where they matter:
 
 - Access to Ona, signed in with your company account.
 - The link to the repository, from the project owner. It is a public repository: anyone can read it, so nothing secret may ever go into it.
-- The project key and the other settings (gateway address and model name), sent to you by the project owner **in a separate private message**. The project owner has confirmed you are allowed to use the project key.
+- Access to the project in your company's AI gateway portal, where you copy the project key yourself: nobody has to send it to you. The project owner has confirmed you are allowed to use it, and tells you the exact name of the key to copy.
+- The gateway address, the model name and the key-header name, from the project owner.
 
 ## 1. Open an environment
 
@@ -30,17 +31,19 @@ In Ona's settings, open the **secrets** page (the menu name may differ) and add 
 | Name | Value |
 |---|---|
 | `LLM_BASE_URL` | The gateway address, up to and including `/v1`, from the owner's message |
-| `LLM_API_KEY` | The project key, from the owner's separate message |
+| `LLM_API_KEY` | The project key, copied from the gateway portal (see "How to copy the key" below) |
 | `LLM_MODEL` | The exact model name, from the owner's message |
-| `LLM_API_KEY_HEADER` | Only if the owner says so. Otherwise leave it out |
+| `LLM_API_KEY_HEADER` | The key-header name the owner gives you (the name of the header that carries the key). Leave it out only if the owner says so |
 
 Then **restart the environment**. A secret only reaches the environment after a restart.
+
+**How to copy the key.** Open the gateway portal in a second browser tab and sign in as usual. Check that the project workspace shown at the top left is the one the owner named. In the left menu click **API Keys**, find the row the owner named (do not use the other rows), and click the small copy icon next to the key once. Paste it with Ctrl+V as the value of the secret `LLM_API_KEY`. Afterwards copy any ordinary word so the key does not stay on your clipboard, and do not create, edit or delete anything in the portal.
 
 Three rules about the key:
 
 - Add it as a **user** secret, never as a project or organisation secret (those reach other people's environments).
 - **Never type or paste the key into the chat with Ona's agent, into a file, or into a commit.** The agent chat is stored by the service, and the repository is public. If you do, tell the owner so the key can be replaced.
-- Do not forward the owner's message.
+- Never send the key to anyone.
 
 ## 3. Check that Ona can reach the gateway
 
