@@ -116,20 +116,26 @@ interface Base {
   wouldChange: string[];
   /** Facts shown to the person but left out of the hash, because they must not reopen a decision. */
   notHashed?: string[];
-  /** Something that changes the hash without being shown. */
-  hashExtra?: unknown;
 }
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 const lower = (option: GateOption) => GATE_OPTION_LABELS[option].toLowerCase();
 
+const HELD_WORDS: Partial<Record<GateOption, string>> = { stop: 'stopped', pause: 'paused' };
+
 /**
  * A scope gate that was stopped or paused leads the gates after it: whatever the evidence says, the call there is to pause
  * until a person decides scope again. The latest scope decision counts, even if its facts have changed since.
+ * Once scope is decided again, the stop stays on the record as a fact of the later gates, so what was decided at them before
+ * the stop does not become current again without a new decision.
  */
 function ledByScope(base: Base, scope: GateView): Base {
   const latest = scope.decisions[0];
-  if (latest === undefined || (latest.option !== 'stop' && latest.option !== 'pause')) return base;
+  const held = scope.decisions.find((entry) => HELD_WORDS[entry.option] !== undefined);
+  if (latest === undefined || held === undefined) return base;
+  if (latest.id !== held.id) {
+    return { ...base, facts: [...base.facts, { label: 'Scope gate', text: `Decided: ${lower(latest.option)}, after it was ${HELD_WORDS[held.option]}.` }] };
+  }
   return {
     ...base,
     facts: [...base.facts, { label: 'Scope gate', text: `Decided: ${lower(latest.option)}.` }],
@@ -139,14 +145,7 @@ function ledByScope(base: Base, scope: GateView): Base {
   };
 }
 
-/** The scope gate's facts, plus the selected agents' ids (sorted) in the hash: another team of the same size is another view. */
-function scopeBase(input: GatesInput): Base {
-  const base = scopeFacts(input);
-  const { members } = input.team;
-  return members === undefined ? base : { ...base, hashExtra: [...members].sort() };
-}
-
-function scopeFacts({ setup, team, briefing }: GatesInput): Base {
+function scopeBase({ setup, team, briefing }: GatesInput): Base {
   const documents = briefing.documents;
   const readable = documents.filter((document) => document.provided && !document.withdrawn).length;
   const notProvided = documents.filter((document) => !document.provided).length;
@@ -159,6 +158,10 @@ function scopeFacts({ setup, team, briefing }: GatesInput): Base {
       text: setup.classifications.length === 0 ? 'None set.' : setup.classifications.map((id) => CLASSIFICATION_LABELS[id]).join(', '),
     },
     { label: 'Team', text: `${team.selected} of ${team.total} agents are selected for this DD.` },
+    // Named, so that a different team of the same size is a visible change, and the decision keeps which team it was taken on.
+    ...(team.members === undefined
+      ? []
+      : [{ label: 'Selected agents', text: team.members.length === 0 ? 'None.' : [...team.members].sort((a, b) => a.localeCompare(b, 'en')).join(', ') }]),
     {
       label: 'Data room',
       text: hasRoom
@@ -315,7 +318,7 @@ function releaseBase(input: GatesInput, evidence: GateView): Base {
 
 function finish(id: GateId, base: Base, input: GatesInput): GateView {
   const hashed = base.facts.filter((fact) => !(base.notHashed ?? []).includes(fact.label));
-  const factsHash = hashFacts(JSON.stringify({ facts: hashed, recommended: base.recommended, ...(base.hashExtra === undefined ? {} : { extra: base.hashExtra }) }));
+  const factsHash = hashFacts(JSON.stringify({ facts: hashed, recommended: base.recommended }));
   const own = input.decisions
     .filter((entry) => entry.gate === id)
     // Numbers grow with time, so the number alone puts the newest first (GD-10 after GD-9).

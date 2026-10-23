@@ -294,6 +294,24 @@ describe('GatesPanel: deciding', () => {
     expect(within(fresh).queryByText(/The facts changed while you were here/)).not.toBeInTheDocument();
   });
 
+  it('keeps saying the facts changed when they change a second time before the person chooses again', async () => {
+    const user = userEvent.setup();
+    const client = fakeClient(gatesResponse({ drafts: 3 }));
+    renderPanel(client);
+    const evidence = await card(EVIDENCE);
+    await user.click(within(evidence).getByRole('radio', { name: /^Ask for more information/ }));
+
+    for (const [drafts, text] of [[2, '2 draft findings are not decided.'], [1, '1 draft finding is not decided.']] as const) {
+      client.getGates.mockResolvedValue(ok(gatesResponse({ drafts })));
+      await factsChange();
+      await waitFor(async () => expect(within(await card(EVIDENCE)).getByText(text)).toBeInTheDocument());
+    }
+
+    const fresh = await card(EVIDENCE);
+    expect(within(fresh).getByText(/The facts changed while you were here/)).toBeInTheDocument();
+    expect(within(fresh).getAllByRole('radio').every((radio) => !(radio as HTMLInputElement).checked)).toBe(true);
+  });
+
   it('does not say the facts changed to a person who had typed and chosen nothing', async () => {
     const client = fakeClient(gatesResponse({ drafts: 3 }));
     renderPanel(client);

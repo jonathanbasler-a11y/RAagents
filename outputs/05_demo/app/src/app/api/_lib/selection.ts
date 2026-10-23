@@ -25,8 +25,9 @@ export function currentSelection(deps: ApiDeps): SelectionResponse {
 
 /** The team as the gates show it: how many agents are selected for this DD, out of the whole roster. */
 export function currentTeam(deps: ApiDeps): GateTeam {
-  const members = currentSelection(deps).selected;
-  return { selected: members.length, total: deps.registry.listAgents().length, members };
+  const ids = new Set(currentSelection(deps).selected);
+  const agents = deps.registry.listAgents();
+  return { selected: ids.size, total: agents.length, members: agents.filter((agent) => ids.has(agent.id)).map((agent) => agent.name) };
 }
 
 /** GET /api/selection */

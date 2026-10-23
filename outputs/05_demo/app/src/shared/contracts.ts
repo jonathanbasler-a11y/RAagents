@@ -1570,10 +1570,7 @@ export type GateOption = (typeof GATE_OPTIONS)[number];
 export interface GateTeam {
   selected: number;
   total: number;
-  /**
-   * Which agents are selected. Only the scope gate's hash reads it (a different team of the same size is another
-   * view); it is never shown.
-   */
+  /** The names of the selected agents: the scope gate lists them as a fact, so a swap of the same size is seen and kept. */
   members?: readonly string[];
 }
 

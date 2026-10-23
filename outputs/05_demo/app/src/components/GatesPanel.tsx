@@ -132,7 +132,7 @@ function GateCard({ gate }: { gate: GateView }) {
     setSeen({ hash: gate.factsHash, decisions: gate.decisions.length });
     setLocalError(null);
     if (decided) setReason('');
-    setFactsMoved(!decided && (option !== null || reason.trim() !== ''));
+    setFactsMoved(!decided && (factsMoved || option !== null || reason.trim() !== ''));
     setOption(null);
   }
   const needsReason = option !== null && option !== gate.recommended;
@@ -159,7 +159,7 @@ function GateCard({ gate }: { gate: GateView }) {
       <p>{gate.question}</p>
       {factsMoved && (
         <p className="note" role="status">
-          The facts changed while you were here. What you wrote is kept; choose again.
+          The facts changed while you were here. Your choice was cleared and anything you wrote is kept: choose again.
         </p>
       )}
       {gate.status === 'outdated' && (

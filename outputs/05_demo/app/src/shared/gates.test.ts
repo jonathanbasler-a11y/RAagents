@@ -335,7 +335,7 @@ describe('a scope gate that is stopped or paused leads the later gates', () => {
     }
   });
 
-  it('uses the latest scope decision: stopping and then deciding go ahead frees the later gates', () => {
+  it('uses the latest scope decision: stopping and then deciding go ahead frees the later gates, and says it was reopened', () => {
     const first = buildGates(baseInput());
     const stop = decision(gateOf(first, 'scope'), 'stop', { id: 'GD-1', reason: 'x', createdAt: '2026-10-22T09:00:00.000Z' });
     const again = decision(gateOf(first, 'scope'), 'proceed', { id: 'GD-2', createdAt: '2026-10-22T10:00:00.000Z' });
@@ -343,7 +343,43 @@ describe('a scope gate that is stopped or paused leads the later gates', () => {
     const view = gateOf(buildGates(baseInput({}, { decisions: [stop, again] })), 'evidence');
 
     expect(view.recommended).toBe('proceed');
-    expect(factText(view, 'Scope gate')).toBeUndefined();
+    expect(factText(view, 'Scope gate')).toBe('Decided: go ahead, after it was stopped.');
+  });
+
+  it('says paused, not stopped, when it was paused and then reopened', () => {
+    const first = buildGates(baseInput());
+    const held = decision(gateOf(first, 'scope'), 'pause', { id: 'GD-1', reason: 'x' });
+    const again = decision(gateOf(first, 'scope'), 'proceed', { id: 'GD-2' });
+
+    expect(factText(gateOf(buildGates(baseInput({}, { decisions: [held, again] })), 'release'), 'Scope gate')).toBe('Decided: go ahead, after it was paused.');
+  });
+
+  it('keeps the later gates outdated after scope is reopened: what was decided before the stop does not come back', () => {
+    const first = buildGates(baseInput());
+    const evidenceBefore = decision(gateOf(first, 'evidence'), 'proceed', { id: 'GD-1' });
+    const releaseBefore = decision(gateOf(buildGates(baseInput({}, { decisions: [evidenceBefore] })), 'release'), 'proceed', { id: 'GD-2' });
+    const stop = decision(gateOf(first, 'scope'), 'stop', { id: 'GD-3', reason: 'x' });
+    const again = decision(gateOf(first, 'scope'), 'proceed', { id: 'GD-4' });
+    const earlier = [evidenceBefore, releaseBefore];
+    expect(gateOf(buildGates(baseInput({}, { decisions: earlier })), 'release').status).toBe('decided');
+
+    const views = buildGates(baseInput({}, { decisions: [...earlier, stop, again] }));
+
+    expect(gateOf(views, 'evidence').status).toBe('outdated');
+    expect(gateOf(views, 'release').status).toBe('outdated');
+    // A decision taken after the reopening counts again.
+    const evidenceAfter = decision(gateOf(views, 'evidence'), 'proceed', { id: 'GD-5' });
+    expect(gateOf(buildGates(baseInput({}, { decisions: [...earlier, stop, again, evidenceAfter] })), 'evidence').status).toBe('decided');
+  });
+
+  it('does not lead after scope was decided ask for more information', () => {
+    const plain = buildGates(baseInput());
+    const asked = scopeThen('seek_more');
+
+    for (const id of ['evidence', 'release'] as const) {
+      expect(gateOf(asked, id).recommended, id).toBe(gateOf(plain, id).recommended);
+      expect(factText(gateOf(asked, id), 'Scope gate'), id).toBeUndefined();
+    }
   });
 
   it('makes an evidence decision taken earlier outdated once scope is stopped', () => {
@@ -355,21 +391,38 @@ describe('a scope gate that is stopped or paused leads the later gates', () => {
   });
 });
 
-describe('the team behind the scope gate\'s hash', () => {
+describe('the team behind the scope gate', () => {
   const team = (members?: string[]) => ({ selected: 2, total: 25, ...(members === undefined ? {} : { members }) });
-  const scopeHash = (extra: Partial<GatesInput>) => gateOf(buildGates(baseInput({}, extra)), 'scope').factsHash;
+  const scopeView = (extra: Partial<GatesInput>) => gateOf(buildGates(baseInput({}, extra)), 'scope');
 
-  it('changes when a different agent is selected, though the count is the same, and not when only the order changes', () => {
-    expect(scopeHash({ team: team(['cmcreg', 'reglead']) })).not.toBe(scopeHash({ team: team(['o-pv', 'reglead']) }));
-    expect(scopeHash({ team: team(['cmcreg', 'reglead']) })).toBe(scopeHash({ team: team(['reglead', 'cmcreg']) }));
+  it('shows the selected agents as a fact, so a swap of the same size is visible and changes the hash', () => {
+    const first = scopeView({ team: team(['Carlos', 'Rosa']) });
+    const swapped = scopeView({ team: team(['Priya', 'Rosa']) });
+
+    expect(factText(first, 'Selected agents')).toBe('Carlos, Rosa');
+    expect(factText(swapped, 'Selected agents')).toBe('Priya, Rosa');
+    expect(factText(first, 'Team')).toBe('2 of 25 agents are selected for this DD.');
+    expect(first.factsHash).not.toBe(swapped.factsHash);
+    expect(first.factsHash).toBe(hashFacts(JSON.stringify({ facts: first.facts, recommended: first.recommended })));
   });
 
-  it('shows the count only, as before, and leaves the hash as it was when no members are given', () => {
-    const view = gateOf(buildGates(baseInput({}, { team: team(['cmcreg', 'reglead']) })), 'scope');
+  it('lists them in alphabetical order, so the order they are given in changes nothing', () => {
+    const one = scopeView({ team: team(['Rosa', 'Carlos']) });
+    const other = scopeView({ team: team(['Carlos', 'Rosa']) });
 
-    expect(factText(view, 'Team')).toBe('2 of 25 agents are selected for this DD.');
-    expect(JSON.stringify(view.facts)).not.toContain('cmcreg');
-    expect(scopeHash({ team: team() })).toBe(scopeHash({ team: team() }));
+    expect(factText(one, 'Selected agents')).toBe('Carlos, Rosa');
+    expect(one.factsHash).toBe(other.factsHash);
+  });
+
+  it('says so when nobody is selected', () => {
+    expect(factText(scopeView({ team: { selected: 0, total: 25, members: [] } }), 'Selected agents')).toBe('None.');
+  });
+
+  it('adds nothing, and leaves the hash as it was, when no members are given', () => {
+    const view = scopeView({ team: team() });
+
+    expect(view.facts.some((fact) => fact.label === 'Selected agents')).toBe(false);
+    expect(view.factsHash).toBe(hashFacts(JSON.stringify({ facts: view.facts, recommended: view.recommended })));
   });
 });
 

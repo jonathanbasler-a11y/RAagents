@@ -79,6 +79,11 @@ describe('GET /api/gates', () => {
     const after = gateOf(await read(api), 'scope');
 
     expect(after.facts.find((fact) => fact.label === 'Team')?.text).toBe(before.facts.find((fact) => fact.label === 'Team')?.text);
+    // The swap is visible, and the decision kept the agents it was taken on.
+    const agents = (view: GateView) => view.facts.find((fact) => fact.label === 'Selected agents')?.text;
+    expect(agents(before)).toBeTruthy();
+    expect(agents(after)).not.toBe(agents(before));
+    expect(after.decisions[0].facts.find((fact) => fact.label === 'Selected agents')?.text).toBe(agents(before));
     expect(after.status).toBe('outdated');
   });
 
