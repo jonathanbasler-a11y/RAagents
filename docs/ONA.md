@@ -1,6 +1,6 @@
 # Running the hybrid team chat app in Ona
 
-Each person runs their own Ona environment with their own LLM credentials. Nobody shares a key, and nobody shares an environment.
+Each person runs their own Ona environment and adds the key as their own user secret. The key is either your own, or a project key the project owner has officially given you; nobody shares an environment. Colleagues who only work in Ona can follow [ONA-FOR-COLLEAGUES.md](ONA-FOR-COLLEAGUES.md).
 
 ## 1. Open an environment
 

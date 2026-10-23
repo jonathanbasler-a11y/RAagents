@@ -103,3 +103,27 @@ In live mode, everything you type and the documents of the practice data room go
 If you see "Not reachable", the VPN is off. If you see "Wrong key", check that nothing is typed before or after the key on that one line. Tell me what does not work.
 
 [YOUR NAME]
+
+---
+
+## 4. For a colleague who can only use Ona
+
+For someone whose computer only lets them work in Ona, with Ona's agent to install and change the app. The step-by-step guide is `docs/ONA-FOR-COLLEAGUES.md` in the repository. Send the key, the gateway address and the model name in a separate private message, never with this one.
+
+**Subject:** The demo in Ona: open, add three secrets, probe, start
+
+Hi [FIRST NAME],
+
+since you work in Ona, here is how to run the demo there and change it with Ona's agent. Open the repository ([REPOSITORY LINK]) in Ona and follow the file `docs/ONA-FOR-COLLEAGUES.md`. The short version:
+
+1. Start an environment and wait for "Install app dependencies" to finish.
+2. In Ona's settings add three **user** secrets: `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL`. I am sending you the values in a separate message. The key is the project key; you are allowed to use it. Restart the environment afterwards.
+3. Run the task "Probe the LLM gateway". If it says `OK`, go on. If it says `dns` or `timeout`, Ona cannot reach the gateway from the cloud; send me the output (it holds no key) and we will ask IT.
+4. Start the service "Hybrid team chat app", run `ona environment port open 3000 --admission creator_only --name hybrid-team`, and open the link.
+5. To change the app, give Ona's agent the briefing in section 5 of the guide first.
+
+Two rules: never type the key into the agent's chat or into a file, and keep the port creator-only.
+
+I have not run the app in Ona myself yet, so please tell me exactly what you see at each step.
+
+[YOUR NAME]
