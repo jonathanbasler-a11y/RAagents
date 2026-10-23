@@ -22,7 +22,7 @@
 | A confidential-workspace rule and labels: every reply says "Model output, not sourced"; the rule that no agent decides a reserved question is briefed in the prompts, not enforced in code | A recorded fallback of the live demo (to be made, V4) |
 | A data room with an as-of date; a document dated after that date is refused and never shown to the agents; a withdrawal keeps the record | Public sources and tools for the agents (today documents ride on each turn, and only when a data room is loaded) |
 | A fictional practice case with an answer key, and an evaluation harness with a judge from a different model family | A check that a claim follows from its quote (open question 28): the quote is proved real, not that the claim follows from it |
-| A demo copy that is kept stable while development goes on (version 11, commit b1282e1: the data room, the findings register, the checklist and the briefing; the gates are on `main` but not yet in the stable copy: V3) | Provisional findings; correcting a decision once made; a dated snapshot of the briefing |
+| A demo copy that is kept stable while development goes on (version 12, commit d9c23c5: everything above, the gates included: V3) | Provisional findings; correcting a decision once made; a dated snapshot of the briefing |
 | A findings register (about 2 minutes in the demo, step 9b, needs the real model): a person asks an agent in its own room to propose findings; code keeps a claim only with a quote word for word in a document the agent was shown, and the rest become open questions; a person accepts or rejects each draft once | |
 | A checklist of six items in four distinct states (checked, checked: not applicable, not checked, could not check): "checked" is possible only with an accepted finding behind it, and code and database both refuse it otherwise | |
 | A briefing assembled by code, with no model, from accepted, tagged findings and the checklist: it says first what is missing and says it is not a decision; the inputs for the probability of technical and regulatory success (PTRS) are listed, and the app computes no number | |
@@ -192,7 +192,7 @@ Note on this cut (my proposal): the 3-minute core leaves out steps 9 to 9e (the 
 - Steps 9b to 9d (findings, checklist, briefing: about 2, 1.5 and 2 minutes, and they need the real model) add to either route and do not fit the 4.5-minute slot unless something else is cut (my arithmetic from the guide's estimates)
 - Do step 9 (data room) last but one, with 9b straight after it in the same room: a data room, once started, cannot be removed from that workspace. The briefing (9d) and the gates (9e) say the most after the findings (9b) and the checklist (9c)
 - Before going on: smoke check shows OK, warm-up question answered by the real model (a reply starting "Fake reply from" means rehearsal mode), "New conversation" in each room, one browser tab per room, DD setup back at Phase 2
-- The stable demo copy is version 11 (commit b1282e1). It includes steps 9 to 9d (data room, findings, checklist, briefing) but **not the gates (step 9e)**: the gates are on `main`, and promoting them into the stable copy needs the owner's word (V21). Route B needs that promotion first. Confirm on the day which version is shown (V3)
+- The stable demo copy is version 12 (commit d9c23c5). It includes steps 9 to 9d (data room, findings, checklist, briefing) and the gates (step 9e), so both routes can be run from it (V21). Confirm on the day which version is shown (V3)
 
 **Pre-recorded fallback**
 - A screen recording of one full rehearsed run on the real model, labelled **PRE-RECORDED** on screen and announced aloud [placeholder: recording to be made, V4]
@@ -342,7 +342,7 @@ Note on this cut (my proposal): the 3-minute core leaves out steps 9 to 9e (the 
 
 **On the slide**
 - Trust: confidential-workspace rule, labels on every reply, an append-only record of every human decision with the facts as they were, the always-human list on the Gates page, the rule that no agent decides a reserved question (briefed in the prompts for the agents); login, walls between people, a recorded human decision tied to a named person (not built)
-- Evidence: data room with as-of wall and withdrawal (built); findings register with "No source, no finding" enforced in code for findings (built and merged; in the stable demo copy, version 11); a check that the claim follows from the quote (not built, open question 28)
+- Evidence: data room with as-of wall and withdrawal (built); findings register with "No source, no finding" enforced in code for findings (built and merged; in the stable demo copy, version 12); a check that the claim follows from the quote (not built, open question 28)
 - Agent library: 25 specifications with owners and autonomy levels (built); real sources and tools (not built)
 - Orchestration: routing by name and topic, summary after two or more contributions, a trace of each turn, adding and removing agents from the team chat, three gates for DD (built); the full eight-step workflow (not built)
 - Playbook and human layers: DD setup decides the team, owner roles on each card (built); accept or reject and tag of each draft finding, checklist states, and a decision and dissent at each gate, all by a person (built, stamped "person (local, not authenticated)"); four-state checklist and briefing built by code from accepted findings (built); a general playbook object a second use case could use (not built)
@@ -374,7 +374,7 @@ We expect that, for a reactive DD of an external asset, a regulatory lead workin
 
 - The model gateway is unreachable because the VPN is off or dropped: ask again after reconnecting; after a second failure switch to the labelled recording
 - A reply starts "Fake reply from": the app is on rehearsal settings; stop and restart the live demo before going on
-- The demo copy shown is older than the step needs: version 11 has no Gates page (step 9e), and an earlier copy lacks the checklist or the briefing (9c, 9d), the findings register (9b) or the data room (9). The stable copy was version 11 on 2026-10-23 (V3). Steps 9 to 9d also need the real model: never show them in rehearsal mode
+- The demo copy shown is older than the step needs: version 11 and earlier have no Gates page (step 9e), and an earlier copy lacks the checklist or the briefing (9c, 9d), the findings register (9b) or the data room (9). The stable copy has been version 12 since 2026-10-23 (V3). Steps 9 to 9d also need the real model: never show them in rehearsal mode
 - A step shows an empty or thin page because the step before it was skipped: the checklist, the briefing and the gates build on the findings you accepted in step 9b
 - A turn with a summary makes three model calls in a row and runs long: talk while it streams; ask for a short answer
 - The model slips: states something as checked, gives a figure, or makes a call. Say so out loud; it is the reason replies are labelled
@@ -392,7 +392,7 @@ We expect that, for a reactive DD of an external asset, a regulatory lead workin
 
 - **V1.** Slot length and whether questions fall inside it (open question 2). The deck assumes 25 minutes of talk.
 - **V2.** Demo timings are the guide's estimates. The guide says its prompts were not yet run end to end with the real model, while the decision log records later live checks; confirm with one timed rehearsal on the real model.
-- **V3.** The stable demo copy is version 11 (commit b1282e1), which includes the data room, the findings register, the checklist and the briefing (steps 9 to 9d of `LIVE-DEMO.md`) but not the gates (step 9e). On 2026-10-22 the running copy answered real questions (see `DECISIONS.md`). A running copy can be restarted or replaced, so confirm on the day which version is shown before using steps 9 to 9e.
+- **V3.** The stable demo copy is version 12 (commit d9c23c5), which includes every step of `LIVE-DEMO.md`, the gates (9e) among them. On 2026-10-23 it answered a real question after the swap, and the same build passed the 8-step live walkthrough on the spare port (see `DECISIONS.md`). A running copy can be restarted or replaced, so confirm on the day which version is shown.
 - **V4.** No pre-recorded fallback exists yet; the guide lists it as a checklist item.
 - **V5.** The quote "if we can't convince people to use it, what is the point" is taken from the project brief's risk list; I did not find it word for word in the transcript.
 - **V6.** "About 4 months" to the end of the cohort comes from the transcript ("let's say 4 months"); the exact end date is not known.
@@ -410,4 +410,4 @@ We expect that, for a reactive DD of an external asset, a regulatory lead workin
 - **V18.** Several claims in this deck about what the agents do in tests (for example that an agent said "not found in the data room" and cited documents by id) come from the decision log, not from my own run; I did not run the app.
 - **V19.** The "about 15 seconds" per speaker hand-over is my planning estimate; it has not been timed.
 - **V20.** Slide 8's two routes (A, the team first; B, the human decisions) and their timings are my arithmetic from the guide's estimates, not timed on the real model, and the choice between them is the owner's.
-- **V21.** The gates were merged into `main` on 2026-10-23 but are not in the stable demo copy; promoting them needs the owner's word.
+- **V21.** Closed on 2026-10-23: the gates were promoted into the stable demo copy (version 12) on the owner's word. Kept here so the numbering stays stable.
