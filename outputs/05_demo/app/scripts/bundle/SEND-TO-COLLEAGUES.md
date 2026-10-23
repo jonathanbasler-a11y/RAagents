@@ -69,3 +69,37 @@ If you try it with your team, I would like to hear what was useful, what was con
 
 Best regards,
 [YOUR NAME]
+
+---
+
+## 3. For colleagues on the same project, on Windows, with the project key
+
+Use this when the people you send it to are officially allowed to use a project key for the model gateway, and are inside your company. Build the ZIP with a preset (`npm run bundle -- --only windows --preset <file>`, see `--help`) so that the gateway's address and the model name are already filled in; then each person only has to paste the key.
+
+How to send it safely:
+
+- **Send the key in a separate message from the link,** in a channel the company already trusts for secrets (a password manager share, or a private chat message). Never put it in the ZIP, in an e-mail with the link, or in a shared folder. The ZIP never holds a key: the builder refuses one.
+- Send the ZIP only to people who are allowed to use that key, in a way you can switch off later.
+- Each person must be on the company network or VPN for live answers: the gateway cannot be reached from outside.
+- If the key is ever pasted somewhere it should not be, ask whoever owns the project key to replace it.
+
+**Subject:** The demo on your PC: unzip, click, paste the project key
+
+Hi [FIRST NAME],
+
+here is the Digital Human Hybrid Team demo: 25 AI agents that help with a regulatory due diligence, on a fictional case. It runs on your own PC, in your browser.
+
+Download (Windows): [DOWNLOAD LINK]
+
+1. Right-click the ZIP, choose Properties, tick **Unblock** at the bottom and click OK. Then right-click the ZIP, choose Extract All, to a short place such as the Desktop, and open the folder "HybridDemo".
+2. Double-click **Start practice demo** first. Your browser opens the demo. This checks that it works on your PC and needs no key and no network. If Windows warns you, click "More info", then "Run anyway". Double-click **Stop demo** when you are done.
+3. For real AI answers: connect to the company VPN, then double-click **Start live demo**. Notepad opens a file called my-settings.env. The gateway address and the model are already filled in. On the line that says `LLM_API_KEY=` paste the project key I am sending you in a separate message: directly after the equals sign, with no space and no quotes. Save the file, close Notepad and double-click **Start live demo** again.
+4. When you are done, double-click **Stop demo**.
+
+The file "READ ME FIRST" in the folder says "your own key". For you that means the project key I sent. You are allowed to use it. Please keep it to yourself: do not forward my message, the ZIP or the settings file, and do not save the key anywhere else.
+
+In live mode, everything you type and the documents of the practice data room go to the company model gateway. Use the fictional case or public documents only; nothing confidential.
+
+If you see "Not reachable", the VPN is off. If you see "Wrong key", check that nothing is typed before or after the key on that one line. Tell me what does not work.
+
+[YOUR NAME]

@@ -9,7 +9,7 @@
 # The address of your model gateway. It starts with https:// and ends with the version part (for example /v1).
 LLM_BASE_URL=
 
-# Your own key for that gateway. Never borrow someone else's key.
+# The key you were given for that gateway. Keep it to yourself and do not pass it on.
 LLM_API_KEY=
 
 # The exact name of the model, as your gateway calls it. No "latest" names.
