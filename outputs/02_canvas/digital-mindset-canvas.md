@@ -39,7 +39,7 @@ Two further kinds of line are not content points:
 - **Out of scope for DD:** valuation, commercial and market access. Reimbursement and HTA risks are flagged and handed to the right partners, not assessed. (decided)
 - **Not a verdict.** The output is a structured briefing, not "buy" or "don't buy". (team; this is the team's own line in Box 8 discussion, repeated here so the scope is clear)
 
-**Where we are, 2026-10-23.** The DD workspace is built. It is the app's landing page. Its DD setup (stage and asset classification) decides which of the 25 agents are on the team, and the team chat uses the same team; people can also add or remove agents from the team chat itself. The inspections, disaster and rapid-response playbooks are concepts only; nothing for them is built. The set of 6 to 8 agents the MVP builds in depth is not chosen (open question 12); a proposal is in `outputs/01_concept/mvp-agent-selection.md`.
+**Where we are, 2026-10-23.** The DD workspace is built. It is the app's landing page. Its DD setup (stage and asset classification) decides which of the 25 agents are on the team, and the team chat uses the same team; people can also add or remove agents from the team chat itself. The inspections, disaster and rapid-response playbooks are concepts only; nothing for them is built. The set of 6 to 8 agents the MVP builds in depth is not chosen (open question 12); a proposal is in `01_concept/mvp-agent-selection.md`.
 
 ### Box 2. Future results
 
@@ -251,7 +251,7 @@ The last column is **my proposal** for the team to confirm or change. None of it
 | 9 | Whether to use the words "pilot" or "experiment" for the staged path. | 24 | Say "staged path" in the room and use "experiment" in documents, as the other team deliberately avoids "pilot", until the sponsor says otherwise. |
 | 10 | The rules for decisions only people make, and for disagreement between the lead and a specialist. | 22 | **Answered by the owner on 2026-10-22 and built in the gates:** the lead decides; a dissent is recorded under the decision and never blocks it; going ahead on incomplete evidence is allowed with a recorded reason. What is left: who counts as "the lead" once there is a login (question 34). |
 | 11 | Who the senior stakeholders are, and the decision we ask them for. | 7 | Ask the cohort facilitator who will attend. Until then the deck's default ask is its Option A: an executive sponsor, a governance partner, and closed DD packages released for replay. |
-| 12 | Which 6 to 8 agents the MVP builds in depth. | 12 | The eight in `outputs/01_concept/mvp-agent-selection.md`, with the open points listed there (the orchestrator, Carlos or Cyrus, medical affairs). |
+| 12 | Which 6 to 8 agents the MVP builds in depth. | 12 | The eight in `01_concept/mvp-agent-selection.md`, with the open points listed there (the orchestrator, Carlos or Cyrus, medical affairs). |
 | 13 | Which public asset with a known outcome the demo uses (a measurable "issues found" depends on it). | 5 | Choose by three tests: the model does not already know the outcome (try it with no documents), enough public sources are dated before the outcome, and the outcome is not a headline. Agree the tests first, then list candidates. No asset is named here. |
 
 **Points to settle in the canvas itself (new; not yet in `OPEN_QUESTIONS.md`)**
