@@ -16,6 +16,15 @@ import {
 // whether the playbook wants an agent for a given setup. A person's switch is the current selection;
 // it differs from the rule only where the person overrode it.
 
+/** The words for an asset classification, written once for the page, the team list and the gates' facts. */
+export const CLASSIFICATION_LABELS: Record<ClassificationId, string> = {
+  orphan: 'Orphan',
+  paed: 'Paediatric requirements',
+  exp: 'Expedited programme',
+  combo: 'Combination product',
+  cdx: 'Companion diagnostic',
+};
+
 /** What a new workspace starts with: Phase 2, orphan and paediatric. It gives the 14 default agents. */
 export const DEFAULT_DD_SETUP: DdSetup = { stage: 'Phase 2', classifications: ['orphan', 'paed'] };
 

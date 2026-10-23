@@ -4,13 +4,13 @@ import type {
   AgentTurnState,
   AutonomyLevel,
   ChatErrorCode,
-  ClassificationId,
   ContributionRole,
   ChecklistState,
   FindingBasis,
   FindingCategory,
   FindingConfidence,
   FindingStatus,
+  GateStatus,
   ProposalTrace,
   NotConsultedReason,
   PublicAgent,
@@ -21,7 +21,7 @@ import type { DataRoomTrace } from '@/shared/contracts';
 import { CHECKLIST_STATE_WORDS, FINDING_CATEGORY_WORDS } from '@/shared/checklist';
 import { FINDING_BASIS_WORDS, FINDING_CONFIDENCE_WORDS } from '@/shared/findings';
 import type { DocumentTurnState } from '@/shared/data-room';
-import type { SelectionReason } from '@/shared/dd-setup';
+import { CLASSIFICATION_LABELS, type SelectionReason } from '@/shared/dd-setup';
 
 /** Display text written by code. Nothing here comes from a model. */
 
@@ -160,12 +160,13 @@ export const AUTONOMY_LABELS: Record<AutonomyLevel, string> = {
   3: 'L3 Delegate under oversight',
 };
 
-export const CLASSIFICATION_LABELS: Record<ClassificationId, string> = {
-  orphan: 'Orphan',
-  paed: 'Paediatric requirements',
-  exp: 'Expedited programme',
-  combo: 'Combination product',
-  cdx: 'Companion diagnostic',
+export { CLASSIFICATION_LABELS };
+
+/** What a gate's status says, in words (a decision was taken on facts that still hold, or on facts that have changed since). */
+export const GATE_STATUS_LABELS: Record<GateStatus, string> = {
+  not_decided: 'Not decided yet',
+  decided: 'Decided',
+  outdated: 'Decided on earlier facts',
 };
 
 export function triggerText(trigger: AgentTrigger | undefined): string | null {

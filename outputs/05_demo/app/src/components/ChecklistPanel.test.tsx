@@ -41,6 +41,9 @@ function clientWith(initial: ChecklistResponse = checklist()) {
     getChecklist: vi.fn<ChatApi['getChecklist']>().mockResolvedValue(ok(initial)),
     getBriefing: vi.fn<ChatApi['getBriefing']>(),
     submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
+    getGates: vi.fn<ChatApi['getGates']>(),
+    submitGateDecision: vi.fn<ChatApi['submitGateDecision']>(),
+    submitGateDissent: vi.fn<ChatApi['submitGateDissent']>(),
   };
 }
 

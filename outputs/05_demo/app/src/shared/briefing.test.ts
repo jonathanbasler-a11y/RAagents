@@ -11,6 +11,7 @@ import {
   type FindingTag,
   type OpenQuestion,
 } from './contracts';
+import { baseInput, decision, dissent, gateOf, gatesResponse } from './gates-fixtures';
 
 // The briefing is built by code from the register, the tags and the checklist. It lists only what a person accepted and
 // tagged, says plainly what is missing, keeps the four checklist states apart, and contains none of the decisions
@@ -259,6 +260,77 @@ describe('buildBriefing: what it says is missing', () => {
   });
 });
 
+describe('buildBriefing: the gate decisions', () => {
+  const views = (extra: Parameters<typeof baseInput>[1] = {}) => gatesResponse({}, extra).gates;
+  const first = views();
+
+  it('has no gate rows when no gates were given', () => {
+    expect(build().gateDecisions).toEqual([]);
+  });
+
+  it('has the three gates, in order, each not decided when nobody decided', () => {
+    const rows = build({ gates: first }).gateDecisions;
+
+    expect(rows.map((row) => [row.gate, row.title, row.status, row.latest])).toEqual([
+      ['scope', 'Scope and activation', 'not_decided', null],
+      ['evidence', 'The evidence is enough', 'not_decided', null],
+      ['release', 'Release the briefing', 'not_decided', null],
+    ]);
+  });
+
+  it('carries the latest decision of a gate, whether it followed the recommended call, and its reason', () => {
+    const early = decision(gateOf(first, 'evidence'), 'pause', { id: 'GD-1', createdAt: '2026-10-21T09:00:00.000Z', reason: 'Waiting for the licensor.' });
+    const late = decision(gateOf(first, 'evidence'), 'proceed', { id: 'GD-2', createdAt: '2026-10-22T09:00:00.000Z' });
+
+    const row = build({ gates: views({ decisions: [early, late] }) }).gateDecisions.find((entry) => entry.gate === 'evidence');
+
+    expect(row?.status).toBe('decided');
+    expect(row?.latest).toEqual({
+      id: 'GD-2',
+      option: 'proceed',
+      recommended: 'proceed',
+      reason: null,
+      actor: LOCAL_PERSON,
+      createdAt: '2026-10-22T09:00:00.000Z',
+    });
+  });
+
+  it('carries the dissents under the latest decision, with the function and the reason, and not those under an earlier one', () => {
+    const early = decision(gateOf(first, 'scope'), 'pause', { id: 'GD-1', createdAt: '2026-10-21T09:00:00.000Z', reason: 'x' });
+    const late = decision(gateOf(first, 'scope'), 'proceed', { id: 'GD-2', createdAt: '2026-10-22T09:00:00.000Z' });
+    const notes = [dissent(early, { role: 'Quality', reason: 'Old.' }), dissent(late, { role: 'CMC regulatory agent owner', reason: 'The site data is not in yet.' })];
+
+    const row = build({ gates: views({ decisions: [early, late], dissents: notes }) }).gateDecisions.find((entry) => entry.gate === 'scope');
+
+    expect(row?.dissents).toEqual([{ id: notes[1].id, role: 'CMC regulatory agent owner', reason: 'The site data is not in yet.' }]);
+  });
+
+  it('warns about a gate decided on facts that have since changed, naming it, and about nothing else', () => {
+    const stale = decision(gateOf(first, 'scope'), 'proceed', { factsHash: 'older-facts' });
+    const stale2 = decision(gateOf(first, 'release'), 'seek_more', { factsHash: 'older-facts' });
+
+    const one = build({ gates: views({ decisions: [stale] }) }).warnings.find((warning) => warning.code === 'gate_outdated');
+    const two = build({ gates: views({ decisions: [stale, stale2] }) }).warnings.find((warning) => warning.code === 'gate_outdated');
+
+    expect(one?.message).toBe('A gate was decided on facts that have changed since: Scope and activation.');
+    expect(two?.message).toBe('Gates were decided on facts that have changed since: Scope and activation, Release the briefing.');
+  });
+
+  it('does not warn when every decided gate is current, or when nothing is decided', () => {
+    const current = decision(gateOf(first, 'scope'), 'proceed');
+
+    expect(codes({ gates: first })).not.toContain('gate_outdated');
+    expect(codes({ gates: views({ decisions: [current] }) })).not.toContain('gate_outdated');
+  });
+
+  it('does not change anything else in the briefing', () => {
+    const without = { ...build(mixed()), gateDecisions: [] };
+    const withGates = { ...build({ ...mixed(), gates: first }), gateDecisions: [] };
+
+    expect(withGates).toEqual(without);
+  });
+});
+
 describe('buildBriefing: it is the same every time', () => {
   it('gives equal results for equal input, and does not change its input', () => {
     const given = input(mixed());
@@ -285,6 +357,38 @@ describe('briefingToMarkdown', () => {
     expect(text).toMatch(/This is a briefing, not a decision\./);
     expect(text).toMatch(/Deal-breakers, the overall assessment and the recommendation are reserved for people\./);
     expect(text).toMatch(/what the seller states, not verified fact/);
+  });
+
+  it('puts "Gate decisions" right after "Before you read" when gates were given, and has no such section when they were not', () => {
+    const withGates = [...markdown({ ...mixed(), gates: gatesResponse().gates }).matchAll(/^## (.+)$/gm)].map((match) => match[1]);
+    const without = [...markdown(mixed()).matchAll(/^## (.+)$/gm)].map((match) => match[1]);
+
+    expect(withGates.slice(0, 3)).toEqual(['Before you read', 'Gate decisions', 'What was checked']);
+    expect(without).not.toContain('Gate decisions');
+  });
+
+  it('writes each gate: not decided, decided with who, when, whether it followed the call and why, or decided on earlier facts', () => {
+    const first = gatesResponse().gates;
+    const followed = decision(gateOf(first, 'scope'), 'proceed', { id: 'GD-1', createdAt: '2026-10-22T09:00:00.000Z' });
+    const differed = decision(gateOf(first, 'evidence'), 'proceed', { id: 'GD-2', createdAt: '2026-10-22T09:30:00.000Z', recommended: 'seek_more', reason: 'The seller sends the rest on Friday.' });
+    const stale = decision(gateOf(first, 'release'), 'seek_more', { id: 'GD-3', createdAt: '2026-10-22T10:00:00.000Z', factsHash: 'older-facts' });
+    const note = dissent(followed, { role: 'CMC regulatory agent owner', reason: 'The site data is not in yet.' });
+
+    const text = markdown({ gates: gatesResponse({}, { decisions: [followed, differed, stale], dissents: [note] }).gates });
+    const part = text.slice(text.indexOf('## Gate decisions'), text.indexOf('## What was checked'));
+
+    expect(part).toContain('- **Scope and activation**: Decided: Go ahead, the recommended call, on 2026-10-22 by person (local, not authenticated).');
+    expect(part).toContain('  - Dissent from CMC regulatory agent owner: The site data is not in yet.');
+    expect(part).toContain('- **The evidence is enough**: Decided: Go ahead, not the recommended call (Ask for more information), on 2026-10-22 by person (local, not authenticated). Reason: The seller sends the rest on Friday.');
+    expect(part).toContain('- **Release the briefing**: Decided on earlier facts: Ask for more information, on 2026-10-22 by person (local, not authenticated). The facts changed since; decide again.');
+  });
+
+  it('says a gate nobody decided is not decided, and that gate decisions are about the process, not the deal', () => {
+    const text = markdown({ gates: gatesResponse().gates });
+    const part = text.slice(text.indexOf('## Gate decisions'), text.indexOf('## What was checked'));
+
+    expect(part).toContain('- **Scope and activation**: Not decided yet.');
+    expect(part).toContain('Gate decisions are about the due diligence process. They are not a view on the deal.');
   });
 
   it('has the sections in order: before you read, what was checked, positives, risks, neutral, not yet sorted, open questions, PTRS, mitigations', () => {

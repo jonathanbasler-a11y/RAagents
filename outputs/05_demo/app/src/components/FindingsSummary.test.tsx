@@ -17,6 +17,9 @@ function renderSummary(result: ApiResult<FindingsResponse> | Promise<ApiResult<F
     getChecklist: vi.fn<ChatApi['getChecklist']>(),
     getBriefing: vi.fn<ChatApi['getBriefing']>(),
     submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
+    getGates: vi.fn<ChatApi['getGates']>(),
+    submitGateDecision: vi.fn<ChatApi['submitGateDecision']>(),
+    submitGateDissent: vi.fn<ChatApi['submitGateDissent']>(),
   };
   return render(
     <FindingsProvider client={client}>

@@ -17,7 +17,7 @@ const codeOf = (path: string) =>
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
     .replace(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g, "''");
 
-const BRIEFING_FILES = ['src/shared/briefing.ts', 'src/app/api/_lib/briefing.ts', 'src/app/api/briefing/route.ts', 'src/components/BriefingPanel.tsx', 'src/components/BriefingCard.tsx'];
+const BRIEFING_FILES = ['src/shared/briefing.ts', 'src/app/api/_lib/briefing.ts', 'src/app/api/briefing/route.ts', 'src/components/BriefingPanel.tsx', 'src/components/BriefingCard.tsx', 'src/shared/gates.ts'];
 
 describe('the briefing is built by code only', () => {
   it.each(BRIEFING_FILES)('%s imports no model client, no agent runner, no prompt builder and no store writer', (path) => {
@@ -32,7 +32,7 @@ describe('the briefing is built by code only', () => {
     const code = codeOf(path);
 
     expect(code).not.toMatch(/\b(runAgent|createLlmClient|complete|stream)\s*\(/);
-    expect(code).not.toMatch(/\.(proposeFindings|decideFinding|tagFinding|setChecklistState|createDataRoom|addDocument|withdrawDocument)\b/);
+    expect(code).not.toMatch(/\.(proposeFindings|decideFinding|tagFinding|setChecklistState|decideGate|recordGateDissent|createDataRoom|addDocument|withdrawDocument)\b/);
   });
 
   it('has a route that only reads: GET, and nothing that changes anything', () => {

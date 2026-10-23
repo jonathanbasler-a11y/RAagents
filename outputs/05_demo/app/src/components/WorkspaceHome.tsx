@@ -4,6 +4,7 @@ import type { ChatApi } from '@/client/chat-client';
 import { DataRoomSummary } from './DataRoomSummary';
 import { BriefingCard } from './BriefingCard';
 import { ChecklistSummary } from './ChecklistSummary';
+import { GatesSummary } from './GatesSummary';
 import { FindingsSummary } from './FindingsSummary';
 import { DdSetupPanel } from './DdSetupPanel';
 import { HomeLede } from './DocumentsNotes';
@@ -67,6 +68,7 @@ export function WorkspaceHome({ agents, client }: { agents: PublicAgent[]; clien
       <FindingsSummary />
       <ChecklistSummary />
       <BriefingCard />
+      <GatesSummary />
 
       <section className="sheet team-entry" aria-labelledby="team-entry-title">
         <div>

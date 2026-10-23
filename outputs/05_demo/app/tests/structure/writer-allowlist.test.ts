@@ -50,12 +50,15 @@ describe('only the executors write agent messages', () => {
 //   proposeFindings the only code that puts agent-drafted findings in the register: the one-to-one executor.
 //   tagFinding      the only code that sets a tag after the fact: the findings handler (accepting sets it through decideFinding);
 //   setChecklistState the only code that moves a checklist item: the checklist handler. Both are a person's action.
+//   decideGate and recordGateDissent: the only code that records a gate decision or a dissent: the gates handler. Both are a person's action.
 // Anything else calling them would create a finding, or decide one, without the checks or without a person.
 const REGISTER_WRITERS = [
   { writer: 'decideFinding', allowed: ['src/app/api/_lib/findings.ts'] },
   { writer: 'proposeFindings', allowed: ['src/server/chat/one-to-one.ts'] },
   { writer: 'tagFinding', allowed: ['src/app/api/_lib/findings.ts'] },
   { writer: 'setChecklistState', allowed: ['src/app/api/_lib/checklist.ts'] },
+  { writer: 'decideGate', allowed: ['src/app/api/_lib/gates.ts'] },
+  { writer: 'recordGateDissent', allowed: ['src/app/api/_lib/gates.ts'] },
 ] as const;
 
 describe.each(REGISTER_WRITERS)('only one module uses $writer', ({ writer, allowed }) => {

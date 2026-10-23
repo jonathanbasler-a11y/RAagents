@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react';
 import { chatClient, type ChatApi } from '@/client/chat-client';
 import { CHECKLIST_ITEMS, CHECKLIST_STATE_WORDS } from '@/shared/checklist';
+import { GATE_DECISIONS_NOTE, gateSentence } from '@/shared/briefing';
 import type { Briefing, BriefingFinding, BriefingResponse } from '@/shared/contracts';
 import { SOURCE_TYPE_LABELS } from '@/shared/data-room';
 import { FINDING_BASIS_WORDS, FINDING_CONFIDENCE_WORDS } from '@/shared/findings';
@@ -81,6 +82,24 @@ function Body({ briefing, generatedAt }: { briefing: Briefing; generatedAt: stri
           </ul>
         )}
       </Section>
+
+      {briefing.gateDecisions.length > 0 && (
+        <Section id="bf-gates" title="Gate decisions">
+          <p className="note">{GATE_DECISIONS_NOTE}</p>
+          <ul className="bf-list">
+            {briefing.gateDecisions.map((row) => (
+              <li key={row.gate}>
+                <strong>{row.title}</strong>: {gateSentence(row)}
+                {row.dissents.map((note) => (
+                  <p key={note.id} className="gate-dissent">
+                    Dissent from {note.role}: {note.reason}
+                  </p>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       <Section id="bf-checked" title="What was checked">
         <ul className="bf-list">

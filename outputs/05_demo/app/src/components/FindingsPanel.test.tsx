@@ -52,6 +52,9 @@ function setup(initial: FindingsResponse, room: DataRoomResponse = roomWith()) {
     getChecklist: vi.fn<ChatApi['getChecklist']>(),
     getBriefing: vi.fn<ChatApi['getBriefing']>(),
     submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
+    getGates: vi.fn<ChatApi['getGates']>(),
+    submitGateDecision: vi.fn<ChatApi['submitGateDecision']>(),
+    submitGateDissent: vi.fn<ChatApi['submitGateDissent']>(),
   };
   const dataRoomClient = {
     getDataRoom: vi.fn<ChatApi['getDataRoom']>().mockResolvedValue(ok(room)),
@@ -107,6 +110,9 @@ describe('FindingsPanel', () => {
       getChecklist: vi.fn<ChatApi['getChecklist']>(),
       getBriefing: vi.fn<ChatApi['getBriefing']>(),
       submitChecklistState: vi.fn<ChatApi['submitChecklistState']>(),
+      getGates: vi.fn<ChatApi['getGates']>(),
+      submitGateDecision: vi.fn<ChatApi['submitGateDecision']>(),
+      submitGateDissent: vi.fn<ChatApi['submitGateDissent']>(),
     };
     render(
       <FindingsProvider client={client}>

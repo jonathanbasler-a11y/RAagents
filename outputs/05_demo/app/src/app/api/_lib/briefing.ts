@@ -2,6 +2,7 @@ import 'server-only';
 import { briefingToMarkdown, buildBriefing } from '@/shared/briefing';
 import type { BriefingResponse } from '@/shared/contracts';
 import type { ApiDeps } from './deps';
+import { currentTeam } from './selection';
 import { apiError, json, logFailure } from './http';
 
 // The briefing over HTTP: read-only. It is built fresh from the register, the tags and the checklist on every request
@@ -24,6 +25,7 @@ export function getBriefing(request: Request, deps: ApiDeps): Response {
       tags: store.listFindingTags(workspaceId),
       openQuestions: store.listOpenQuestions(workspaceId),
       checklist: store.listChecklist(workspaceId),
+      gates: store.listGates(workspaceId, currentTeam(deps)),
     });
     const generatedAt = deps.now().toISOString();
     if (formats[0] === 'markdown') {

@@ -23,6 +23,10 @@ const STATUS: Record<ApiErrorCode, number> = {
   finding_tagged: 409,
   checklist_needs_finding: 409,
   checklist_item_not_found: 404,
+  gate_not_found: 404,
+  gate_reason_required: 400,
+  gate_facts_changed: 409,
+  gate_decision_not_found: 404,
   llm_not_configured: 503,
   internal: 500,
 };
@@ -44,6 +48,10 @@ const MESSAGE: Record<ApiErrorCode, string> = {
   finding_tagged: 'This finding already has its tag. A tag is set once.',
   checklist_needs_finding: 'An item can be marked checked only when at least one accepted finding is tagged to it.',
   checklist_item_not_found: 'There is no such checklist item.',
+  gate_not_found: 'There is no such gate.',
+  gate_reason_required: 'Give a reason: you chose something other than the recommended call.',
+  gate_facts_changed: 'The facts changed since you opened this gate. Reload and look again.',
+  gate_decision_not_found: 'There is no such decision at this gate.',
   llm_not_configured: 'The model connection is not set up, so nothing was sent.',
   internal: 'Something went wrong on the server. The server log has the details under this correlation id.',
 };

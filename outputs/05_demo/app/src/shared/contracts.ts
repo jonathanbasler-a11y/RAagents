@@ -884,6 +884,23 @@ export interface Store {
   listChecklist(workspaceId: WorkspaceId): ChecklistEntry[];
   /** The checklist's audit trail, oldest first. */
   listChecklistEvents(workspaceId: WorkspaceId): ChecklistEvent[];
+  /**
+   * The three gates as they stand now: the facts and the recommended call are built here, from this workspace's DD setup,
+   * data room, findings, checklist and earlier decisions (no model), with every decision and dissent. Read-only.
+   */
+  listGates(workspaceId: WorkspaceId, team: GateTeam): GateView[];
+  /**
+   * Records a person's decision at a gate. The ONLY writer of a gate decision. The facts and the recommended call are
+   * rebuilt inside the transaction and never taken from the request. Throws GateFactsChangedError (the request carries the
+   * facts hash of an older view), GateReasonRequiredError (the option differs from the recommended call and no reason was
+   * given) or RangeError (an unknown gate or option, a reason that is not text or is too long).
+   */
+  decideGate(workspaceId: WorkspaceId, gate: GateId, request: unknown, team: GateTeam): GateDecision;
+  /**
+   * Records a dissent under an existing decision of the same gate. The ONLY writer of a dissent; it never changes the
+   * decision. Throws GateDecisionNotFoundError or RangeError (a role or reason that is missing, not text or too long).
+   */
+  recordGateDissent(workspaceId: WorkspaceId, gate: GateId, request: unknown): GateDissent;
   close(): void;
 }
 
@@ -940,6 +957,10 @@ export const API_ERROR_CODES = [
   'finding_tagged',
   'checklist_needs_finding',
   'checklist_item_not_found',
+  'gate_not_found',
+  'gate_reason_required',
+  'gate_facts_changed',
+  'gate_decision_not_found',
   'llm_not_configured',
   'internal',
 ] as const;
@@ -1475,6 +1496,7 @@ export const BRIEFING_WARNING_CODES = [
   'checked_on_withdrawn',
   'items_not_checked',
   'items_could_not_check',
+  'gate_outdated',
 ] as const;
 export type BriefingWarningCode = (typeof BRIEFING_WARNING_CODES)[number];
 
@@ -1491,6 +1513,15 @@ export interface BriefingChecklistRow {
   reason: string | null;
   /** Ids of the accepted findings tagged to this item, in id order. */
   findingIds: string[];
+}
+
+/** One gate in the briefing: whether a person decided it, the latest decision, and the dissents recorded under that decision. */
+export interface BriefingGate {
+  gate: GateId;
+  title: string;
+  status: GateStatus;
+  latest: { id: string; option: GateOption; recommended: GateOption; reason: string | null; actor: string; createdAt: string } | null;
+  dissents: Array<{ id: string; role: string; reason: string }>;
 }
 
 export interface Briefing {
@@ -1511,6 +1542,8 @@ export interface Briefing {
   openQuestions: Array<{ id: string; claim: string; reason: string; documentId: string | null }>;
   /** The checklist items a person marked "could not check", with the reason. */
   couldNotCheck: Array<{ item: ChecklistItemId; label: string; reason: string }>;
+  /** The three gates and what people decided at them; empty when the caller gave no gates. */
+  gateDecisions: BriefingGate[];
 }
 
 /** GET /api/briefing */
@@ -1520,3 +1553,109 @@ export interface BriefingResponse {
   briefing: Briefing;
 }
 
+
+// ---------------------------------------------------------------------------
+// Gates: three points of the due diligence where a person decides, on facts built by code.
+// ---------------------------------------------------------------------------
+
+/** 1 scope: start on this setup and these documents. 2 evidence: the evidence is enough. 3 release: hand the briefing to the cross-functional discussion. */
+export const GATE_IDS = ['scope', 'evidence', 'release'] as const;
+export type GateId = (typeof GATE_IDS)[number];
+
+/** The four choices at every gate. */
+export const GATE_OPTIONS = ['proceed', 'pause', 'seek_more', 'stop'] as const;
+export type GateOption = (typeof GATE_OPTIONS)[number];
+
+/** The team size the gates show: the store does not know the roster, so the API passes it in. */
+export interface GateTeam {
+  selected: number;
+  total: number;
+  /** The names of the selected agents: the scope gate lists them as a fact, so a swap of the same size is seen and kept. */
+  members?: readonly string[];
+}
+
+/** One line of what the code found, for the person deciding. */
+export interface GateFact {
+  label: string;
+  text: string;
+}
+
+/** A decision a person recorded. Append-only; the facts and the recommended call are kept as they were shown. */
+export interface GateDecision {
+  id: string;
+  workspaceId: WorkspaceId;
+  gate: GateId;
+  option: GateOption;
+  /** Required when `option` differs from `recommended`. */
+  reason: string | null;
+  /** What the code recommended when the person decided. */
+  recommended: GateOption;
+  /** The facts in front of the person. */
+  facts: GateFact[];
+  /** Changes whenever the facts or the recommended call change. */
+  factsHash: string;
+  /** Who decided: LOCAL_PERSON until there is a login. */
+  actor: string;
+  createdAt: string;
+}
+
+/** A disagreement with a decision, recorded under it. It never blocks the decision. */
+export interface GateDissent {
+  id: string;
+  decisionId: string;
+  workspaceId: WorkspaceId;
+  gate: GateId;
+  /** The function the dissent speaks for, for example "CMC regulatory agent owner". */
+  role: string;
+  reason: string;
+  actor: string;
+  createdAt: string;
+}
+
+/**
+ * not_decided: no decision yet. decided: the latest decision was taken on the facts as they are now.
+ * outdated: the facts or the recommended call changed since the latest decision.
+ */
+export type GateStatus = 'not_decided' | 'decided' | 'outdated';
+
+export interface GateView {
+  id: GateId;
+  title: string;
+  question: string;
+  facts: GateFact[];
+  recommended: GateOption;
+  recommendedBecause: string;
+  /** What would move the recommended call, from the same facts. */
+  wouldChange: string[];
+  options: Array<{ option: GateOption; label: string; cost: string }>;
+  /** What the person sees now; a decision must carry it. */
+  factsHash: string;
+  status: GateStatus;
+  /** Every decision, newest first, each with its dissents. */
+  decisions: Array<GateDecision & { dissents: GateDissent[] }>;
+}
+
+/** GET /api/gates */
+export interface GatesResponse {
+  workspaceId: WorkspaceId;
+  generatedAt: string;
+  gates: GateView[];
+  /** The decisions only a person makes. */
+  alwaysHuman: string[];
+  disagreementRule: string;
+}
+
+/** POST /api/gates/[gate]/decision */
+export interface GateDecisionRequest {
+  option: GateOption;
+  reason?: string;
+  /** The factsHash of the gate as the person saw it. */
+  factsHash: string;
+}
+
+/** POST /api/gates/[gate]/dissent */
+export interface GateDissentRequest {
+  decisionId: string;
+  role: string;
+  reason: string;
+}

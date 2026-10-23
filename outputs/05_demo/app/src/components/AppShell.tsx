@@ -4,6 +4,7 @@ import type { DemoMode } from '@/shared/contracts';
 import { AgentRail } from './AgentRail';
 import { PracticeBanner } from './Banners';
 import { ChecklistProvider } from './ChecklistProvider';
+import { GatesProvider } from './GatesProvider';
 import { DataRoomProvider } from './DataRoomProvider';
 import { DdSetupProvider } from './DdSetupProvider';
 import { DemoModeProvider } from './DemoMode';
@@ -48,6 +49,7 @@ export function AppShell({
           </header>
           <FindingsProvider>
             <ChecklistProvider>
+            <GatesProvider>
             <SelectionProvider>
               <DdSetupProvider>
                 <div className="shell">
@@ -64,6 +66,7 @@ export function AppShell({
                 </div>
               </DdSetupProvider>
             </SelectionProvider>
+            </GatesProvider>
             </ChecklistProvider>
           </FindingsProvider>
         </DataRoomProvider>
