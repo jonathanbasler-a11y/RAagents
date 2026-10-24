@@ -69,3 +69,61 @@ If you try it with your team, I would like to hear what was useful, what was con
 
 Best regards,
 [YOUR NAME]
+
+---
+
+## 3. For colleagues on the same project, on Windows, with the project key
+
+Use this when the people you send it to are officially allowed to use a project key for the model gateway, and are inside your company. Build the ZIP with a preset (`npm run bundle -- --only windows --preset <file>`, see `--help`) so that the gateway's address and the model name are already filled in; then each person only has to paste the key.
+
+How to send it safely:
+
+- **Better than sending the key: let each person copy it themselves** from the gateway portal's API Keys page, where they already have access, and name the row to copy in your message. Nobody then has to pass a secret around. If someone has no portal access, send the key in a separate message from the link, in a channel the company already trusts for secrets. Never put it in the ZIP, in an e-mail with the link, or in a shared folder. The ZIP never holds a key: the builder refuses one.
+- Send the ZIP only to people who are allowed to use that key, in a way you can switch off later.
+- Each person must be on the company network or VPN for live answers: the gateway cannot be reached from outside.
+- If the key is ever pasted somewhere it should not be, ask whoever owns the project key to replace it.
+
+**Subject:** The demo on your PC: unzip, click, paste the project key
+
+Hi [FIRST NAME],
+
+here is the Digital Human Hybrid Team demo: 25 AI agents that help with a regulatory due diligence, on a fictional case. It runs on your own PC, in your browser.
+
+Download (Windows): [DOWNLOAD LINK]
+
+1. Right-click the ZIP, choose Properties, tick **Unblock** at the bottom and click OK. Then right-click the ZIP, choose Extract All, to a short place such as the Desktop, and open the folder "HybridDemo".
+2. Double-click **Start practice demo** first. Your browser opens the demo. This checks that it works on your PC and needs no key and no network. If Windows warns you, click "More info", then "Run anyway". Double-click **Stop demo** when you are done.
+3. For real AI answers: connect to the company VPN, then double-click **Start live demo**. Notepad opens a file called my-settings.env. The gateway address and the model are already filled in. Next, get the key yourself: open the gateway portal in your browser, choose the project workspace, click "API Keys" in the left menu, find the row called [ROW NAME] and click the small copy icon next to the key once. Go back to Notepad and, on the line that says `LLM_API_KEY=`, press Ctrl+V directly after the equals sign: no space and no quotes. Save the file, close Notepad and double-click **Start live demo** again.
+4. When you are done, double-click **Stop demo**.
+
+The file "READ ME FIRST" in the folder says "your own key". For you that means the project key you copied from the portal. You are allowed to use it. Please keep it to yourself: do not forward the ZIP or the settings file, and do not save the key anywhere else.
+
+In live mode, everything you type and the documents of the practice data room go to the company model gateway. Use the fictional case or public documents only; nothing confidential.
+
+If you see "Not reachable", the VPN is off. If you see "Wrong key", check that nothing is typed before or after the key on that one line. Tell me what does not work.
+
+[YOUR NAME]
+
+---
+
+## 4. For a colleague who can only use Ona
+
+For someone whose computer only lets them work in Ona, with Ona's agent to install and change the app. The step-by-step guide is `docs/ONA-FOR-COLLEAGUES.md` in the repository. Send the gateway address, the model name and the key-header name in a separate private message, and tell them which key row to copy in the gateway portal. They copy the key themselves, so it is never in a message.
+
+**Subject:** The demo in Ona: open, add three secrets, probe, start
+
+Hi [FIRST NAME],
+
+since you work in Ona, here is how to run the demo there and change it with Ona's agent. Open the repository ([REPOSITORY LINK]) in Ona and follow the file `docs/ONA-FOR-COLLEAGUES.md`. The short version:
+
+1. Start an environment and wait for "Install app dependencies" to finish.
+2. Copy the key yourself: open the gateway portal, choose the project workspace, click "API Keys", find the row called [ROW NAME] and click the copy icon once. Then in Ona's settings add **user** secrets `LLM_BASE_URL`, `LLM_MODEL` and `LLM_API_KEY` (paste the key as its value) and `LLM_API_KEY_HEADER`. I send the address, the model and the header name separately. The key is the project key; you are allowed to use it. Restart the environment afterwards.
+3. Run the task "Probe the LLM gateway". If it says `OK`, go on. If it says `dns` or `timeout`, Ona cannot reach the gateway from the cloud; send me the output (it holds no key) and we will ask IT.
+4. Start the service "Hybrid team chat app", run `ona environment port open 3000 --admission creator_only --name hybrid-team`, and open the link.
+5. To change the app, give Ona's agent the briefing in section 5 of the guide first.
+
+Two rules: never type the key into the agent's chat or into a file, and keep the port creator-only.
+
+I have not run the app in Ona myself yet, so please tell me exactly what you see at each step.
+
+[YOUR NAME]

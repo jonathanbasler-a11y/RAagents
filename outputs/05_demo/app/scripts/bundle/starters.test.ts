@@ -73,15 +73,22 @@ describe('starter files exist exactly as the bundle contract names them', () => 
   // A file the repository will not commit exists only on the machine that made it: a fresh clone
   // could not build the ZIPs. The template was once named *.env, which .gitignore and the pre-commit
   // hook both refuse, so it was never committed.
-  it('every starter source file is one the repository commits: not git-ignored, not refused by the pre-commit hook', () => {
-    const files = [
+  const starterFiles = () =>
+    [
       ...readdirSync(STARTERS).filter((name) => !['mac', 'windows'].includes(name)),
       ...MAC_NAMES.map((name) => join('mac', name)),
       ...WIN_NAMES.map((name) => join('windows', name)),
     ].map((name) => join(STARTERS, name));
+  // A demo copy is a plain folder with no .git: the git question cannot be asked there, so that half skips.
+  const insideGit = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: APP, encoding: 'utf8' }).stdout.trim() === 'true';
+
+  it('no starter source file has a name the pre-commit hook refuses', () => {
     const hookRefuses = /(^|\/)(\.env(\..*)?|[^/]*\.env)$/;
-    expect(files.filter((file) => hookRefuses.test(file))).toEqual([]);
-    const ignored = spawnSync('git', ['check-ignore', '--', ...files], { cwd: APP, encoding: 'utf8' });
+    expect(starterFiles().filter((file) => hookRefuses.test(file))).toEqual([]);
+  });
+
+  it.skipIf(!insideGit)('no starter source file is git-ignored', () => {
+    const ignored = spawnSync('git', ['check-ignore', '--', ...starterFiles()], { cwd: APP, encoding: 'utf8' });
     // Exit 1: none of them is ignored. Exit 0 prints the ignored ones; anything else is a git problem.
     expect({ status: ignored.status, ignored: ignored.stdout.trim() }).toEqual({ status: 1, ignored: '' });
   });
