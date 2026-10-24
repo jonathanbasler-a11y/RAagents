@@ -2,6 +2,10 @@
 
 One file per agent: `outputs/04_agents/<id>.md`. The chat app in `outputs/05_demo/app` reads these files at runtime, so they are the single source of truth for every agent. The app skips this README.
 
+**Keep this folder to the specifications and this README.** The app reads every `.md` file here except `README.md` as an agent specification, so a notes file or a draft placed here fails the roster check and stops the app. Put anything else in `outputs/01_concept/`.
+
+Which of the 25 the MVP would build in depth, with a "why an agent, not a rule, a template or a person" line for each and a list of things that are deliberately not agents, is a proposal in `01_concept/mvp-agent-selection.md`. The specifications carry no such field yet: adding one needs the loader to accept a new key and a version bump on every file.
+
 Every spec follows this template exactly. It covers the repo template (role, knowledge sources, tools, guardrails, human owner, autonomy level, example prompts) plus the fields the app needs.
 
 ## File layout
@@ -167,8 +171,8 @@ From the plan's roster update and mockup v2 (`DATA.agents`), which also hold eac
 | 12 | `sp-exp` | Eitan | E | Expedited programmes | spec | domain | | 2 | false | false | true | false | exp |
 | 13 | `sp-combo` | Chen | C | Combination products | spec | domain | | 2 | false | false | true | false | combo |
 | 14 | `sp-cdx` | Dev | D | Companion diagnostics | spec | domain | | 2 | false | false | true | false | cdx |
-| 15 | `sp-rm` | Rhea | R | Risk management | spec | domain | | 2 | false | false | true | false | |
-| 16 | `sp-promo` | Paolo | P | Promotional review | spec | domain | | 2 | false | false | true | false | |
+| 15 | `sp-rm` | Rhea | R | Risk management | spec | domain | | 2 | false | false | true | false | late |
+| 16 | `sp-promo` | Paolo | P | Promotional review | spec | domain | | 2 | false | false | true | false | filed |
 | 17 | `orc` | Oskar | O | Orchestrator | role | orchestrator | orchestrator | 2 | true | true | false | false | |
 | 18 | `san` | Saskia | S | Sanitiser | role | team-role | sanitiser | 1 | true | true | false | true | |
 | 19 | `ev` | Emeka | E | Evidence checker | role | team-role | evidence-checker | 2 | true | true | false | true | |
