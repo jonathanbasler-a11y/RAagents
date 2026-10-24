@@ -29,6 +29,7 @@ Not in the MVP: items 11, 13, 14 and 15 below, the Ona connection (question 19),
 
 Built and checked in practice mode on a Mac (see `DECISIONS.md`, 2026-10-22). Open, in order:
 
+- **Status 2026-10-24:** the Mac ZIP was run end to end in practice mode on the build Mac; the Windows ZIP and the Ona route are untried on real machines, and live mode on a colleague's computer is untried. Instructions for colleagues exist (`SEND-TO-COLLEAGUES.md` messages 3 and 4, `docs/ONA-FOR-COLLEAGUES.md`).
 - **A first real double-click** of a freshly downloaded ZIP on a colleague's Mac and on a Windows computer: the "Open Anyway" / "Windows protected your PC" steps, a firewall question, and live mode with that person's own key have not been tried.
 - **Stop and a crashed start (Windows).** For a start that crashed in the last two minutes, Stop checks only that the recorded process is alive and the port is closed, not that the process is the demo's; Windows reuses process numbers quickly. Rare, but the fix (identify the process before ending it) is cheap to get wrong.
 - **Two double-clicks right after a crash.** Taking over a stale start lock is not atomic: two launchers could both start a server. Needs an atomic lock (create-exclusive or rename).
@@ -76,6 +77,10 @@ Built and checked in practice mode on a Mac (see `DECISIONS.md`, 2026-10-22). Op
 15. **Calibration and owners in the new case answers** (found in the measurement). Weaker answers state general requirements as fixed ("usually", "must be booked") and do not name a human owner for each check. The same appears in the before-run, so it is not caused by this change; fix per agent in its own brief, not in the shared rules.
 
 ## Other open items (details in `OPEN_QUESTIONS.md`)
+
+- **Purge the redacted names from the public history?** Pull request 28 removed them from the current files only. Removing them from history means rewriting it and force-pushing (it would break open pull requests and every clone), plus a request to GitHub support to clear cached views. Not done; the owner decides.
+- **Text inside images.** The opener PowerPoint holds two embedded pictures that were not checked for text.
+- **Commit e-mail privacy.** The GitHub setting "Keep my email addresses private" stops a personal address appearing in future web merges.
 
 - Question 21: superseded on 2026-10-16 by the confidential-workspace direction (backlog item 12).
 - Question 26: how sceptical agents should be of an agency record inside a seller's data room (found in the practice-case trials).

@@ -17,7 +17,7 @@ In this phase no documents are connected and the agents have no tools. Every rep
 - [ ] Send one warm-up question in a room you will not show (for example Clara's). Check that it streams and is a real answer. If it starts with "Fake reply from", the app is on rehearsal settings: stop it (`npm run demo:stop`, or Ctrl+C if you used `npm start`) and start the live demo again (`npm run demo`).
 - [ ] Click **New conversation** in each room you will use: Rosa's room and the team chat. Old threads are archived, not deleted. Rosa's room keeps its starter prompts after the first question.
 - [ ] One browser tab per room: the DD workspace, Rosa's room and the team chat. Never open the same room in two tabs: while a turn runs, a question sent from the other tab is refused.
-- [ ] You know which version you are showing. The stable demo copy (port 3300) has been version 12 since 2026-10-23: it has every step, including the Gates page (step 9e). The rail on the left shows what a copy has: if **Gates** is not there, you are on an older copy, so skip step 9e. Check this before you tell anyone the gates exist.
+- [ ] You know which version you are showing. The stable demo copy (port 3300) has every step, including the Gates page (step 9e), from version 12 on (2026-10-23). The rail on the left shows what a copy has: if **Gates** is not there, you are on an older copy, so skip step 9e. Check this before you tell anyone the gates exist.
 
 ## Running it in front of people
 
