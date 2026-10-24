@@ -1,7 +1,7 @@
 ---
 type: presentation-kit
 date: 2026-10-08
-project: Moab Digital Accelerator
+project: Digital Accelerator
 drafted_by: Gemini (scripts), Claude (setup steps, QA)
 ---
 
@@ -13,7 +13,7 @@ drafted_by: Gemini (scripts), Claude (setup steps, QA)
 3. **People:** slide 3 (proposal for proving the value hypothesis) and slide 4 (experiment risks and success criteria). The agent stays quiet.
 
 ## Setup (do this before the meeting, then do one full test run)
-1. **Make a ChatGPT Project** (desktop app or web): name it "Moab DD demo".
+1. **Make a ChatGPT Project** (desktop app or web): name it "DD demo".
 2. **Upload the 18 files** in `Mock DD Test Case/Voice Agent Upload/` (mock data, the 16 data-room files, plan v3) to the Project files.
 3. **Paste the setup prompt** (section 2 below) into the Project instructions.
 4. **Start a new chat in that Project and switch to voice mode.** Ask three test questions: "What did FDA say about the primary endpoint?", "Which documents are missing?", "Should we continue to valuation?". It should cite DR numbers, show both sides of the endpoint conflict, and hand the last decision back to the room. If voice mode answers from general knowledge instead of the files, voice is not reading the uploads on that device: paste the content of `mock-data.json` into the chat as text before switching to voice, and test again.

@@ -1,6 +1,6 @@
 > **FICTIONAL - for demonstration.** Every company, product, person, site and number in this folder is invented. Nothing here describes a real sponsor, drug or deal.
 
-# 00 README: Mock DD Test Case (Moab Digital Accelerator)
+# 00 README: Mock DD Test Case (Digital Accelerator)
 
 Scenario date: October 2026 (scenario "today" is 2026-10-08).
 

@@ -2,7 +2,7 @@
 type: meeting
 date: 2026-10-07
 source: ChatGPT realtime workshop
-project: Moab Digital Accelerator
+project: Digital Accelerator
 ---
 
 # Hybrid Regulatory Due-Diligence Team — Digital Mindset Canvas

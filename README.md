@@ -1,6 +1,6 @@
-# Digital Human Hybrid Team (RCC Moonflower)
+# Digital Human Hybrid Team (Moonflower)
 
-A concept, stakeholder presentation and demo for a hybrid team in which human domain experts and AI agents work together as one team to deliver specific regulatory activities, starting with a due diligence playbook as the MVP. It is being developed by the Moonflower group of the RCC cohort in the October 2026 Digital Adoption Accelerator, for presentation to senior stakeholders.
+A concept, stakeholder presentation and demo for a hybrid team in which human domain experts and AI agents work together as one team to deliver specific regulatory activities, starting with a due diligence playbook as the MVP. It is being developed by the Moonflower group in the October 2026 Digital Adoption Accelerator, for presentation to senior stakeholders.
 
 > **Company-neutral content only.** Everything in this repository must be company-neutral, safe to share between companies, and free of confidential or proprietary information and personal names. Confidential material belongs only in `inputs/confidential/`, which is git-ignored and must never be committed.
 
