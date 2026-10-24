@@ -104,7 +104,7 @@ Speaker 3: Yeah, but I think it's just like from from the spirit of doing an MVP
 
 Speaker 2: Yeah, I like that. And what is generic in the one, which can be applied to other...
 
-Speaker 5: Because are there are there any sensitivities if we were to make a company-agnostic playbook on inspections? There's no secret sauce to inspections, right, that Gilead does or Cardigan does that Genentech doesn't, or vice versa? I'm not familiar enough with inspection, so definitely not sharing any secret sauce on my end.
+Speaker 5: Because are there are there any sensitivities if we were to make a company-agnostic playbook on inspections? There's no secret sauce to inspections, right, that [company A] does or [company B] does that [company C] doesn't, or vice versa? I'm not familiar enough with inspection, so definitely not sharing any secret sauce on my end.
 
 Speaker 2: I mean, it's not... There's nuance, but the fundamentals of any playbook would be the same.
 

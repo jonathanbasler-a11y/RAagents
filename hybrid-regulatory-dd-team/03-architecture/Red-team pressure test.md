@@ -1,7 +1,7 @@
 ---
 type: analysis
 date: 2026-10-07
-project: Moab Digital Accelerator
+project: Digital Accelerator
 status: internal-working
 ---
 
