@@ -1,4 +1,4 @@
-# Moab Demo Agent: how to run it
+# Demo Agent: how to run it
 
 This folder is an isolated demo agent for the fictional due-diligence walkthrough. The agent can see only `files/`.
 

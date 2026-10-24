@@ -17,6 +17,19 @@ In this phase no documents are connected and the agents have no tools. Every rep
 - [ ] Send one warm-up question in a room you will not show (for example Clara's). Check that it streams and is a real answer. If it starts with "Fake reply from", the app is on rehearsal settings: stop it (`npm run demo:stop`, or Ctrl+C if you used `npm start`) and start the live demo again (`npm run demo`).
 - [ ] Click **New conversation** in each room you will use: Rosa's room and the team chat. Old threads are archived, not deleted. Rosa's room keeps its starter prompts after the first question.
 - [ ] One browser tab per room: the DD workspace, Rosa's room and the team chat. Never open the same room in two tabs: while a turn runs, a question sent from the other tab is refused.
+- [ ] You know which version you are showing. The stable demo copy (port 3300) has been version 12 since 2026-10-23: it has every step, including the Gates page (step 9e). The rail on the left shows what a copy has: if **Gates** is not there, you are on an older copy, so skip step 9e. Check this before you tell anyone the gates exist.
+
+## Running it in front of people
+
+Habits for the presenter. Nothing here changes the app.
+
+- **Announce the step before you click.** One sentence: which step it is and what to watch for ("Step 3: I name two teammates; only those two should answer."). The audience then reads the screen with you.
+- **Keep turns short.** A turn that ends with Sofia's summary makes three or more model calls in a row (step 3 makes three). Talk while it streams. If a reply runs long, ask the next question with "in five bullets" instead of waiting.
+- **Use a "next" cue.** With two presenters, the person at the keyboard clicks only after the reader says "next". With one presenter, say "next" aloud before each click: it makes the pause sound planned.
+- **Use the real correction moments; do not stage one.** The app has two that are real and repeatable, and neither needs a planted error. In step 9b, if the agent offers a claim without a word-for-word quote, code moves it to **Open questions** and it never becomes a finding: the app corrects the agent (not guaranteed on every run, so do not promise it). In step 9e, choosing against the recommended call makes the page ask for a reason. If an agent states something as checked, or makes a call, in a reply, stop and say so (see the table at the end). Do not plant an error and present it as the agent's slip.
+- **Pre-flight is the checklist above.** Also close other tabs and mute notifications on the shared screen. The app has no tools or connectors to switch off: its only outside connection is the model gateway.
+- **No audio is used.** If the screen share fails, read the question and the first lines of the reply aloud, and move to the labelled pre-recorded run if you have one.
+- **Keep the answer key off the screen.** The practice case's planted issues are in the evaluation folder (`evals/packs/practice-01/pack.yaml`), and the app never shows them. Do not open that folder or its files on a shared screen.
 
 ## Walkthrough
 

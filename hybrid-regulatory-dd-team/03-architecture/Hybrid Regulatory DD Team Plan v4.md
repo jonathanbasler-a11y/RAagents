@@ -1,7 +1,7 @@
 ---
 type: project-plan
 date: 2026-10-08
-project: Moab Digital Accelerator
+project: Digital Accelerator
 status: draft-for-discussion
 version: v4
 supersedes: 2026-1007 Hybrid Regulatory DD Team Plan v3
@@ -19,7 +19,7 @@ Everything in Part A appears on the published architecture page (https://claude.
 
 ## Page header
 - Title: **Hybrid Regulatory Due-Diligence Team**, labeled **Proposal**
-- Subtitle: Proposed architecture for a regulatory due-diligence team, from the Moab Digital Accelerator Digital Mindset Canvas, October 7, 2026. Regulatory agents gather, organize and check evidence. Regulatory specialists validate it, and the regulatory lead sets materiality, owns the rPTS position for Phase III assets and signs the recommendation.
+- Subtitle: Proposed architecture for a regulatory due-diligence team, from the Digital Accelerator Digital Mindset Canvas, October 7, 2026. Regulatory agents gather, organize and check evidence. Regulatory specialists validate it, and the regulatory lead sets materiality, owns the rPTS position for Phase III assets and signs the recommendation.
 - Headline counts: **11** regulatory agents · **7** regulatory specialists · **8** decisions that stay human · **4** deliberately not agents
 - Tabs: Team architecture · Agent roster · Agents vs humans · Technical architecture · Decision rights · Experiments and measures
 

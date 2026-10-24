@@ -1,4 +1,4 @@
-# Kickoff: Digital Human Hybrid Team (RCC Moonflower)
+# Kickoff: Digital Human Hybrid Team (Moonflower)
 
 Date: 2026-10-07. Sources read: `CLAUDE.md`, `inputs/transcript.md` (287 lines) and the two photos in `inputs/canvas-photos/`. `inputs/other-team/` is still empty. The earlier brainstorm is not used, by owner decision. Every citation below was checked against the source by an independent review.
 
@@ -70,8 +70,7 @@ You decided on 2026-10-07 to keep the names; they are listed so you can change y
 | transcript | 255 | "Stu's" | First name or nickname | Remove before any public push |
 | transcript | 17 | "Sammy" | Possible name; probably a joke name for the initiative, or a mis-hearing | Consider |
 | transcript | 7 | "Wife's" | Possible name or private reference in the mis-heard opening | Consider |
-| transcript | 107 | "Gilead", "Genentech" | Company names | Remove before any public push |
-| transcript | 107 | "Cardigan" | Probably a mis-heard company name | Remove before any public push |
+| transcript | 107 | three company names | Company names | Replaced with neutral placeholders on 2026-10-24, in the current file only; the commit history keeps the original text |
 | transcript | 3 | "US-191" (recording file name) | May name a road near where the session took place (inference) | Consider |
 | photos | n/a | GPS location | Image metadata | **Blanked on 2026-10-07 with your OK.** Phone model and capture time remain |
 | photos | n/a | "© Reichart Effectiveness Solutions 2024", the "live with intent" brand, page 72 of the programme workbook | Third-party copyright | Fine privately; get permission before publishing. In outputs, use the box names and paraphrase the questions rather than copying the template or guide (to verify) |
