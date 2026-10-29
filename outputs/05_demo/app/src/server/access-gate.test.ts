@@ -124,6 +124,8 @@ describe('decideAccess', () => {
     const noSession = () => null;
     expect(decideAccess(request('POST', '/api/health'), ON, noSession).kind).toBe('deny');
     expect(decideAccess(request('GET', '/api/login'), ON, noSession).kind).toBe('deny');
+    expect(decideAccess(request('PUT', '/api/login'), ON, noSession).kind).toBe('deny');
+    expect(decideAccess(request('DELETE', '/api/logout'), ON, noSession).kind).toBe('deny');
     expect(decideAccess(request('GET', '/api/health-report'), ON, noSession).kind).toBe('deny');
     expect(decideAccess(request('GET', '/login-help'), ON, noSession).kind).toBe('login');
     expect(decideAccess(request('GET', '/%6Cogin'), ON, noSession).kind).toBe('login');

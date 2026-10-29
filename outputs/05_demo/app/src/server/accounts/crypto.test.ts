@@ -54,6 +54,18 @@ describe('createPasswordHasher', () => {
     }
   });
 
+  it('refuses a cost above what the memory limit holds before it asks for a hashing slot', async () => {
+    const hasher = createPasswordHasher({ cost: CHEAP, maxConcurrent: 1, maxWaiting: 0 });
+    const good = await hasher.hash('a password here');
+    const [, , salt, key] = good.split('$');
+    const busy = hasher.hash('keeps the only slot busy');
+    // Refused unread: with the one slot taken and no queue, any attempt to compute would answer busy instead.
+    for (const n of [65536, 131072, 1048576]) {
+      await expect(hasher.verify('a password here', `scrypt$n=${n},r=8,p=1$${salt}$${key}`), String(n)).resolves.toBe(false);
+    }
+    await busy;
+  });
+
   it('runs at most the allowed number of hashes at once and answers busy beyond the queue', async () => {
     const hasher = createPasswordHasher({ cost: CHEAP, maxConcurrent: 1, maxWaiting: 1 });
     const first = hasher.hash('one password here');

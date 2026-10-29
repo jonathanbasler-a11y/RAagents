@@ -28,6 +28,10 @@ mkdir -p "$(dirname "$db")"
 
 listing="$(litestream ltx -json -level all "$url")"
 age="$(printf '%s\n' "$listing" | node "$here/backup-age.mjs")"
+case "$age" in
+  none | -[0-9]* | [0-9]*) ;;
+  *) echo "[hosted] Could not read the age of the backup (\"$age\"); not starting." >&2; exit 1 ;;
+esac
 if [ "$age" != "none" ] && [ "$age" -lt 60 ]; then
   echo "[hosted] Another copy is still writing this backup (its newest file is ${age} s old). Stop that copy first, wait a minute, then start this one." >&2
   exit 1

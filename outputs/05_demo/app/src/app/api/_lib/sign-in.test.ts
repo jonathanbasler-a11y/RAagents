@@ -91,6 +91,15 @@ describe('postLogin', () => {
     expect(verify).toHaveBeenCalledWith(oneTime, harness.deps.passwords().dummy);
   });
 
+  it('never asks the session store for a session for a disabled account, even with its right password', async () => {
+    const harness = setup();
+    const oneTime = await harness.addMember('member-one');
+    harness.store.setPersonDisabled({ username: 'member-one', disabled: true, actor: 'admin' });
+    const open = vi.spyOn(harness.store, 'openSession');
+    expect(location(await postLogin(login({ username: 'member-one', password: oneTime }), harness.deps))).toBe('/login?error=wrong');
+    expect(open).not.toHaveBeenCalled();
+  });
+
   it('refuses an expired one-time password and says so', async () => {
     const harness = setup();
     const oneTime = await harness.addMember('member-one');
