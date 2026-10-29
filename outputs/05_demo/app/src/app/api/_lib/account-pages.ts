@@ -29,6 +29,7 @@ export const PASSWORD_MESSAGES: ReadonlyMap<string, string> = new Map([
   ['wrong', 'Your current password is not right.'],
   ['mismatch', 'The two new passwords are not the same.'],
   ['locked', 'Too many wrong attempts. Wait 15 minutes and try again.'],
+  ['many', 'Your password was changed several times in a short time. Wait 15 minutes and try again.'],
   ['expired', 'Your one-time password has expired. Ask the admin for a new one.'],
   ['busy', 'The server is busy. Try again in a moment.'],
   ['server', 'This password is set in the server settings and cannot be changed here.'],

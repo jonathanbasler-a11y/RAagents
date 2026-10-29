@@ -2,11 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HashingBusyError } from '@/server/accounts/crypto';
 import { tokenHash } from '@/server/accounts/session-lookup';
 import { ADMIN_PASSWORD, accountHarness, formPost, sessionTokenOf, withSession, type AccountHarness } from './account-test-support';
-import { getLoginPage, postLogin, postLogout } from './sign-in';
+import { SIGN_IN_LIMITS, getLoginPage, postLogin, postLogout } from './sign-in';
 
 const harnesses: AccountHarness[] = [];
 
 afterEach(() => {
+  vi.useRealTimers();
   for (const harness of harnesses.splice(0)) harness.cleanup();
 });
 
@@ -191,13 +192,51 @@ describe('postLogin', () => {
     expect(location(await postLogin(login({ username: 'member-one', password: oneTime }), harness.deps))).toBe('/login?error=wrong');
   });
 
-  it('notes refused sign-ins in the log once a minute at most, with a count and no name', async () => {
+  it('notes refused sign-ins in the log once a minute at most, as a count without the name, and the rest of a burst when the minute is up', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const harness = setup();
     await harness.addMember('member-one');
     const warn = vi.spyOn(harness.deps.log, 'warn');
+    const notes = () => warn.mock.calls.map((call) => String(call[0]));
+    // 10 wrong passwords lock the name; the 30 attempts after them are refused.
     for (let i = 0; i < 40; i++) await postLogin(login({ username: 'member-one', password: 'wrong password' }), harness.deps);
-    expect(warn.mock.calls.length).toBeLessThanOrEqual(1);
-    for (const call of warn.mock.calls) expect(String(call[0])).not.toContain('member-one');
+    expect(notes()).toEqual([expect.stringMatching(/^\[accounts\] 1 sign-in\(s\) refused/)]);
+    vi.advanceTimersByTime(60_000);
+    expect(notes()).toEqual([expect.stringMatching(/^\[accounts\] 1 sign-in\(s\) refused/), expect.stringMatching(/^\[accounts\] 29 sign-in\(s\) refused/)]);
+    vi.advanceTimersByTime(10 * 60_000);
+    expect(notes()).toHaveLength(2);
+    for (const note of notes()) expect(note).not.toContain('member-one');
+  });
+
+  it('notes a steady stream of refusals once a minute, each note with the count of its minute', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const harness = setup();
+    await harness.addMember('member-one');
+    const warn = vi.spyOn(harness.deps.log, 'warn');
+    for (let i = 0; i < 10; i++) await postLogin(login({ username: 'member-one', password: 'wrong password' }), harness.deps);
+    // One refused attempt every 10 seconds for 3 minutes: noted at once, then at each minute.
+    for (let i = 0; i < 18; i++) {
+      await postLogin(login({ username: 'member-one', password: 'wrong password' }), harness.deps);
+      harness.advance(10_000);
+      vi.advanceTimersByTime(10_000);
+    }
+    vi.advanceTimersByTime(60_000);
+    expect(warn.mock.calls.map((call) => /\] (\d+) sign-in/.exec(String(call[0]))?.[1])).toEqual(['1', '5', '6', '6']);
+  });
+
+  it('gives the success budget back when the session could not be opened', async () => {
+    const harness = setup();
+    await harness.addServerAdmin();
+    const open = vi.spyOn(harness.store, 'openSession');
+    for (let i = 0; i < SIGN_IN_LIMITS.sessions; i++) {
+      open.mockImplementationOnce(() => {
+        throw new Error('database is locked');
+      });
+    }
+    for (let i = 0; i < SIGN_IN_LIMITS.sessions; i++) {
+      await expect(postLogin(login({ username: 'admin', password: ADMIN_PASSWORD }), harness.deps)).rejects.toThrow('database is locked');
+    }
+    expect(location(await postLogin(login({ username: 'admin', password: ADMIN_PASSWORD }), harness.deps))).toBe('/');
   });
 
   it('treats a name too long to exist as an unknown name', async () => {

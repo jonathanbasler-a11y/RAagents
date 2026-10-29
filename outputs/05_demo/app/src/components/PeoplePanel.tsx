@@ -36,6 +36,9 @@ function roleText(person: PersonSummary): string {
 }
 
 type Pending = { username: string; action: 'reset' | 'disable' } | null;
+
+/** The label of the row button that asked for this confirmation. */
+const askingButton = ({ username, action }: NonNullable<Pending>) => (action === 'reset' ? `Reset password for ${username}` : `Disable ${username}`);
 type Shown = { username: string; oneTimePassword: string; expiresAt: string } | null;
 type Failure = { message: string; correlationId: string | null } | null;
 
@@ -50,9 +53,12 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loadRequest, setLoadRequest] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const shownRef = useRef<HTMLDivElement>(null);
+  /** The label of the row button that gets the focus back once the row's buttons can take it again. */
+  const returnFocusRef = useRef<string | null>(null);
 
   const fetchPeople = useEffectEvent(() => client.listPeople());
 
@@ -75,17 +81,29 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
   const reload = () => setLoadRequest((count) => count + 1);
 
   // The confirmation and the one-time password appear above the table, perhaps out of view: move focus (and the view)
-  // to them, so a click on a row's button never seems to do nothing and a screen reader announces them.
+  // to them, so a click on a row's button never seems to do nothing and a screen reader announces them. The confirmation
+  // opens on Cancel, so a held Enter cannot confirm a reset or a disable.
   useEffect(() => {
     if (pending === null) return;
-    confirmRef.current?.focus();
-    confirmRef.current?.scrollIntoView?.({ block: 'nearest' });
+    cancelRef.current?.focus();
+    cancelRef.current?.scrollIntoView?.({ block: 'nearest' });
   }, [pending]);
   useEffect(() => {
     if (shown === null) return;
     shownRef.current?.focus();
     shownRef.current?.scrollIntoView?.({ block: 'nearest' });
   }, [shown]);
+
+  // When a confirmation closes or an action ends, its buttons are gone or were disabled: focus goes back to the row
+  // button that started it, once the row's buttons are enabled again, so a keyboard user does not land on the page itself.
+  // After a disable or an enable, that same button, renamed, keeps it.
+  useEffect(() => {
+    const label = returnFocusRef.current;
+    if (label === null || busy) return;
+    returnFocusRef.current = null;
+    const buttons = Array.from(sectionRef.current?.querySelectorAll('button') ?? []);
+    buttons.find((button) => button.getAttribute('aria-label') === label)?.focus();
+  }, [busy, pending]);
 
   const closeShown = () => {
     setShown(null);
@@ -96,6 +114,8 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
     setFailure({ message: result.message, correlationId: result.error?.correlationId ?? null });
 
   const show = (data: OneTimePasswordResponse) => {
+    // The box with the one-time password takes the focus instead.
+    returnFocusRef.current = null;
     setCopied(false);
     setShown({ username: data.person.username, oneTimePassword: data.oneTimePassword, expiresAt: data.expiresAt });
   };
@@ -125,6 +145,7 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
   async function confirm() {
     if (pending === null) return;
     const { username, action } = pending;
+    returnFocusRef.current = askingButton(pending);
     setPending(null);
     setFailure(null);
     setBusy(true);
@@ -148,6 +169,7 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
   }
 
   async function enable(username: string) {
+    returnFocusRef.current = `Enable ${username}`;
     setFailure(null);
     setBusy(true);
     const result = await client.enablePerson(username);
@@ -246,7 +268,7 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
   }
 
   return (
-    <section className="people" aria-labelledby="people-title">
+    <section className="people" aria-labelledby="people-title" ref={sectionRef}>
       <div className="screen-head">
         <h1 id="people-title">People</h1>
         <p className="lede">
@@ -290,10 +312,18 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
               ? `Reset the password of ${pending.username}? Their current password stops working and they are signed out everywhere.`
               : `Disable ${pending.username}? They are signed out everywhere and cannot sign in until you enable them again.`}
           </p>
-          <button type="button" className="btn btn-sm" ref={confirmRef} onClick={() => void confirm()}>
+          <button type="button" className="btn btn-sm" onClick={() => void confirm()}>
             {pending.action === 'reset' ? 'Confirm reset' : 'Confirm disable'}
           </button>{' '}
-          <button type="button" className="btn btn-quiet btn-sm" onClick={() => setPending(null)}>
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm"
+            ref={cancelRef}
+            onClick={() => {
+              returnFocusRef.current = askingButton(pending);
+              setPending(null);
+            }}
+          >
             Cancel
           </button>
         </div>

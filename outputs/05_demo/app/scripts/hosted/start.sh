@@ -13,11 +13,13 @@ set -eu
 db="${CHAT_DB_PATH:?CHAT_DB_PATH must be set to the database file path}"
 here="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 
-# Only the hosted image runs this script, and a hosted copy must never start open: sign-in is required unless it is set
-# to 0 on purpose. An empty value (as copied from a settings file) counts as unset, so it cannot switch it off by accident.
-if [ -z "${RAAGENTS_REQUIRE_SIGN_IN:-}" ]; then
-  RAAGENTS_REQUIRE_SIGN_IN=1
-fi
+# Only the hosted image runs this script, and a hosted copy must never start open: sign-in is required unless the setting
+# is exactly 0. Anything else reaches the server as 1: an empty value (as copied from a settings file), and a value the app
+# would trim to nothing (a stray CR or newline from a secret store), so the script and the app cannot disagree about it.
+case "${RAAGENTS_REQUIRE_SIGN_IN:-}" in
+  0) ;;
+  *) RAAGENTS_REQUIRE_SIGN_IN=1 ;;
+esac
 export RAAGENTS_REQUIRE_SIGN_IN
 
 if [ -z "${LITESTREAM_REPLICA_URL:-}" ]; then

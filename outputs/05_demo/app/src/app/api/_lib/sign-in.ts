@@ -33,19 +33,35 @@ function nameKey(username: string): string {
   return createHash('sha256').update(username, 'utf8').digest('hex').slice(0, 32);
 }
 
-const refusals = new WeakMap<object, { count: number; notedAt: number }>();
+const refusals = new WeakMap<object, { count: number; notedAt: number; due: boolean }>();
 
-/** Notes refused sign-ins in the log at most once a minute, as a count: a stream of refusals must not flood the log. */
+/**
+ * Notes refused sign-ins in the log at most once a minute, as a count: a stream of refusals must not flood the log. The
+ * first refusal after a quiet minute is noted at once; the ones after it are counted and noted when that minute is up, so
+ * the end of a burst is not lost. The timer does not keep the process alive.
+ */
 function noteRefusal(log: AccountDeps['log'], nowMs: number): void {
-  const state = refusals.get(log) ?? { count: 0, notedAt: Number.NEGATIVE_INFINITY };
+  const state = refusals.get(log) ?? { count: 0, notedAt: Number.NEGATIVE_INFINITY, due: false };
+  refusals.set(log, state);
   state.count += 1;
-  if (nowMs - state.notedAt >= 60_000) {
+  if (state.due) return;
+  const note = (at: number) => {
     // Counts only, never the typed name: people type passwords into the name field.
     log.warn(`[accounts] ${state.count} sign-in(s) refused for too many failed attempts since the last note`);
     state.count = 0;
-    state.notedAt = nowMs;
+    state.notedAt = at;
+  };
+  const wait = state.notedAt + 60_000 - nowMs;
+  if (wait <= 0) {
+    note(nowMs);
+    return;
   }
-  refusals.set(log, state);
+  state.due = true;
+  const at = state.notedAt + 60_000;
+  setTimeout(() => {
+    state.due = false;
+    note(at);
+  }, wait).unref?.();
 }
 
 function backToLogin(error: string, next: string): Response {

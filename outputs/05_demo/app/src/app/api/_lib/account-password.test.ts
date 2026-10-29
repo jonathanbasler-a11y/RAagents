@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HashingBusyError } from '@/server/accounts/crypto';
 import { PasswordChangedMeanwhileError, PersonNotFoundError } from '@/server/accounts/store';
-import { getPasswordPage, postPassword } from './account-password';
+import { PASSWORD_CHANGE_LIMIT, getPasswordPage, postPassword } from './account-password';
 import { ADMIN_PASSWORD, accountHarness, formPost, sessionTokenOf, withSession, type AccountHarness } from './account-test-support';
 import { postLogin } from './sign-in';
 
@@ -78,6 +78,7 @@ describe('getPasswordPage', () => {
     const harness = setup();
     const { token } = await waitingMember(harness);
     expect(await getPasswordPage(withSession('/account/password?error=mismatch', token), harness.deps).text()).toMatch(/two new passwords are not the same/);
+    expect(await getPasswordPage(withSession('/account/password?error=many', token), harness.deps).text()).toMatch(/changed several times/);
     const odd = getPasswordPage(withSession('/account/password?error=constructor', token), harness.deps);
     expect(odd.status).toBe(200);
     expect(await odd.text()).not.toMatch(/role="alert"/);
@@ -200,5 +201,47 @@ describe('postPassword', () => {
     const { token, oneTime } = await waitingMember(harness);
     vi.spyOn(harness.deps.passwords(), 'verify').mockRejectedValueOnce(new HashingBusyError());
     expect(location(await postPassword(change(token, { current: oneTime, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), harness.deps))).toBe('/account/password?error=busy');
+  });
+
+  /** Changes the password PASSWORD_CHANGE_LIMIT times in a row; returns the last session token and password. */
+  async function changeRepeatedly(harness: AccountHarness, token: string, current: string) {
+    for (let i = 1; i <= PASSWORD_CHANGE_LIMIT; i++) {
+      const password = `${NEW_PASSWORD} ${i}`;
+      const response = await postPassword(change(token, { current, password, repeat: password }), harness.deps);
+      expect(location(response), `change ${i}`).toBe('/');
+      [token, current] = [sessionTokenOf(response)!, password];
+    }
+    return { token, current };
+  }
+
+  it('allows 5 changes per account in 15 minutes (each opens a session that is kept for good), then refuses without opening one', async () => {
+    const harness = setup();
+    const waiting = await waitingMember(harness);
+    const { token, current } = await changeRepeatedly(harness, waiting.token, waiting.oneTime);
+    const sessions = () => harness.db.prepare('SELECT count(*) AS n FROM account_sessions').get();
+    const before = sessions();
+
+    const refused = await postPassword(change(token, { current, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), harness.deps);
+
+    expect(location(refused)).toBe('/account/password?error=many');
+    expect(sessionTokenOf(refused)).toBeNull();
+    expect(sessions()).toEqual(before);
+    expect(harness.store.findSession(token)).not.toBeNull();
+    harness.advance(15 * 60 * 1000);
+    expect(location(await postPassword(change(token, { current, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), harness.deps))).toBe('/');
+  });
+
+  it('counts only changes that happened: not a refused new password, a busy server or a reset in the meantime', async () => {
+    const harness = setup();
+    const { token, oneTime } = await waitingMember(harness);
+    expect(location(await postPassword(change(token, { current: oneTime, password: 'too short', repeat: 'too short' }), harness.deps))).toBe('/account/password?error=too_short');
+    vi.spyOn(harness.deps.passwords(), 'hash').mockRejectedValueOnce(new HashingBusyError());
+    expect(location(await postPassword(change(token, { current: oneTime, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), harness.deps))).toBe('/account/password?error=busy');
+    vi.spyOn(harness.store, 'changeOwnPassword').mockImplementationOnce(() => {
+      throw new PasswordChangedMeanwhileError();
+    });
+    expect(location(await postPassword(change(token, { current: oneTime, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), harness.deps))).toBe('/login?error=ended');
+
+    await changeRepeatedly(harness, token, oneTime);
   });
 });

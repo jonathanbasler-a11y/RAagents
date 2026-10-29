@@ -123,6 +123,16 @@ describe('scripts/hosted/start.sh and sign-in', () => {
     run({ CHAT_DB_PATH: db, RAAGENTS_REQUIRE_SIGN_IN: '0', ENV_SNAPSHOT: snapshot });
     expect(readFileSync(snapshot, 'utf8')).toBe('0');
   });
+
+  it('passes the server exactly 1 for any value but 0, so whitespace the app trims away (a stray CR or newline) cannot switch it off', () => {
+    const snapshot = path.join(dir, 'require.txt');
+    stubNode(`printf '%s' "\${RAAGENTS_REQUIRE_SIGN_IN-unset}" > "$ENV_SNAPSHOT"`);
+    const db = path.join(dir, 'data', 'chat.db');
+    for (const value of [' ', '\t', '\r', '\n', '\u00a0', '\ufeff', ' 0', '0\r\n', 'yes']) {
+      run({ CHAT_DB_PATH: db, RAAGENTS_REQUIRE_SIGN_IN: value, ENV_SNAPSHOT: snapshot });
+      expect(readFileSync(snapshot, 'utf8'), JSON.stringify(value)).toBe('1');
+    }
+  });
 });
 
 describe('scripts/hosted/start.sh with a backup', () => {
