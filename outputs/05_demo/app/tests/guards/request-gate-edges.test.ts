@@ -37,20 +37,20 @@ describe('proxy: X-Forwarded-Host', () => {
     });
   }
 
-  it('hands the header to the gate: behind a proxy, the forwarded host is the one the Origin must match', () => {
+  it('hands the header to the gate: behind a proxy, the forwarded host is the one the Origin must match', async () => {
     vi.stubEnv('HOST', '0.0.0.0');
 
-    expect(proxy(forwardedPost({ 'x-forwarded-host': 'app.example.test' })).headers.get('x-middleware-next')).toBe('1');
+    expect((await proxy(forwardedPost({ 'x-forwarded-host': 'app.example.test' }))).headers.get('x-middleware-next')).toBe('1');
   });
 
-  it('still answers 403 when the forwarded host is another name, or when there is no forwarded host at all', () => {
+  it('still answers 403 when the forwarded host is another name, or when there is no forwarded host at all', async () => {
     vi.stubEnv('HOST', '0.0.0.0');
 
-    expect(proxy(forwardedPost({ 'x-forwarded-host': 'other.example.test' })).status).toBe(403);
-    expect(proxy(forwardedPost()).status).toBe(403);
+    expect((await proxy(forwardedPost({ 'x-forwarded-host': 'other.example.test' }))).status).toBe(403);
+    expect((await proxy(forwardedPost())).status).toBe(403);
   });
 
-  it('ignores the header on a loopback bind, where nothing sits in front of the server', () => {
-    expect(proxy(forwardedPost({ 'x-forwarded-host': 'app.example.test' })).status).toBe(403);
+  it('ignores the header on a loopback bind, where nothing sits in front of the server', async () => {
+    expect((await proxy(forwardedPost({ 'x-forwarded-host': 'app.example.test' }))).status).toBe(403);
   });
 });

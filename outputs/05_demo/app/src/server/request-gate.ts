@@ -10,6 +10,8 @@
 //
 // No import of server-only or Next: the module has to load in any runtime.
 
+import { readAccessSetting } from './access-gate';
+
 /**
  * The process environment, or a stand-in. Two names are read:
  * - HOST: the address the server binds to (the npm scripts pass it as -H); unset means 127.0.0.1.
@@ -153,9 +155,12 @@ export function exposureWarning(env: GateEnv): string | null {
     allowed.exact.length > 0 || allowed.suffixes.length > 0
       ? 'Requests are limited to loopback and the ALLOWED_HOSTS names.'
       : 'The Host header is not checked (set ALLOWED_HOSTS to restrict it).';
-  return (
-    'HOST is set beyond loopback, so this server accepts connections from other machines. ' +
-    'The app has no login: keep the port private (reachable only by you). ' +
-    hostCheck
-  );
+  const access = readAccessSetting(env);
+  const login =
+    access.state === 'on'
+      ? 'Sign-in is required: every request needs the shared access password (RAAGENTS_ACCESS_PASSWORD). '
+      : access.state === 'misconfigured'
+        ? `Nobody can sign in: ${access.reason} `
+        : 'The app has no login: keep the port private (reachable only by you). ';
+  return 'HOST is set beyond loopback, so this server accepts connections from other machines. ' + login + hostCheck;
 }

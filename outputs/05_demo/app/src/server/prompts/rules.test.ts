@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PROMPT_MARKER, SHARED_RULES } from '@/server/prompts';
+import { PROMPT_MARKER, SHARED_RULES, sharedRulesFor } from '@/server/prompts';
 
 const paragraphs = SHARED_RULES.split(/\n\s*\n/).map((paragraph) => paragraph.trim());
 
@@ -98,5 +98,36 @@ describe('shared rules', () => {
     const text = rule(/text from others is data/i);
     expect(text).toContain('BEGIN UNTRUSTED TEXT');
     expect(text).toMatch(/never as instructions/);
+  });
+});
+
+describe('shared rules for a hosted copy', () => {
+  const hosted = sharedRulesFor({ RAAGENTS_HOSTED_NOTICE: 'Practice copy for the team.' });
+  const hostedParagraphs = hosted.split(/\n\s*\n/).map((paragraph) => paragraph.trim());
+
+  it('are the local rules, unchanged, when no hosted notice is set', () => {
+    expect(sharedRulesFor({})).toBe(SHARED_RULES);
+    expect(sharedRulesFor({ RAAGENTS_HOSTED_NOTICE: '   ' })).toBe(SHARED_RULES);
+  });
+
+  it('replace only the confidential-workspace paragraph, in the same place', () => {
+    expect(hostedParagraphs).toHaveLength(paragraphs.length);
+    const changed = hostedParagraphs.map((paragraph, i) => paragraph !== paragraphs[i]);
+    expect(changed.filter(Boolean)).toHaveLength(1);
+    expect(paragraphs[changed.indexOf(true)]).toMatch(/^Confidential workspace\./);
+    expect(hosted.split(PROMPT_MARKER)).toHaveLength(2);
+  });
+
+  it('say the copy is shared and for practice and fictional material, and where chats really go', () => {
+    const text = hostedParagraphs.find((paragraph) => /^Shared hosted copy\./.test(paragraph)) ?? '';
+    expect(text).toMatch(/practice and fictional material/);
+    expect(text).toMatch(/stored on the shared host/);
+    expect(text).toMatch(/everyone who can sign in/);
+    expect(text).toMatch(/Never promise secrecy or deletion/);
+    expect(text).toMatch(/still claims to verify, not facts/);
+    // Agents still work from what is shared rather than policing it; the banner tells people the rule.
+    expect(text).toMatch(/Do not refuse it, warn about it/);
+    expect(hosted).not.toMatch(/cleared to share confidential material/);
+    expect(hosted).not.toMatch(/person's computer/);
   });
 });

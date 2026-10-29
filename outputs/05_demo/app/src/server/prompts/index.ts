@@ -7,7 +7,7 @@ import 'server-only';
 // - fenceUntrusted / neutraliseUntrusted: text not written by the person asking.
 // - formatTurnDate / resolveTimeZone: the date line, and the browser time zone check.
 
-export { PROMPT_MARKER, SHARED_RULES } from './rules';
+export { PROMPT_MARKER, SHARED_RULES, sharedRulesFor } from './rules';
 export { formatTurnDate, resolveTimeZone } from './date';
 export { fenceUntrusted, neutraliseUntrusted, type FencedText, type FenceOptions, type UntrustedBlock } from './fence';
 export { buildAgentPrompt, hashPrompt, type AgentPrompt, type AgentPromptInput } from './build';

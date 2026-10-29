@@ -1,73 +1,73 @@
 import { NextRequest } from 'next/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { proxy } from './proxy';
+import { ACCESS_COOKIE, createAccessToken } from '@/server/access-gate';
 
-// The handler is thin: the decision table is tested in server/request-gate.test.ts. These
-// tests prove the headers are read from the request and the answers are built right.
+const SECRET = 'a-session-secret-of-at-least-32-chars!';
 
-function request(path: string, init: { method?: string; headers?: Record<string, string> } = {}): NextRequest {
-  return new NextRequest(`http://localhost:3200${path}`, init);
+function request(path: string, init: { method?: string; host?: string; cookie?: string } = {}): NextRequest {
+  const headers = new Headers({ host: init.host ?? 'localhost:3200' });
+  if (init.cookie !== undefined) headers.set('cookie', `${ACCESS_COOKIE}=${init.cookie}`);
+  return new NextRequest(`http://localhost:3200${path}`, { method: init.method ?? 'GET', headers });
+}
+
+function passedThrough(response: Response): boolean {
+  return response.headers.get('x-middleware-next') === '1';
 }
 
 afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe('proxy', () => {
-  it('lets a loopback Host through on a page, an API route and a static asset', () => {
-    for (const path of ['/', '/api/health', '/_next/static/chunks/app.js', '/avatars/dara.svg']) {
-      const response = proxy(request(path, { headers: { host: '127.0.0.1:3200' } }));
+describe('proxy without the access gate', () => {
+  it('lets a loopback request through, as before', async () => {
+    expect(passedThrough(await proxy(request('/')))).toBe(true);
+    expect(passedThrough(await proxy(request('/api/rooms/team/messages')))).toBe(true);
+  });
+});
 
-      // NextResponse.next() marks "continue" with this header and carries no status of its own.
-      expect(response.headers.get('x-middleware-next')).toBe('1');
-    }
+describe('proxy with the access gate on', () => {
+  function gateOn() {
+    vi.stubEnv('RAAGENTS_ACCESS_PASSWORD', 'open sesame');
+    vi.stubEnv('RAAGENTS_SESSION_SECRET', SECRET);
+  }
+
+  it('shows the login page in place of a page without a session: an internal rewrite, no Location header', async () => {
+    // Next.js parses a Location set by the proxy as a full URL (a relative one crashes the request
+    // with a 500, seen on a real server), and inside a container the request URL names the internal
+    // address. A rewrite needs neither and answers the load balancer's health check of / with 200.
+    gateOn();
+    const response = await proxy(request('/team?thread=t1'));
+    expect(response.headers.get('location')).toBeNull();
+    const target = new URL(response.headers.get('x-middleware-rewrite') ?? 'http://none.invalid/');
+    expect(target.pathname).toBe('/login');
+    expect(target.searchParams.get('next')).toBe('/team?thread=t1');
   });
 
-  it('answers 421 to a rebinding host on every kind of route', async () => {
-    for (const path of ['/', '/api/health', '/api/rooms/team/turns', '/_next/static/chunks/app.js']) {
-      const response = proxy(request(path, { headers: { host: 'rebind.attacker.example.test:3200' } }));
-
-      expect(response.status).toBe(421);
-      expect(response.headers.get('cache-control')).toBe('no-store');
-      expect(response.headers.get('content-type')).toMatch(/^text\/plain/);
-      expect(await response.text()).toMatch(/Misdirected/);
-    }
+  it('answers 401 with JSON to an API request without a session', async () => {
+    gateOn();
+    const response = await proxy(request('/api/rooms/team/turns', { method: 'POST' }));
+    expect(response.status).toBe(401);
+    expect(response.headers.get('content-type')).toMatch(/application\/json/);
+    expect(await response.json()).toEqual({ error: 'sign_in_required' });
   });
 
-  it('answers 403 to a POST from another origin', () => {
-    const response = proxy(
-      request('/api/rooms/team/turns', {
-        method: 'POST',
-        headers: { host: 'localhost:3200', origin: 'https://evil.example.test' },
-      }),
-    );
-
-    expect(response.status).toBe(403);
+  it('lets a request with a valid session through', async () => {
+    gateOn();
+    const token = await createAccessToken(SECRET, Date.now());
+    expect(passedThrough(await proxy(request('/team', { cookie: token })))).toBe(true);
+    expect(passedThrough(await proxy(request('/api/rooms/team/messages', { cookie: token })))).toBe(true);
   });
 
-  it('lets a same-origin POST through', () => {
-    const response = proxy(
-      request('/api/rooms/team/turns', {
-        method: 'POST',
-        headers: { host: 'localhost:3200', origin: 'http://localhost:3200' },
-      }),
-    );
-
-    expect(response.headers.get('x-middleware-next')).toBe('1');
+  it('keeps the health check open for the load balancer', async () => {
+    gateOn();
+    expect(passedThrough(await proxy(request('/api/health')))).toBe(true);
   });
 
-  it('reads ALLOWED_HOSTS at request time', () => {
-    const hostHeader = { host: 'app.example.test' };
-
-    expect(proxy(request('/', { headers: hostHeader })).status).toBe(421);
-
-    vi.stubEnv('ALLOWED_HOSTS', 'app.example.test');
-    expect(proxy(request('/', { headers: hostHeader })).headers.get('x-middleware-next')).toBe('1');
-  });
-
-  it('reads HOST at request time: bound beyond loopback and unrestricted, any Host passes', () => {
-    vi.stubEnv('HOST', '0.0.0.0');
-
-    expect(proxy(request('/', { headers: { host: '3200-workspace.example.test' } })).headers.get('x-middleware-next')).toBe('1');
+  it('still applies the host check first: a wrong Host is refused before anything else', async () => {
+    gateOn();
+    const token = await createAccessToken(SECRET, Date.now());
+    const response = await proxy(request('/team', { host: 'attacker.example', cookie: token }));
+    expect(response.status).toBe(421);
   });
 });

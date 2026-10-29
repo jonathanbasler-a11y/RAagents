@@ -175,6 +175,19 @@ code {
   font-size: 12px;
   color: var(--graphite);
 }
+/* Hosted copy only: sign-out sits at the end of the header line. */
+.sign-out {
+  margin-left: auto;
+}
+.sign-out button {
+  font: 12px/1 var(--f-data);
+  padding: 6px 10px;
+  background: var(--sheet);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
 .doc-control {
   flex: 1 1 360px;
   font: 12px/1.6 var(--f-data);

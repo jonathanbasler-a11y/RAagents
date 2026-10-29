@@ -278,6 +278,25 @@ describe('exposureWarning', () => {
     expect(text).not.toMatch(/not checked|skipped|off/i);
   });
 
+  it('says sign-in is required instead of "no login" when the access gate is on', () => {
+    const text = exposureWarning({
+      HOST: '0.0.0.0',
+      RAAGENTS_ACCESS_PASSWORD: 'pw',
+      RAAGENTS_SESSION_SECRET: 'a-session-secret-of-at-least-32-chars!',
+    });
+
+    expect(text).not.toMatch(/no login/i);
+    expect(text).toMatch(/sign-in is required/i);
+  });
+
+  it('says nobody can sign in when the access password is set without a usable session secret', () => {
+    const text = exposureWarning({ HOST: '0.0.0.0', RAAGENTS_ACCESS_PASSWORD: 'pw' });
+
+    expect(text).toMatch(/RAAGENTS_SESSION_SECRET/);
+    expect(text).toMatch(/nobody can sign in/i);
+    expect(text).not.toMatch(/no login/i);
+  });
+
   it('prints no host name from the settings', () => {
     expect(exposureWarning({ HOST: '10.9.8.7', ALLOWED_HOSTS: 'secret-name.example.test' })).not.toMatch(/10\.9\.8\.7|secret-name/);
   });

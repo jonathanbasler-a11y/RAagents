@@ -19,14 +19,21 @@ export const CONFIDENTIAL_BANNER =
 /**
  * Banner, header, the rail and the page. Rendered by the root layout on every page. `mode` comes
  * from the server's DEMO_MODE: in practice mode every page and every reply says it is stand-in text.
+ * On a hosted copy the root layout passes `notice` (RAAGENTS_HOSTED_NOTICE), which replaces the
+ * confidential-workspace banner because chats there do not stay on one computer, and `signOut`
+ * when sign-in is on.
  */
 export function AppShell({
   agentsLoad,
   mode = 'live',
+  notice,
+  signOut = false,
   children,
 }: {
   agentsLoad: AgentsLoad;
   mode?: DemoMode;
+  notice?: string;
+  signOut?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -36,7 +43,7 @@ export function AppShell({
           Skip to content
         </a>
         <div className="banner" role="note">
-          {CONFIDENTIAL_BANNER}
+          {notice !== undefined && notice.trim() !== '' ? notice : CONFIDENTIAL_BANNER}
         </div>
         <PracticeBanner mode={mode} />
         <DataRoomProvider>
@@ -46,6 +53,11 @@ export function AppShell({
               <span>Agent personas · team chat and 1:1 rooms</span>
             </Link>
             <PhaseLine mode={mode} />
+            {signOut ? (
+              <form method="post" action="/api/logout" className="sign-out">
+                <button type="submit">Sign out</button>
+              </form>
+            ) : null}
           </header>
           <FindingsProvider>
             <ChecklistProvider>

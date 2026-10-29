@@ -233,3 +233,38 @@ describe('AppShell', () => {
     expect(screen.getByText('Confidential workspace. Chats stay on this computer and go to your company\'s model gateway; agents cannot promise secrecy or deletion.')).toBeInTheDocument();
   });
 });
+
+describe('AppShell on a hosted copy', () => {
+  it('shows the confidential-workspace banner by default and no sign-out', () => {
+    renderShell();
+
+    expect(screen.getByRole('note')).toHaveTextContent(/Chats stay on this computer/);
+    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+  });
+
+  it('shows the hosted notice in place of the confidential-workspace banner', () => {
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} notice="Hosted practice copy: fictional material only.">
+        <p>Page body</p>
+      </AppShell>,
+    );
+
+    expect(screen.getAllByRole('note')).toHaveLength(1);
+    expect(screen.getByRole('note')).toHaveTextContent('Hosted practice copy: fictional material only.');
+    expect(screen.queryByText(/Chats stay on this computer/)).not.toBeInTheDocument();
+  });
+
+  it('offers sign-out as a form that posts to the sign-out route when sign-in is on', () => {
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} signOut>
+        <p>Page body</p>
+      </AppShell>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    const form = button.closest('form');
+    expect(form).not.toBeNull();
+    expect(form?.getAttribute('method')).toBe('post');
+    expect(form?.getAttribute('action')).toBe('/api/logout');
+  });
+});

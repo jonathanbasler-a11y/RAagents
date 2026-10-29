@@ -1,0 +1,17 @@
+# The image needs only the app and the agent specs; everything else in outputs/ stays out.
+*
+!04_agents
+!05_demo
+05_demo/*
+!05_demo/app
+
+# Never into an image: local settings, databases, builds and installed packages.
+**/.env*
+**/.data
+**/.next
+**/.next-*
+**/node_modules
+**/.eval-runs
+**/*.db
+**/*.db-wal
+**/*.db-shm
