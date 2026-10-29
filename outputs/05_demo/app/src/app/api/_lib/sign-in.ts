@@ -1,4 +1,5 @@
 import 'server-only';
+import { createHash } from 'node:crypto';
 import {
   CLEAR_SESSION_COOKIE,
   clientAddress,
@@ -8,7 +9,7 @@ import {
 } from '@/server/access-gate';
 import { HashingBusyError, secretEquals } from '@/server/accounts/crypto';
 import { isSessionToken, tokenHash } from '@/server/accounts/session-lookup';
-import { SESSION_TTL_MS, canonicalOneTimePassword, normalizeUsername } from '@/shared/accounts';
+import { SESSION_TTL_MS, canonicalOneTimePassword, checkUsername, normalizeUsername } from '@/shared/accounts';
 import type { AccountDeps } from './account-deps';
 import { htmlPage, isSameOriginRequest, plainText, readFormBody, seeOther, sessionTokenFrom } from './account-http';
 import { LOGIN_MESSAGES, loginPage } from './account-pages';
@@ -16,13 +17,36 @@ import { LOGIN_MESSAGES, loginPage } from './account-pages';
 // Sign-in and sign-out for a hosted copy (src/server/access-gate.ts). The login page posts a plain HTML form; every
 // answer is a 303 back to a page.
 //
-// Failed attempts are counted before any password is checked, and only failures count. Per machine and name, per name,
-// and per machine (the address the load balancer added, only behind one trusted proxy). The admin from the server
-// settings has no per-name budget: its default name "admin" would otherwise let anyone lock the owner out, and its long
-// random password cannot be guessed at the per-machine rate. There is no global ceiling: a script could otherwise lock
-// everyone out. The password hasher's own limit keeps a flood from tying up the server.
+// Failed attempts are counted before any password is checked, and only failures count: per name (10 in 15 minutes) and,
+// behind one trusted load balancer (RAAGENTS_TRUSTED_PROXY_HOPS=1), per machine and name (5) and per machine (50). The
+// admin from the server settings has no per-name budget: its default name "admin" would otherwise let anyone lock the
+// owner out. Without a trusted proxy only the hashing limit slows guesses at that name, so its password must be long and
+// random (the setup tool makes 24 characters). There is no global ceiling: a script could otherwise lock everyone out.
+// Successful sign-ins are limited too (20 per account in 15 minutes): every session is a row the database keeps for good.
 
-export const SIGN_IN_LIMITS = { pair: 5, account: 10, client: 50 } as const;
+export const SIGN_IN_LIMITS = { pair: 5, account: 10, client: 50, sessions: 20 } as const;
+/** Longer than any username can be: such a name is not looked up, and is checked against the dummy hash. */
+const MAX_LOOKUP_CHARS = 64;
+
+/** A name's throttle key: a hash, so a long name typed into the form takes no more memory than a short one. */
+function nameKey(username: string): string {
+  return createHash('sha256').update(username, 'utf8').digest('hex').slice(0, 32);
+}
+
+const refusals = new WeakMap<object, { count: number; notedAt: number }>();
+
+/** Notes refused sign-ins in the log at most once a minute, as a count: a stream of refusals must not flood the log. */
+function noteRefusal(log: AccountDeps['log'], nowMs: number): void {
+  const state = refusals.get(log) ?? { count: 0, notedAt: Number.NEGATIVE_INFINITY };
+  state.count += 1;
+  if (nowMs - state.notedAt >= 60_000) {
+    // Counts only, never the typed name: people type passwords into the name field.
+    log.warn(`[accounts] ${state.count} sign-in(s) refused for too many failed attempts since the last note`);
+    state.count = 0;
+    state.notedAt = nowMs;
+  }
+  refusals.set(log, state);
+}
 
 function backToLogin(error: string, next: string): Response {
   const query = new URLSearchParams({ error });
@@ -41,25 +65,27 @@ export async function postLogin(request: Request, deps: AccountDeps): Promise<Re
 
   const username = normalizeUsername(fields.get('username') ?? '');
   const password = fields.get('password') ?? '';
-  const isServerAdminName = username === setting.admin.username;
+  const store = deps.store();
+  const passwords = deps.passwords();
+  const now = deps.now();
+  // Looked up before anything is counted: a database error here is a server error, never a failed attempt.
+  const account = username.length <= MAX_LOOKUP_CHARS && checkUsername(username).ok ? store.findAccountForSignIn(username) : null;
+  const isServerAdmin = account !== null && account.managedBy === 'server' && username === setting.admin.username;
+
+  const key = nameKey(username);
   const client = clientAddress(request.headers.get('x-forwarded-for'), setting.trustedProxyHops);
   const buckets: AttemptBucket[] = [];
   if (client !== null) {
-    buckets.push({ key: `pair:${client}|${username}`, limit: SIGN_IN_LIMITS.pair });
+    buckets.push({ key: `pair:${client}|${key}`, limit: SIGN_IN_LIMITS.pair });
     buckets.push({ key: `client:${client}`, limit: SIGN_IN_LIMITS.client });
   }
-  if (!isServerAdminName) buckets.push({ key: `account:${username}`, limit: SIGN_IN_LIMITS.account });
-  const now = deps.now();
+  if (!isServerAdmin) buckets.push({ key: `account:${key}`, limit: SIGN_IN_LIMITS.account });
   const ticket = deps.signInThrottle.reserve(buckets, now.getTime());
   if (ticket === null) {
-    // Counts only, never the typed name: people type passwords into the name field.
-    deps.log.warn('[accounts] a sign-in was refused: too many failed attempts');
+    noteRefusal(deps.log, now.getTime());
     return backToLogin('locked', next);
   }
 
-  const store = deps.store();
-  const passwords = deps.passwords();
-  const account = store.findAccountForSignIn(username);
   let matches = false;
   try {
     if (account === null) {
@@ -68,21 +94,31 @@ export async function postLogin(request: Request, deps: AccountDeps): Promise<Re
     } else if (account.managedBy === 'server') {
       // The live setting must match too, so a changed admin password works (and the old one stops) at once.
       const hashMatches = await passwords.verify(password, account.passwordHash);
-      matches = hashMatches && isServerAdminName && secretEquals(password, setting.admin.password);
+      matches = hashMatches && isServerAdmin && secretEquals(password, setting.admin.password);
     } else {
       matches = await passwords.verify(account.mustChangePassword ? canonicalOneTimePassword(password) : password, account.passwordHash);
     }
   } catch (error) {
-    if (!(error instanceof HashingBusyError)) throw error;
+    // Busy, or a stored hash that cannot be checked: no password was judged, so nothing counts.
     ticket.refund();
-    return backToLogin('busy', next);
+    if (error instanceof HashingBusyError) return backToLogin('busy', next);
+    throw error;
   }
   if (!matches || account === null || account.disabledAt !== null) return backToLogin('wrong', next);
 
   ticket.refund();
   if (account.mustChangePassword && (account.oneTimeExpiresAt ?? '') <= now.toISOString()) return backToLogin('expired', next);
+  const opened = deps.signInThrottle.reserve([{ key: `opened:${account.id}`, limit: SIGN_IN_LIMITS.sessions }], now.getTime());
+  if (opened === null) return backToLogin('many', next);
   const token = deps.newSessionToken();
-  store.openSession({ accountId: account.id, tokenHash: tokenHash(token), expiresAt: new Date(now.getTime() + SESSION_TTL_MS).toISOString() });
+  try {
+    store.openSession({ accountId: account.id, tokenHash: tokenHash(token), expiresAt: new Date(now.getTime() + SESSION_TTL_MS).toISOString() });
+  } catch (error) {
+    opened.refund();
+    // Disabled while the password was being checked: the database refused the session. The same answer as any refusal.
+    if (store.findAccountForSignIn(username)?.disabledAt) return backToLogin('wrong', next);
+    throw error;
+  }
   const destination = !account.mustChangePassword
     ? next
     : next === '/'

@@ -46,7 +46,7 @@ describe('createPasswordHasher', () => {
     const hasher = createPasswordHasher({ cost: CHEAP });
     const good = await hasher.hash('a password here');
     const [, , salt, key] = good.split('$');
-    for (const params of ['n=1048576,r=8,p=1', 'n=1024,r=16,p=1', 'n=1024,r=8,p=50', 'n=1000,r=8,p=1', 'n=1024,r=8']) {
+    for (const params of ['n=1048576,r=8,p=1', 'n=65536,r=8,p=1', 'n=131072,r=8,p=1', 'n=1024,r=16,p=1', 'n=1024,r=8,p=50', 'n=1000,r=8,p=1', 'n=1024,r=8']) {
       expect(await hasher.verify('a password here', `scrypt$${params}$${salt}$${key}`), params).toBe(false);
     }
     for (const junk of ['', 'scrypt$', 'bcrypt$x', `scrypt$n=1024,r=8,p=1$${salt}`, `scrypt$n=1024,r=8,p=1$${salt}$short`]) {

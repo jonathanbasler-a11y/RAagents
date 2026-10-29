@@ -1,6 +1,6 @@
 import 'server-only';
 import { cookies } from 'next/headers';
-import { SESSION_COOKIE, readAccessSetting, type AccessEnv } from '@/server/access-gate';
+import { SESSION_COOKIE, countedSession, readAccessSetting, type AccessEnv } from '@/server/access-gate';
 import type { SessionView, ShellAccount } from '@/shared/accounts';
 import { getAccountStore } from './runtime';
 
@@ -17,11 +17,10 @@ export async function currentAccount(env: AccessEnv = process.env): Promise<Curr
   const token = (await cookies()).get(SESSION_COOKIE)?.value ?? null;
   if (token === null || setting.state === 'misconfigured') return { signIn: 'on', session: null };
   try {
-    const session = getAccountStore().findSession(token);
     // As in the proxy (access-gate.ts): an admin the settings no longer name is no one, and a person who must still
     // replace a one-time password gets the password page, not the app.
+    const session = countedSession(setting, getAccountStore().findSession(token));
     if (session === null || session.mustChangePassword) return { signIn: 'on', session: null };
-    if (session.managedBy === 'server' && session.username !== setting.admin.username) return { signIn: 'on', session: null };
     return { signIn: 'on', session };
   } catch {
     return { signIn: 'on', session: null };

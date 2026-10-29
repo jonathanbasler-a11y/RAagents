@@ -1,8 +1,8 @@
 import 'server-only';
-import { CLEAR_SESSION_COOKIE, safeNextPath, sessionCookieHeader } from '@/server/access-gate';
+import { CLEAR_SESSION_COOKIE, countedSession, safeNextPath, sessionCookieHeader } from '@/server/access-gate';
 import { HashingBusyError } from '@/server/accounts/crypto';
 import { tokenHash } from '@/server/accounts/session-lookup';
-import { PasswordChangedMeanwhileError } from '@/server/accounts/store';
+import { PasswordChangedMeanwhileError, PersonNotFoundError } from '@/server/accounts/store';
 import { SESSION_TTL_MS, canonicalOneTimePassword, checkNewPassword } from '@/shared/accounts';
 import type { AccountDeps } from './account-deps';
 import { htmlPage, isSameOriginRequest, plainText, readFormBody, seeOther, sessionTokenFrom } from './account-http';
@@ -25,9 +25,10 @@ function backToPage(error: string, next: string): Response {
 }
 
 export function getPasswordPage(request: Request, deps: AccountDeps): Response {
-  if (deps.setting().state === 'off') return plainText(404, 'Not found.');
+  const setting = deps.setting();
+  if (setting.state === 'off') return plainText(404, 'Not found.');
   const token = sessionTokenFrom(request);
-  const session = token === null ? null : deps.store().findSession(token);
+  const session = countedSession(setting, token === null ? null : deps.store().findSession(token));
   if (session === null) return seeOther('/login');
   const url = new URL(request.url);
   return htmlPage(
@@ -43,7 +44,8 @@ export function getPasswordPage(request: Request, deps: AccountDeps): Response {
 }
 
 export async function postPassword(request: Request, deps: AccountDeps): Promise<Response> {
-  if (deps.setting().state === 'off') return plainText(404, 'Not found.');
+  const setting = deps.setting();
+  if (setting.state === 'off') return plainText(404, 'Not found.');
   if (!isSameOriginRequest(request)) return plainText(403, 'Forbidden: change your password from this site.');
   const fields = await readFormBody(request);
   if (fields === null) return plainText(413, 'The request body is too large.');
@@ -51,7 +53,7 @@ export async function postPassword(request: Request, deps: AccountDeps): Promise
 
   const store = deps.store();
   const token = sessionTokenFrom(request);
-  const session = token === null ? null : store.findSession(token);
+  const session = countedSession(setting, token === null ? null : store.findSession(token));
   if (session === null) return seeOther('/login');
   if (session.managedBy === 'server') return backToPage('server', next);
   const account = store.findAccountById(session.accountId);
@@ -89,7 +91,8 @@ export async function postPassword(request: Request, deps: AccountDeps): Promise
       sessionExpiresAt: new Date(now.getTime() + SESSION_TTL_MS).toISOString(),
     });
   } catch (error) {
-    if (!(error instanceof PasswordChangedMeanwhileError)) throw error;
+    // An admin reset the password, or disabled the person, while this change was being checked.
+    if (!(error instanceof PasswordChangedMeanwhileError) && !(error instanceof PersonNotFoundError)) throw error;
     return seeOther('/login?error=ended', CLEAR_SESSION_COOKIE);
   }
   return seeOther(next, sessionCookieHeader(fresh));

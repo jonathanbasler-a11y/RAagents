@@ -2,6 +2,7 @@ import { accountDeps } from '@/app/api/_lib/account-deps';
 import { sessionTokenFrom } from '@/app/api/_lib/account-http';
 import { apiDeps } from '@/app/api/_lib/deps';
 import { getHealth, statusOnly } from '@/app/api/_lib/health';
+import { countedSession } from '@/server/access-gate';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,11 +15,14 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request): Promise<Response> {
   const report = getHealth(apiDeps());
   const accounts = accountDeps();
-  if (accounts.setting().state === 'off') return report;
+  const setting = accounts.setting();
+  if (setting.state === 'off') return report;
   const token = sessionTokenFrom(request);
   let signedIn = false;
   try {
-    signedIn = token !== null && accounts.store().findSession(token) !== null;
+    // The proxy's rule (access-gate.ts): a session that must still replace a one-time password reaches the password page only.
+    const session = countedSession(setting, token === null ? null : accounts.store().findSession(token));
+    signedIn = session !== null && !session.mustChangePassword;
   } catch {
     signedIn = false;
   }

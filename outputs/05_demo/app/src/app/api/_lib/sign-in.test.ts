@@ -71,17 +71,17 @@ describe('postLogin', () => {
     expect(harness.store.findSession(sessionTokenOf(response)!)).toMatchObject({ mustChangePassword: true });
   });
 
-  it('gives the same answer for a wrong password, an unknown name and a disabled account', async () => {
+  it('gives the same answer for a wrong password, an unknown name and a disabled account with its right password', async () => {
     const harness = setup();
     const oneTime = await harness.addMember('member-one');
-    await harness.addMember('member-two');
+    const disabledOneTime = await harness.addMember('member-two');
     harness.store.setPersonDisabled({ username: 'member-two', disabled: true, actor: 'admin' });
     const verify = vi.spyOn(harness.deps.passwords(), 'verify');
 
     for (const [username, password] of [
       ['member-one', 'not the password'],
       ['nobody', oneTime],
-      ['member-two', oneTime],
+      ['member-two', disabledOneTime],
     ]) {
       const response = await postLogin(login({ username, password, next: '/team' }), harness.deps);
       expect(location(response), username).toBe('/login?error=wrong&next=%2Fteam');
@@ -137,9 +137,63 @@ describe('postLogin', () => {
   it('says the server is busy, without counting a failure, when too many passwords are being checked', async () => {
     const harness = setup();
     const oneTime = await harness.addMember('member-one');
-    vi.spyOn(harness.deps.passwords(), 'verify').mockRejectedValueOnce(new HashingBusyError());
-    expect(location(await postLogin(login({ username: 'member-one', password: oneTime }), harness.deps))).toBe('/login?error=busy');
+    const verify = vi.spyOn(harness.deps.passwords(), 'verify');
+    for (let i = 0; i < 12; i++) verify.mockRejectedValueOnce(new HashingBusyError());
+    for (let i = 0; i < 12; i++) {
+      expect(location(await postLogin(login({ username: 'member-one', password: oneTime }), harness.deps))).toBe('/login?error=busy');
+    }
     expect(location(await postLogin(login({ username: 'member-one', password: oneTime }), harness.deps))).toBe('/account/password');
+  });
+
+  it('does not count a sign-in the database could not answer as a failed attempt', async () => {
+    const harness = setup();
+    const oneTime = await harness.addMember('member-one');
+    const find = vi.spyOn(harness.store, 'findAccountForSignIn');
+    for (let i = 0; i < 12; i++) find.mockImplementationOnce(() => {
+      throw new Error('database is locked');
+    });
+    for (let i = 0; i < 12; i++) await expect(postLogin(login({ username: 'member-one', password: oneTime }), harness.deps)).rejects.toThrow('database is locked');
+    expect(location(await postLogin(login({ username: 'member-one', password: oneTime }), harness.deps))).toBe('/account/password');
+  });
+
+  it('limits successful sign-ins of one account, since each one is kept for good', async () => {
+    const harness = setup();
+    await harness.addServerAdmin();
+    for (let i = 0; i < 20; i++) expect(location(await postLogin(login({ username: 'admin', password: ADMIN_PASSWORD }), harness.deps))).toBe('/');
+    expect(location(await postLogin(login({ username: 'admin', password: ADMIN_PASSWORD }), harness.deps))).toBe('/login?error=many');
+    harness.advance(15 * 60 * 1000);
+    expect(location(await postLogin(login({ username: 'admin', password: ADMIN_PASSWORD }), harness.deps))).toBe('/');
+  });
+
+  it('keeps the per-name budget for a member whose name the settings give to the admin', async () => {
+    const harness = setup({ setting: { state: 'on', admin: { username: 'member-one', password: ADMIN_PASSWORD }, trustedProxyHops: 0 } });
+    const oneTime = await harness.addMember('member-one');
+    for (let i = 0; i < 10; i++) await postLogin(login({ username: 'member-one', password: 'wrong password' }), harness.deps);
+    expect(location(await postLogin(login({ username: 'member-one', password: oneTime }), harness.deps))).toBe('/login?error=locked');
+  });
+
+  it('answers wrong, not a server error, when the account is disabled while its password is being checked', async () => {
+    const harness = setup();
+    const oneTime = await harness.addMember('member-one');
+    vi.spyOn(harness.store, 'openSession').mockImplementationOnce(() => {
+      harness.store.setPersonDisabled({ username: 'member-one', disabled: true, actor: 'admin' });
+      throw new Error('a disabled account cannot get a session');
+    });
+    expect(location(await postLogin(login({ username: 'member-one', password: oneTime }), harness.deps))).toBe('/login?error=wrong');
+  });
+
+  it('notes refused sign-ins in the log once a minute at most, with a count and no name', async () => {
+    const harness = setup();
+    await harness.addMember('member-one');
+    const warn = vi.spyOn(harness.deps.log, 'warn');
+    for (let i = 0; i < 40; i++) await postLogin(login({ username: 'member-one', password: 'wrong password' }), harness.deps);
+    expect(warn.mock.calls.length).toBeLessThanOrEqual(1);
+    for (const call of warn.mock.calls) expect(String(call[0])).not.toContain('member-one');
+  });
+
+  it('treats a name too long to exist as an unknown name', async () => {
+    const harness = setup();
+    expect(location(await postLogin(login({ username: 'x'.repeat(7000), password: 'anything' }), harness.deps))).toBe('/login?error=wrong');
   });
 
   it('sends a person to a non-Latin path in a form that fits a Location header', async () => {

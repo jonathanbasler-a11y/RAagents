@@ -111,6 +111,20 @@ describe('scripts/hosted/start.sh without a backup', () => {
   });
 });
 
+describe('scripts/hosted/start.sh and sign-in', () => {
+  it('requires sign-in even when the setting arrives empty (as copied from env.example); only an explicit 0 turns it off', () => {
+    const snapshot = path.join(dir, 'require.txt');
+    stubNode(`printf '%s' "\${RAAGENTS_REQUIRE_SIGN_IN-unset}" > "$ENV_SNAPSHOT"`);
+    const db = path.join(dir, 'data', 'chat.db');
+    run({ CHAT_DB_PATH: db, RAAGENTS_REQUIRE_SIGN_IN: '', ENV_SNAPSHOT: snapshot });
+    expect(readFileSync(snapshot, 'utf8')).toBe('1');
+    run({ CHAT_DB_PATH: db, ENV_SNAPSHOT: snapshot });
+    expect(readFileSync(snapshot, 'utf8')).toBe('1');
+    run({ CHAT_DB_PATH: db, RAAGENTS_REQUIRE_SIGN_IN: '0', ENV_SNAPSHOT: snapshot });
+    expect(readFileSync(snapshot, 'utf8')).toBe('0');
+  });
+});
+
 describe('scripts/hosted/start.sh with a backup', () => {
   it('checks that no other copy is writing, restores, then replicates while running the server as its child', () => {
     const db = path.join(dir, 'data', 'chat.db');
@@ -166,13 +180,27 @@ describe('scripts/hosted/start.sh with a backup', () => {
 });
 
 describe('scripts/hosted/server.sh', () => {
-  it('passes a stop signal to the server and counts its signal exit as clean, so Litestream makes its final upload', async () => {
-    stubNode(`trap 'exit 143' TERM\nwhile :; do sleep 0.1; done`);
-    const child = spawn(shell, [SERVER], { env: env({}) });
-    await new Promise((resolve) => setTimeout(resolve, 400));
+  /** Starts server.sh with a stand-in server, waits until that server runs, sends SIGTERM and returns the exit code. */
+  async function stopWhileRunning(): Promise<number | null> {
+    const started = path.join(dir, 'started');
+    const child = spawn(shell, [SERVER], { env: env({ STARTED: started }) });
+    const exited = new Promise<number | null>((resolve) => child.on('exit', resolve));
+    for (let i = 0; i < 100 && !existsSync(started); i++) await new Promise((resolve) => setTimeout(resolve, 30));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     child.kill('SIGTERM');
-    const code = await new Promise<number | null>((resolve) => child.on('exit', resolve));
-    expect(code).toBe(0);
+    return exited;
+  }
+
+  it('passes a stop signal to the server and counts its signal exit as clean, so Litestream makes its final upload', async () => {
+    stubNode(`trap 'exit 143' TERM\ntouch "$STARTED"\nwhile :; do sleep 0.1; done`);
+    expect(await stopWhileRunning()).toBe(0);
+  });
+
+  it('waits until the server has finished its shutdown (saving running turns) before it exits', async () => {
+    const saved = path.join(dir, 'saved');
+    stubNode(`trap 'sleep 1; touch "${saved}"; exit 143' TERM\ntouch "$STARTED"\nwhile :; do sleep 0.1; done`);
+    expect(await stopWhileRunning()).toBe(0);
+    expect(existsSync(saved)).toBe(true);
   });
 
   it('passes on a crash of the server', () => {

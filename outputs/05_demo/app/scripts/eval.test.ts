@@ -95,7 +95,7 @@ function harness(files: Record<string, unknown> = { 'lead.yaml': { cases: [evalC
 async function cli(
   target: Harness,
   argv: string[] = [],
-  options: { env?: Record<string, string>; answer?: Answer; git?: GitState } = {},
+  options: { env?: Record<string, string>; answer?: Answer; git?: GitState; hostedPrompts?: boolean } = {},
 ) {
   const { fetch, calls } = createFakeFetch(Array.from({ length: 60 }, () => options.answer ?? healthy));
   const lines: string[] = [];
@@ -115,6 +115,7 @@ async function cli(
     clock: () => new Date(Date.UTC(2026, 9, 8, 9, 0, tick++)),
     nodeVersion: 'v24.0.0-test',
     log: { error: () => {}, warn: () => {} },
+    ...(options.hostedPrompts === undefined ? {} : { hostedPrompts: options.hostedPrompts }),
   });
   return { code, calls, output: lines.join('\n') };
 }
@@ -209,21 +210,29 @@ describe('npm run eval: filters and options', () => {
     expect(parseEvalArgs(['--agent'])).toEqual({ ok: false, message: '--agent needs a value' });
   });
 
-  it('refuses to measure with the hosted wording unless asked to, and the other way round, before calling anything', async () => {
-    const notice = { ...settings(), RAAGENTS_HOSTED_NOTICE: 'Hosted practice copy' };
-    const unasked = await cli(harness(), [], { env: notice });
+  it('refuses prompts built with the hosted wording unless asked to measure it, before calling anything', async () => {
+    const unasked = await cli(harness(), [], { hostedPrompts: true });
     expect(unasked.code).toBe(2);
-    expect(unasked.output).toMatch(/RAAGENTS_HOSTED_NOTICE is set/);
+    expect(unasked.output).toMatch(/prompts carry the hosted copy's wording/);
     expect(unasked.calls).toHaveLength(0);
+  });
 
-    const without = await cli(harness(), ['--hosted-wording']);
-    expect(without.code).toBe(2);
-    expect(without.output).toMatch(/--hosted-wording needs RAAGENTS_HOSTED_NOTICE/);
-    expect(without.calls).toHaveLength(0);
+  it('refuses --hosted-wording when the prompts were built without it, as with a notice only in .env.local', async () => {
+    const late = await cli(harness(), ['--hosted-wording'], { env: { ...settings(), RAAGENTS_HOSTED_NOTICE: 'Hosted practice copy' }, hostedPrompts: false });
+    expect(late.code).toBe(2);
+    expect(late.output).toMatch(/--hosted-wording needs RAAGENTS_HOSTED_NOTICE set in the shell/);
+    expect(late.calls).toHaveLength(0);
+  });
+
+  it('measures the default wording, and says why, when a notice reaches only the env files', async () => {
+    const { code, output } = await cli(harness(), ['--check'], { env: { ...settings(), RAAGENTS_HOSTED_NOTICE: 'Hosted practice copy' }, hostedPrompts: false });
+    expect(code).toBe(0);
+    expect(output).toMatch(/this run measures the default wording/);
   });
 
   it('says so in the output when it measures the hosted wording', async () => {
-    const { output } = await cli(harness(), ['--hosted-wording', '--check'], { env: { ...settings(), RAAGENTS_HOSTED_NOTICE: 'Hosted practice copy' } });
+    const { code, output } = await cli(harness(), ['--hosted-wording', '--check'], { hostedPrompts: true });
+    expect(code).toBe(0);
     expect(output).toMatch(/Hosted wording: on/);
   });
 

@@ -19,6 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { format } from 'node:util';
 import { AgentSpecError, loadRegistry } from '@/server/agents';
 import { runAgent } from '@/server/chat/run-agent';
+import { SHARED_RULES_HOSTED } from '@/server/prompts';
 import { checkEnvFilePermissions, createLlmClient, modelFamily, readLlmConfig } from '@/server/llm';
 import type { AgentRegistry, LlmConfigResult, LlmRouteName } from '@/shared/contracts';
 import { EvalCaseError, formatIssue, loadCases, type EvalCase } from '../evals/lib/cases';
@@ -104,6 +105,35 @@ export function parseEvalArgs(argv: readonly string[]): ParsedEvalArgs {
     }
   }
   return { ok: true, args };
+}
+
+export type HostedWordingCheck = { ok: true; lines: string[] } | { ok: false; message: string };
+
+/**
+ * Whether a run may go ahead with the wording its prompts carry. The shared rules were fixed when the prompt module
+ * loaded, before the env files were read, so this judges what the prompts really got (`hostedPrompts`), not the
+ * environment now: a notice only in .env.local never reached them. Measuring the hosted wording is a deliberate choice.
+ */
+export function hostedWordingCheck(input: { asked: boolean; hostedPrompts: boolean; noticeNow: boolean }): HostedWordingCheck {
+  if (input.hostedPrompts && !input.asked) {
+    return {
+      ok: false,
+      message:
+        "the agents' prompts carry the hosted copy's wording (RAAGENTS_HOSTED_NOTICE was set when they were built). Unset it, or pass --hosted-wording to measure that wording on purpose.",
+    };
+  }
+  if (input.asked && !input.hostedPrompts) {
+    return {
+      ok: false,
+      message:
+        '--hosted-wording needs RAAGENTS_HOSTED_NOTICE set in the shell that starts the run: a value in .env.local is read after the prompts are built.',
+    };
+  }
+  if (input.asked) return { ok: true, lines: ["Hosted wording: on (the agents get the hosted copy's shared rule; compare only with runs that had it too)."] };
+  if (input.noticeNow) {
+    return { ok: true, lines: ['note: RAAGENTS_HOSTED_NOTICE reached only the env files, after the prompts were built: this run measures the default wording.'] };
+  }
+  return { ok: true, lines: [] };
 }
 
 /** One git command's output; throws when git fails. */
@@ -197,6 +227,8 @@ export interface EvalCliOptions {
   nodeVersion?: string;
   /** Passed to runAgent; default: console with keys and hosts removed. */
   log?: Pick<Console, 'error' | 'warn'>;
+  /** Whether the prompts carry the hosted wording; default: what the prompt module fixed when it loaded. */
+  hostedPrompts?: boolean;
 }
 
 const HELP = [
@@ -333,18 +365,16 @@ export async function runEvalCli(options: EvalCliOptions): Promise<number> {
     for (const line of HELP) print(line);
     return 0;
   }
-  // The shared rules are fixed when they load, from the hosted notice in the environment: a notice left set in a shell
-  // would change every prompt of the run without anyone noticing. Measuring the hosted wording is a deliberate choice.
-  const hostedNotice = (options.env.RAAGENTS_HOSTED_NOTICE ?? '').trim() !== '';
-  if (hostedNotice && !args.hostedWording) {
-    print('error: RAAGENTS_HOSTED_NOTICE is set, so the agents would get the hosted copy\'s wording. Unset it, or pass --hosted-wording to measure that wording on purpose.');
+  const hosted = hostedWordingCheck({
+    asked: args.hostedWording,
+    hostedPrompts: options.hostedPrompts ?? SHARED_RULES_HOSTED,
+    noticeNow: (options.env.RAAGENTS_HOSTED_NOTICE ?? '').trim() !== '',
+  });
+  if (!hosted.ok) {
+    print(`error: ${hosted.message}`);
     return 2;
   }
-  if (args.hostedWording && !hostedNotice) {
-    print('error: --hosted-wording needs RAAGENTS_HOSTED_NOTICE set, which switches the agents to the hosted copy\'s wording.');
-    return 2;
-  }
-  if (args.hostedWording) print("Hosted wording: on (the agents get the hosted copy's shared rule; compare only with runs that had it too).");
+  for (const line of hosted.lines) print(line);
 
   let registry: AgentRegistry;
   try {

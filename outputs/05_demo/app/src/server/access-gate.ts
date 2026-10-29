@@ -117,6 +117,18 @@ function isAdminPath(pathname: string): boolean {
   return ['/admin', '/api/admin'].some((root) => decoded === root || decoded.startsWith(`${root}/`));
 }
 
+/**
+ * The session as sign-in counts it: the one rule every reader of the session cookie applies (the proxy here, the root
+ * layout, the admin and password handlers, the health report). Nobody counts while sign-in is not on (off or
+ * misconfigured), and a server-admin session under a name the settings no longer use is nobody: it belongs to an admin
+ * the settings replaced, whose row the start hook may not have retired yet.
+ */
+export function countedSession(setting: AccessSetting, session: SessionView | null): SessionView | null {
+  if (setting.state !== 'on' || session === null) return null;
+  if (session.managedBy === 'server' && session.username !== setting.admin.username) return null;
+  return session;
+}
+
 const deny = (status: 401 | 403, error: AccessDenial): AccessDecision => ({ kind: 'deny', status, error });
 
 /**
@@ -134,9 +146,7 @@ export function decideAccess(input: AccessInput, setting: AccessSetting, lookup:
   const signIn = (): AccessDecision => (page ? { kind: 'login', path: `/login?next=${here}` } : deny(401, 'sign_in_required'));
   if (setting.state === 'misconfigured') return signIn();
 
-  let session = lookup();
-  // A server-admin session under another name belongs to an admin the server settings no longer name.
-  if (session !== null && session.managedBy === 'server' && session.username !== setting.admin.username) session = null;
+  const session = countedSession(setting, lookup());
   if (session === null) return signIn();
 
   if (session.mustChangePassword) {
@@ -189,7 +199,8 @@ export function clientAddress(forwardedFor: string | null, hops: 0 | 1): string 
   const entries = forwardedFor.split(',');
   const last = entries[entries.length - 1].trim();
   if (IPV4.test(last)) return last;
-  if (last.includes(':') && IPV6.test(last)) return last.toLowerCase();
+  // An IPv6 address has at least two colons; "1.2.3.4:5678" (an address with a port) is not one.
+  if ((last.match(/:/g) ?? []).length >= 2 && IPV6.test(last)) return last.toLowerCase();
   return null;
 }
 
@@ -200,7 +211,7 @@ export interface AttemptBucket {
 }
 
 export interface AttemptTicket {
-  /** The attempt succeeded: take its counts back. */
+  /** The attempt did not count (it succeeded, or the server was too busy to check it): take its counts back. Once. */
   refund(): void;
 }
 
@@ -234,8 +245,12 @@ export function createAttemptThrottle(options: { windowMs: number; maxKeys: numb
         if (oldest === undefined) break;
         attempts.delete(oldest);
       }
+      let refunded = false;
       return {
         refund() {
+          // Once only: a second call would remove another attempt made in the same millisecond.
+          if (refunded) return;
+          refunded = true;
           for (const bucket of buckets) {
             const list = attempts.get(bucket.key);
             if (list === undefined) continue;

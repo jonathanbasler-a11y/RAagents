@@ -1,4 +1,5 @@
 import 'server-only';
+import { countedSession } from '@/server/access-gate';
 import { HashingBusyError } from '@/server/accounts/crypto';
 import {
   AccountRuleError,
@@ -31,9 +32,11 @@ type AdminCheck = { ok: true; session: SessionView } | { ok: false; response: Re
 
 /** The admin behind the request, or the refusal to send: 404 with sign-in off, 401 without a session, 403 for anyone else. */
 export function requireAdmin(request: Request, deps: AccountDeps, correlationId: string): AdminCheck {
-  if (deps.setting().state === 'off') return { ok: false, response: apiError('not_found', correlationId, { message: 'There is no such page.' }) };
+  const setting = deps.setting();
+  if (setting.state === 'off') return { ok: false, response: apiError('not_found', correlationId, { message: 'There is no such page.' }) };
   const token = sessionTokenFrom(request);
-  const session = token === null ? null : deps.store().findSession(token);
+  // The proxy's rule (access-gate.ts): no one counts on a misconfigured copy, nor an admin the settings no longer name.
+  const session = countedSession(setting, token === null ? null : deps.store().findSession(token));
   if (session === null) return { ok: false, response: apiError('sign_in_required', correlationId) };
   if (session.role !== 'admin' || session.mustChangePassword) return { ok: false, response: apiError('admin_only', correlationId) };
   return { ok: true, session };

@@ -42,11 +42,14 @@ const HOSTED_RULE = `Shared hosted copy. This copy of the workspace is hosted fo
 
 const CONFIDENTIAL_TITLE = 'Confidential workspace.';
 
+const isHosted = (env: Readonly<Record<string, string | undefined>>) => (env.RAAGENTS_HOSTED_NOTICE ?? '').trim() !== '';
+
 export function sharedRulesFor(env: Readonly<Record<string, string | undefined>>): string {
-  const hosted = (env.RAAGENTS_HOSTED_NOTICE ?? '').trim() !== '';
-  const rules = hosted ? RULES.map((rule) => (rule.startsWith(CONFIDENTIAL_TITLE) ? HOSTED_RULE : rule)) : RULES;
+  const rules = isHosted(env) ? RULES.map((rule) => (rule.startsWith(CONFIDENTIAL_TITLE) ? HOSTED_RULE : rule)) : RULES;
   return [`Shared rules for every agent (ref ${PROMPT_MARKER})`, ...rules].join('\n\n');
 }
 
 /** The rules for this server, read once at start: the environment of a running server does not change. */
 export const SHARED_RULES = sharedRulesFor(process.env);
+/** Whether SHARED_RULES carry the hosted copy's wording: what the prompts really got, whatever is read into the environment later. */
+export const SHARED_RULES_HOSTED = isHosted(process.env);

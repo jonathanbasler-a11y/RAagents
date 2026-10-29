@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HashingBusyError } from '@/server/accounts/crypto';
-import { PasswordChangedMeanwhileError } from '@/server/accounts/store';
+import { PasswordChangedMeanwhileError, PersonNotFoundError } from '@/server/accounts/store';
 import { getPasswordPage, postPassword } from './account-password';
 import { ADMIN_PASSWORD, accountHarness, formPost, sessionTokenOf, withSession, type AccountHarness } from './account-test-support';
 import { postLogin } from './sign-in';
@@ -63,6 +63,15 @@ describe('getPasswordPage', () => {
     const html = await getPasswordPage(withSession('/account/password', token), harness.deps).text();
     expect(html).toMatch(/set in the server settings/);
     expect(html).not.toMatch(/<form/);
+  });
+
+  it('sends a former server admin, under a name the settings no longer use, to sign in', async () => {
+    const harness = setup();
+    await harness.addServerAdmin();
+    const token = sessionTokenOf(await postLogin(formPost('/api/login', { username: 'admin', password: ADMIN_PASSWORD }), harness.deps))!;
+    const renamed = { ...harness.deps, setting: () => ({ state: 'on' as const, admin: { username: 'owner', password: ADMIN_PASSWORD }, trustedProxyHops: 0 as const }) };
+    expect(location(getPasswordPage(withSession('/account/password', token), renamed))).toBe('/login');
+    expect(location(await postPassword(change(token, { current: ADMIN_PASSWORD, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), renamed))).toBe('/login');
   });
 
   it('says why the last change failed, and ignores a reason it does not know', async () => {
@@ -167,6 +176,23 @@ describe('postPassword', () => {
     const response = await postPassword(change(token, { current: oneTime, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), harness.deps);
     expect(location(response)).toBe('/login?error=ended');
     expect(response.headers.get('set-cookie')).toMatch(/Max-Age=0/);
+  });
+
+  it('says the server is busy when the new password cannot be hashed yet', async () => {
+    const harness = setup();
+    const { token, oneTime } = await waitingMember(harness);
+    vi.spyOn(harness.deps.passwords(), 'hash').mockRejectedValueOnce(new HashingBusyError());
+    expect(location(await postPassword(change(token, { current: oneTime, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), harness.deps))).toBe('/account/password?error=busy');
+  });
+
+  it('sends the person back to sign in when they were disabled in the meantime', async () => {
+    const harness = setup();
+    const { token, oneTime } = await waitingMember(harness);
+    vi.spyOn(harness.store, 'changeOwnPassword').mockImplementationOnce(() => {
+      throw new PersonNotFoundError('with this id');
+    });
+    const response = await postPassword(change(token, { current: oneTime, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), harness.deps);
+    expect(location(response)).toBe('/login?error=ended');
   });
 
   it('says the server is busy without counting a wrong attempt', async () => {

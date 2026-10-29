@@ -13,6 +13,13 @@ set -eu
 db="${CHAT_DB_PATH:?CHAT_DB_PATH must be set to the database file path}"
 here="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 
+# Only the hosted image runs this script, and a hosted copy must never start open: sign-in is required unless it is set
+# to 0 on purpose. An empty value (as copied from a settings file) counts as unset, so it cannot switch it off by accident.
+if [ -z "${RAAGENTS_REQUIRE_SIGN_IN:-}" ]; then
+  RAAGENTS_REQUIRE_SIGN_IN=1
+fi
+export RAAGENTS_REQUIRE_SIGN_IN
+
 if [ -z "${LITESTREAM_REPLICA_URL:-}" ]; then
   exec /bin/sh "$here/server.sh"
 fi

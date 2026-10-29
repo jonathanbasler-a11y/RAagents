@@ -82,8 +82,9 @@ export interface HostedServerDeps {
 }
 
 /**
- * The start hook's work. A local copy (no sign-in, no backup) opens nothing. A failure to prepare sign-in is one log line
- * and leaves the server up, refusing everyone, rather than crash-looping a container (and its restore) over and over.
+ * The start hook's work. A local copy (no sign-in, no backup) opens nothing. A failure to prepare the admin from the
+ * settings is one log line and leaves the server up (people created in the app still sign in; the admin cannot), rather
+ * than crash-looping a container, and its restore, over and over.
  */
 export async function prepareHostedServer(
   env: AccessEnv,
@@ -105,7 +106,10 @@ export async function prepareHostedServer(
     try {
       await prepareAccounts(setting, store, deps.passwords());
     } catch (error) {
-      log.error(`[accounts] sign-in is unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      // Members and existing sessions keep working; the admin from the settings cannot sign in until this is fixed.
+      log.error(
+        `[accounts] the admin from the server settings cannot sign in until this is fixed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
   return backedUp ? { stopHeartbeat: startHeartbeat(store, log) } : {};

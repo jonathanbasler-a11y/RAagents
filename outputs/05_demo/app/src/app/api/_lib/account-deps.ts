@@ -24,9 +24,10 @@ export interface AccountDeps {
 }
 
 const WINDOW_MS = 15 * 60 * 1000;
-// One of each per route bundle, in memory: a restart clears them, which is fine with one server process.
-const signInThrottle = createAttemptThrottle({ windowMs: WINDOW_MS, maxKeys: 5000 });
-const passwordThrottle = createAttemptThrottle({ windowMs: WINDOW_MS, maxKeys: 5000 });
+// One of each per route bundle, in memory: a restart clears them, which is fine with one server process. Keys are short
+// hashes, so 50,000 of them take a few megabytes; that many keep a flood of made-up names from pushing a real one out.
+const signInThrottle = createAttemptThrottle({ windowMs: WINDOW_MS, maxKeys: 50_000 });
+const passwordThrottle = createAttemptThrottle({ windowMs: WINDOW_MS, maxKeys: 50_000 });
 
 export function accountDeps(): AccountDeps {
   return {

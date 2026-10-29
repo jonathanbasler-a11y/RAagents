@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useEffectEvent, useState, type FormEvent } from 'react';
+import { useEffect, useEffectEvent, useRef, useState, type FormEvent } from 'react';
 import { createAccountsClient, type AccountsApi } from '@/client/accounts-client';
 import type { ApiResult } from '@/client/chat-client';
 import { checkUsername, normalizeUsername, type OneTimePasswordResponse, type PersonSummary } from '@/shared/accounts';
@@ -50,6 +50,9 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loadRequest, setLoadRequest] = useState(0);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const shownRef = useRef<HTMLDivElement>(null);
 
   const fetchPeople = useEffectEvent(() => client.listPeople());
 
@@ -70,6 +73,24 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
   }, [loadRequest]);
 
   const reload = () => setLoadRequest((count) => count + 1);
+
+  // The confirmation and the one-time password appear above the table, perhaps out of view: move focus (and the view)
+  // to them, so a click on a row's button never seems to do nothing and a screen reader announces them.
+  useEffect(() => {
+    if (pending === null) return;
+    confirmRef.current?.focus();
+    confirmRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [pending]);
+  useEffect(() => {
+    if (shown === null) return;
+    shownRef.current?.focus();
+    shownRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [shown]);
+
+  const closeShown = () => {
+    setShown(null);
+    nameRef.current?.focus();
+  };
 
   const fail = (result: Extract<ApiResult<unknown>, { ok: false }>) =>
     setFailure({ message: result.message, correlationId: result.error?.correlationId ?? null });
@@ -244,6 +265,7 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
         <label htmlFor="new-person">Username of the new person</label>
         <input
           id="new-person"
+          ref={nameRef}
           value={name}
           onChange={(event) => setName(event.target.value)}
           autoComplete="off"
@@ -268,7 +290,7 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
               ? `Reset the password of ${pending.username}? Their current password stops working and they are signed out everywhere.`
               : `Disable ${pending.username}? They are signed out everywhere and cannot sign in until you enable them again.`}
           </p>
-          <button type="button" className="btn btn-sm" onClick={() => void confirm()}>
+          <button type="button" className="btn btn-sm" ref={confirmRef} onClick={() => void confirm()}>
             {pending.action === 'reset' ? 'Confirm reset' : 'Confirm disable'}
           </button>{' '}
           <button type="button" className="btn btn-quiet btn-sm" onClick={() => setPending(null)}>
@@ -277,7 +299,7 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
         </div>
       )}
       {shown === null ? null : (
-        <div className="people-dialog" role="dialog" aria-labelledby="one-time-title" aria-describedby="one-time-text">
+        <div className="people-dialog" role="dialog" aria-labelledby="one-time-title" aria-describedby="one-time-text" tabIndex={-1} ref={shownRef}>
           <h2 id="one-time-title">One-time password for {shown.username}</h2>
           <p className="one-time-password">{shown.oneTimePassword}</p>
           <p id="one-time-text">
@@ -288,11 +310,19 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
             Copy
           </button>{' '}
           <span aria-live="polite">{copied ? 'Copied' : ''}</span>{' '}
-          <button type="button" className="btn btn-quiet btn-sm" onClick={() => setShown(null)}>
+          <button type="button" className="btn btn-quiet btn-sm" onClick={closeShown}>
             Done
           </button>
         </div>
       )}
+      {people !== undefined && loadError !== null ? (
+        <p role="alert">
+          The list of people could not be refreshed. {loadError}{' '}
+          <button type="button" className="btn btn-quiet btn-sm" onClick={reload}>
+            Retry
+          </button>
+        </p>
+      ) : null}
       {list}
     </section>
   );

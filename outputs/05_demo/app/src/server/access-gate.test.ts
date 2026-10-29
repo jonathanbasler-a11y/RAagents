@@ -7,6 +7,7 @@ import {
   CLEAR_SESSION_COOKIE,
   SESSION_COOKIE,
   clientAddress,
+  countedSession,
   createAttemptThrottle,
   decideAccess,
   readAccessSetting,
@@ -199,6 +200,23 @@ describe('decideAccess', () => {
   });
 });
 
+describe('countedSession', () => {
+  it('is the session itself when sign-in is on', () => {
+    expect(countedSession(ON, MEMBER)).toBe(MEMBER);
+    expect(countedSession(ON, ADMIN)).toBe(ADMIN);
+  });
+
+  it('is nobody while sign-in is off or misconfigured, whatever the cookie says', () => {
+    expect(countedSession({ state: 'off' }, MEMBER)).toBeNull();
+    expect(countedSession({ state: 'misconfigured', reason: 'x' }, ADMIN)).toBeNull();
+    expect(countedSession(ON, null)).toBeNull();
+  });
+
+  it('is nobody for a server admin under a name the settings no longer use', () => {
+    expect(countedSession(ON, { ...ADMIN, username: 'old-admin' })).toBeNull();
+  });
+});
+
 describe('safeNextPath', () => {
   it('keeps a path on this site', () => {
     expect(safeNextPath('/team')).toBe('/team');
@@ -244,7 +262,8 @@ describe('clientAddress', () => {
     expect(clientAddress('2001:db8::1', 1)).toBe('2001:db8::1');
   });
 
-  it('ignores a missing or malformed entry', () => {
+  it('ignores a missing or malformed entry, and an address with a port', () => {
+    expect(clientAddress('1.2.3.4:5678', 1)).toBeNull();
     expect(clientAddress(null, 1)).toBeNull();
     expect(clientAddress('', 1)).toBeNull();
     expect(clientAddress('203.0.113.7, not-an-address', 1)).toBeNull();
@@ -272,6 +291,16 @@ describe('createAttemptThrottle', () => {
     const throttle = createAttemptThrottle({ windowMs: 1000, maxKeys: 100 });
     for (let i = 0; i < 10; i++) throttle.reserve([{ key: 'user:a', limit: 2 }], NOW)?.refund();
     expect(throttle.reserve([{ key: 'user:a', limit: 2 }], NOW)).not.toBeNull();
+  });
+
+  it('gives a reservation back once, however often refund is called', () => {
+    const throttle = createAttemptThrottle({ windowMs: 1000, maxKeys: 100 });
+    for (let i = 0; i < 2; i++) throttle.reserve([{ key: 'user:a', limit: 3 }], NOW);
+    const ticket = throttle.reserve([{ key: 'user:a', limit: 3 }], NOW);
+    ticket?.refund();
+    ticket?.refund();
+    expect(throttle.reserve([{ key: 'user:a', limit: 3 }], NOW)).not.toBeNull();
+    expect(throttle.reserve([{ key: 'user:a', limit: 3 }], NOW)).toBeNull();
   });
 
   it('refuses when any one of the keys is over its budget, and then records nothing', () => {

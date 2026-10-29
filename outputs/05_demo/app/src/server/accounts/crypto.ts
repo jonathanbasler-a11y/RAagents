@@ -19,8 +19,11 @@ export const SCRYPT_COST: ScryptCost = { N: 2 ** 15, r: 8, p: 3 };
 const SCRYPT_MAXMEM = 64 * 1024 * 1024;
 const SALT_BYTES = 16;
 const KEY_BYTES = 32;
-/** A stored hash asking for more than this is refused unread, so a tampered row cannot exhaust the server. */
-const MAX_N = 2 ** 17;
+/**
+ * A stored hash asking for more than this is refused unread, so a tampered row cannot exhaust the server. It is also the
+ * most SCRYPT_MAXMEM holds with r = 8: raise both together if the cost ever goes up.
+ */
+const MAX_N = 2 ** 15;
 const MAX_P = 10;
 
 export class HashingBusyError extends Error {
@@ -100,8 +103,8 @@ export function createPasswordHasher(options: PasswordHasherOptions = {}): Passw
     async verify(password, stored) {
       const parsed = parse(stored);
       if (parsed === null) return false;
-      const key = await limited(() => deriveKey(password, parsed.salt, parsed.cost));
-      return key.length === parsed.key.length && timingSafeEqual(key, parsed.key);
+      const key = await limited(() => deriveKey(password, parsed.salt, parsed.cost).catch(() => null));
+      return key !== null && key.length === parsed.key.length && timingSafeEqual(key, parsed.key);
     },
     dummy: format(cost, Buffer.alloc(SALT_BYTES), Buffer.alloc(KEY_BYTES)),
   };

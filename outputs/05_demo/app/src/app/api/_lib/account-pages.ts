@@ -21,6 +21,7 @@ export const LOGIN_MESSAGES: ReadonlyMap<string, string> = new Map([
   ['busy', 'The server is busy checking other sign-ins. Try again in a moment.'],
   ['setup', 'Sign-in is not set up on this server. Ask the person who runs it.'],
   ['ended', 'Your sign-in has ended. Sign in again.'],
+  ['many', 'Too many sign-ins in a short time. Wait 15 minutes and try again.'],
 ]);
 
 /** Why the last password change did not work. */

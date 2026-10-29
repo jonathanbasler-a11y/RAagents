@@ -25,13 +25,19 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-function signedInMember() {
+function signedInMember(account: { username?: string; role?: string; managedBy?: string; mustChange?: boolean } = {}) {
   const db = openDatabase(path.join(dir, 'chat.db'));
   migrateChatSchema(db);
   db.prepare(
     `INSERT INTO accounts (id, username, role, managed_by, password_hash, must_change_password, one_time_expires_at, disabled_at, created_at, created_by)
-     VALUES ('acc-1', 'member-one', 'member', 'app', 'scrypt$x', 0, NULL, NULL, '2026-10-29T08:00:00.000Z', 'admin')`,
-  ).run();
+     VALUES ('acc-1', ?, ?, ?, 'scrypt$x', ?, ?, NULL, '2026-10-29T08:00:00.000Z', 'admin')`,
+  ).run(
+    account.username ?? 'member-one',
+    account.role ?? 'member',
+    account.managedBy ?? 'app',
+    account.mustChange ? 1 : 0,
+    account.mustChange ? '2999-01-01T00:00:00.000Z' : null,
+  );
   db.prepare(`INSERT INTO account_sessions (token_hash, account_id, created_at, expires_at) VALUES (?, 'acc-1', '2026-10-29T08:00:00.000Z', '2999-01-01T00:00:00.000Z')`).run(tokenHash(TOKEN));
   db.close();
 }
@@ -55,6 +61,24 @@ describe('GET /api/health', () => {
     const body = (await response.json()) as Record<string, unknown>;
     expect(Object.keys(body)).toEqual(['status']);
     expect(Object.keys((await (await GET(request('X'.repeat(43)))).json()) as object)).toEqual(['status']);
+  });
+
+  it('gives only the status to sessions the proxy counts as no one, or as password-page only', async () => {
+    vi.stubEnv('RAAGENTS_ADMIN_PASSWORD', 'a-long-admin-password-1');
+    signedInMember({ mustChange: true });
+    expect(Object.keys((await (await GET(request(TOKEN))).json()) as object)).toEqual(['status']);
+  });
+
+  it('gives only the status to a former server admin under a name the settings no longer use', async () => {
+    vi.stubEnv('RAAGENTS_ADMIN_PASSWORD', 'a-long-admin-password-1');
+    signedInMember({ username: 'old-admin', role: 'admin', managedBy: 'server' });
+    expect(Object.keys((await (await GET(request(TOKEN))).json()) as object)).toEqual(['status']);
+  });
+
+  it('gives only the status on a copy whose sign-in is misconfigured, even to an old session', async () => {
+    vi.stubEnv('RAAGENTS_REQUIRE_SIGN_IN', '1');
+    signedInMember();
+    expect(Object.keys((await (await GET(request(TOKEN))).json()) as object)).toEqual(['status']);
   });
 
   it('gives the full report to a person who signed in', async () => {

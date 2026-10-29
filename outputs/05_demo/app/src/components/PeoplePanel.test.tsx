@@ -139,6 +139,36 @@ describe('PeoplePanel', () => {
     await waitFor(async () => expect(within(await row('member-one')).getByRole('button', { name: 'Enable member-one' })).toBeInTheDocument());
   });
 
+  it('moves focus to the confirmation, then to the box with the one-time password, so neither appears unnoticed', async () => {
+    const client = fakeClient();
+    client.resetPerson.mockResolvedValue(ok({ person: MEMBER, oneTimePassword: 'zzzz-yyyy-xxxx-wwww', expiresAt: 'x' }));
+    const user = userEvent.setup();
+    render(<PeoplePanel client={client} />);
+
+    await user.click(within(await row('member-one')).getByRole('button', { name: 'Reset password for member-one' }));
+    expect(screen.getByRole('button', { name: 'Confirm reset' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Confirm reset' }));
+    const dialog = await screen.findByRole('dialog', { name: 'One-time password for member-one' });
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }));
+    expect(screen.getByLabelText('Username of the new person')).toHaveFocus();
+  });
+
+  it('says so when the list cannot be refreshed after an action, instead of showing the old rows as current', async () => {
+    const client = fakeClient();
+    client.disablePerson.mockResolvedValue(ok({ person: { ...MEMBER, status: 'disabled' } }));
+    client.listPeople
+      .mockResolvedValueOnce(ok({ people: [ADMIN, MEMBER] }))
+      .mockResolvedValueOnce({ ok: false, status: 401, error: null, message: 'Sign in first.' });
+    const user = userEvent.setup();
+    render(<PeoplePanel client={client} />);
+
+    await user.click(within(await row('member-one')).getByRole('button', { name: 'Disable member-one' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm disable' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('The list of people could not be refreshed. Sign in first.');
+  });
+
   it('shows the server message and its correlation id when an action fails', async () => {
     const client = fakeClient();
     client.createPerson.mockResolvedValue({

@@ -88,12 +88,13 @@ describe('prepareHostedServer', () => {
     expect(store.findAccountForSignIn('admin')).not.toBeNull();
   });
 
-  it('keeps the server up and says why, in one line without the password, when sign-in cannot be prepared', async () => {
+  it('keeps the server up and says why, in one line without the password, when the admin cannot be prepared', async () => {
     store.createPersonAccount({ username: 'admin', passwordHash: 'scrypt$x', oneTimeExpiresAt: '2999-01-01T00:00:00.000Z', actor: 'admin' });
     const log = { warn: vi.fn(), error: vi.fn() };
     await prepareHostedServer({ RAAGENTS_ADMIN_PASSWORD: ADMIN_PASSWORD }, log, { store: () => store, passwords: () => createPasswordHasher({ cost: CHEAP }) });
     expect(log.error).toHaveBeenCalledTimes(1);
-    expect(String(log.error.mock.calls[0][0])).toMatch(/sign-in is unavailable/);
+    // Members still sign in; only the admin from the settings cannot.
+    expect(String(log.error.mock.calls[0][0])).toMatch(/the admin from the server settings cannot sign in until this is fixed/);
     expect(String(log.error.mock.calls[0][0])).not.toContain(ADMIN_PASSWORD);
   });
 
