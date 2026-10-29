@@ -5,6 +5,7 @@ import { LOCAL_PERSON, type GateDecision, type GateDissent, type GateOption, typ
 import { GATE_OPTION_LABELS, MAX_DISSENT_ROLE_CHARS, MAX_GATE_REASON_CHARS } from '@/shared/gates';
 import { useGates } from './GatesProvider';
 import { GATE_STATUS_LABELS } from './labels';
+import { useSignedIn } from './SignIn';
 
 // The gates page: three points of the due diligence where a person decides. The facts and the recommended call are built by
 // code from what is in the app (no model); the person may follow the call or not, and gives a reason when not. Every
@@ -241,6 +242,7 @@ function GateCard({ gate }: { gate: GateView }) {
 /** The gates page's body. */
 export function GatesPanel() {
   const gates = useGates();
+  const signedIn = useSignedIn();
   const { refresh } = gates;
   // The facts change on the other pages (findings, checklist), so read the gates again when this page opens.
   useEffect(() => {
@@ -289,7 +291,11 @@ export function GatesPanel() {
           Three points of the due diligence where a person decides. The facts and the recommended call are built by code from what is in the app; no model is
           involved. You may follow the call or not: if you do not, you give a reason. Every decision stays, with the facts as they were when you decided.
         </p>
-        <p className="note">This app has no login: a decision is recorded as “{LOCAL_PERSON}”.</p>
+        {signedIn ? (
+          <p className="note">A decision is still recorded as “{LOCAL_PERSON}”, not under your name; names on decisions come in a later step.</p>
+        ) : (
+          <p className="note">This app has no login: a decision is recorded as “{LOCAL_PERSON}”.</p>
+        )}
       </div>
       {body}
     </section>

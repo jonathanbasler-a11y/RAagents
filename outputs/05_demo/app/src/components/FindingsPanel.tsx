@@ -9,6 +9,7 @@ import { useDataRoom } from './DataRoomProvider';
 import { useFindings } from './FindingsProvider';
 import { FINDING_BASIS_LABELS, FINDING_CATEGORY_LABELS, FINDING_CONFIDENCE_LABELS, FINDING_STATUS_LABELS } from './labels';
 import { isCompleteChoice, NO_CHOICE, TagPicker, type TagChoice } from './TagPicker';
+import { useSignedIn } from './SignIn';
 
 // The findings page: what the agents drafted from the data room, and what a person decided. An agent proposes; code has
 // already checked that the quote is in a document the agent was shown; only the buttons here change a status. The app has
@@ -188,6 +189,7 @@ function QuestionRow({ question }: { question: OpenQuestion }) {
 export function FindingsPanel() {
   const register = useFindings();
   const dataRoom = useDataRoom();
+  const signedIn = useSignedIn();
   if (register.status === 'unavailable') return null;
 
   const tagOf = new Map((register.tags ?? []).map((entry) => [entry.findingId, entry]));
@@ -262,7 +264,11 @@ export function FindingsPanel() {
           shown; a person accepts or rejects. A draft is not a finding until a person accepts it, and a finding says only what its document says.
           For a seller’s own document, that is what the seller states.
         </p>
-        <p className="note">This app has no login: a decision is recorded as “{LOCAL_PERSON}”.</p>
+        {signedIn ? (
+          <p className="note">A decision is still recorded as “{LOCAL_PERSON}”, not under your name; names on decisions come in a later step.</p>
+        ) : (
+          <p className="note">This app has no login: a decision is recorded as “{LOCAL_PERSON}”.</p>
+        )}
       </div>
       {body}
     </section>

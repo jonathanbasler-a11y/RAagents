@@ -1,6 +1,7 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeChatRuntime } from '@/server/chat/boot';
 import { captureLogs } from '@/server/llm/test-support/fake-gateway';
@@ -20,6 +21,14 @@ import * as messagesRoute from './rooms/[room]/messages/route';
 import * as newRoute from './rooms/[room]/new/route';
 import * as turnsRoute from './rooms/[room]/turns/route';
 import * as selectionRoute from './selection/route';
+import * as gatesRoute from './gates/route';
+import * as gateDecisionRoute from './gates/[gate]/decision/route';
+import * as gateDissentRoute from './gates/[gate]/dissent/route';
+import * as loginRoute from './login/route';
+import * as logoutRoute from './logout/route';
+import * as accountPasswordRoute from './account/password/route';
+import * as adminPeopleRoute from './admin/people/route';
+import * as adminPersonRoute from './admin/people/[username]/route';
 
 // The route files are thin: each wires one handler to the process-wide dependencies.
 // These tests pin the wiring: Node runtime, dynamic rendering, the methods, and the
@@ -42,6 +51,14 @@ const ROUTES = [
   ['rooms/[room]/new', newRoute, ['POST']],
   ['rooms/[room]/turns', turnsRoute, ['POST']],
   ['selection', selectionRoute, ['GET', 'POST']],
+  ['gates', gatesRoute, ['GET']],
+  ['gates/[gate]/decision', gateDecisionRoute, ['POST']],
+  ['gates/[gate]/dissent', gateDissentRoute, ['POST']],
+  ['login', loginRoute, ['POST']],
+  ['logout', logoutRoute, ['POST']],
+  ['account/password', accountPasswordRoute, ['POST']],
+  ['admin/people', adminPeopleRoute, ['GET', 'POST']],
+  ['admin/people/[username]', adminPersonRoute, ['POST']],
 ] as const;
 
 let dataDir: string;
@@ -56,7 +73,21 @@ afterEach(() => {
   rmSync(dataDir, { recursive: true, force: true });
 });
 
+/** Every route file under src/app/api, as a path like "rooms/[room]/turns". */
+function routeFiles(dir: string, prefix = ''): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory() && !entry.name.startsWith('_')) found.push(...routeFiles(path.join(dir, entry.name), `${prefix}${entry.name}/`));
+    else if (entry.isFile() && entry.name === 'route.ts') found.push(prefix.replace(/\/$/, ''));
+  }
+  return found;
+}
+
 describe('API route files', () => {
+  it('lists every route file, so a new one cannot skip these checks', () => {
+    expect(routeFiles(path.dirname(fileURLToPath(import.meta.url))).sort()).toEqual(ROUTES.map(([name]) => name).sort());
+  });
+
   it.each(ROUTES)('%s runs on Node, is dynamic and exports its methods', (_name, route, methods) => {
     const exports = route as Record<string, unknown>;
     expect(exports.runtime).toBe('nodejs');

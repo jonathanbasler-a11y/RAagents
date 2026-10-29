@@ -2,9 +2,10 @@
 // Tests are offline: no model credentials, no network. Use temporary directories for
 // data and freeze the clock (vi.useFakeTimers / vi.setSystemTime) where time matters.
 import { afterEach } from 'vitest';
-import { blockNetwork, stripModelCredentials } from './offline';
+import { blockNetwork, stripHostedSettings, stripModelCredentials } from './offline';
 
 stripModelCredentials(process.env);
+stripHostedSettings(process.env);
 blockNetwork(globalThis);
 
 // Component tests (first line "// @vitest-environment jsdom") get the jest-dom matchers

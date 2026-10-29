@@ -159,13 +159,13 @@ export interface ChatApi {
   submitGateDissent(gate: string, request: GateDissentRequest): Promise<ApiResult<GatesResponse>>;
 }
 
-const UNREACHABLE_MESSAGE = 'Could not reach the server. Check the connection and try again.';
+export const UNREACHABLE_MESSAGE = 'Could not reach the server. Check the connection and try again.';
 
 function isAbort(error: unknown, signal: AbortSignal | undefined): boolean {
   return Boolean(signal?.aborted) || (error instanceof Error && error.name === 'AbortError');
 }
 
-function isApiErrorBody(value: unknown): value is ApiErrorBody {
+export function isApiErrorBody(value: unknown): value is ApiErrorBody {
   if (typeof value !== 'object' || value === null) return false;
   const body = value as Record<string, unknown>;
   return typeof body.error === 'string' && typeof body.message === 'string' && typeof body.correlationId === 'string';
@@ -181,7 +181,7 @@ function isJson(response: Response): boolean {
   return (response.headers.get('content-type') ?? '').toLowerCase().includes('application/json');
 }
 
-async function readJson(response: Response): Promise<unknown> {
+export async function readJson(response: Response): Promise<unknown> {
   if (!isJson(response)) return undefined;
   try {
     return await response.json();

@@ -175,9 +175,61 @@ code {
   font-size: 12px;
   color: var(--graphite);
 }
-/* Hosted copy only: sign-out sits at the end of the header line. */
-.sign-out {
+/* Hosted copy with sign-in only: who is signed in, their links and sign-out, at the end of the header line. */
+.account {
   margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font: 12px/1.4 var(--f-data);
+  color: var(--graphite);
+}
+.account a {
+  color: var(--ink);
+}
+/* The People page (hosted copy with sign-in, admin only). */
+.people-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 16px 0;
+}
+.people-add .field-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #a1261b;
+}
+.people-confirm,
+.people-dialog {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--sheet);
+}
+.one-time-password {
+  font: 22px/1.4 var(--f-data);
+  letter-spacing: 0.06em;
+  user-select: all;
+}
+.people-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.people-table caption {
+  text-align: left;
+  padding-bottom: 6px;
+  color: var(--graphite);
+}
+.people-table th,
+.people-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
 }
 .sign-out button {
   font: 12px/1 var(--f-data);

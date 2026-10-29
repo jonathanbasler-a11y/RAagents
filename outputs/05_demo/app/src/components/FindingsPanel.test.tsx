@@ -7,6 +7,7 @@ import type { DataRoomResponse, FindingsResponse } from '@/shared/contracts';
 import { LOCAL_PERSON } from '@/shared/contracts';
 import { DataRoomProvider } from './DataRoomProvider';
 import { FindingsPanel } from './FindingsPanel';
+import { SignInProvider } from './SignIn';
 import { FindingsProvider } from './FindingsProvider';
 import { finding, question } from './findings-fixtures';
 
@@ -44,7 +45,7 @@ function roomWith(withdrawn: string[] = []): DataRoomResponse {
   };
 }
 
-function setup(initial: FindingsResponse, room: DataRoomResponse = roomWith()) {
+function setup(initial: FindingsResponse, room: DataRoomResponse = roomWith(), options: { signedIn?: boolean } = {}) {
   const client = {
     getFindings: vi.fn<ChatApi['getFindings']>().mockResolvedValue(ok(initial)),
     submitFindingDecision: vi.fn<ChatApi['submitFindingDecision']>(),
@@ -64,11 +65,13 @@ function setup(initial: FindingsResponse, room: DataRoomResponse = roomWith()) {
     withdrawDocument: vi.fn<ChatApi['withdrawDocument']>(),
   };
   render(
-    <DataRoomProvider client={dataRoomClient}>
-      <FindingsProvider client={client}>
-        <FindingsPanel />
-      </FindingsProvider>
-    </DataRoomProvider>,
+    <SignInProvider signedIn={options.signedIn ?? false}>
+      <DataRoomProvider client={dataRoomClient}>
+        <FindingsProvider client={client}>
+          <FindingsPanel />
+        </FindingsProvider>
+      </DataRoomProvider>
+    </SignInProvider>,
   );
   return client;
 }
@@ -91,6 +94,14 @@ describe('FindingsPanel', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Findings' })).toBeInTheDocument();
     expect(screen.getByText(new RegExp(`recorded as “${LOCAL_PERSON.replace(/[()]/g, '\\$&')}”`))).toBeInTheDocument();
     expect(screen.getByText(/A draft is not a finding until a person accepts it/)).toBeInTheDocument();
+  });
+
+  it('says a decision is still recorded under the local stamp, not under the person, once they signed in', async () => {
+    setup(register(), roomWith(), { signedIn: true });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Findings' })).toBeInTheDocument();
+    expect(screen.getByText(/A decision is still recorded as “person \(local, not authenticated\)”, not under your name/)).toBeInTheDocument();
+    expect(screen.queryByText(/This app has no login/)).not.toBeInTheDocument();
   });
 
   it('shows a loading state, never "nothing yet", until the register is read', async () => {

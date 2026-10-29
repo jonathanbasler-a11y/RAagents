@@ -962,13 +962,20 @@ export const API_ERROR_CODES = [
   'gate_facts_changed',
   'gate_decision_not_found',
   'llm_not_configured',
+  'sign_in_required',
+  'password_change_required',
+  'admin_only',
+  'username_taken',
+  'person_not_found',
+  'server_managed_account',
   'internal',
 ] as const;
 /**
  * HTTP status: invalid_request 400, forbidden 403, not_found 404, room_busy 409, server_busy 429,
  * locked_agent 409, data_room_exists 409, no_data_room 409, document_not_found 404, finding_not_found 404, finding_decided 409,
  * finding_source_withdrawn 409, finding_not_accepted 409, finding_tagged 409, checklist_needs_finding 409,
- * checklist_item_not_found 404, llm_not_configured 503, internal 500.
+ * checklist_item_not_found 404, llm_not_configured 503, sign_in_required 401, password_change_required 403, admin_only 403,
+ * username_taken 409, person_not_found 404, server_managed_account 409, internal 500.
  * server_busy: two turns already run on this server (the most it runs at once); nothing was written.
  */
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

@@ -59,6 +59,18 @@ const REGISTER_WRITERS = [
   { writer: 'setChecklistState', allowed: ['src/app/api/_lib/checklist.ts'] },
   { writer: 'decideGate', allowed: ['src/app/api/_lib/gates.ts'] },
   { writer: 'recordGateDissent', allowed: ['src/app/api/_lib/gates.ts'] },
+  // Accounts of a hosted copy, each writer with one door: the People page's handler creates, resets, disables and enables
+  // people; the password handler changes a person's own password; the sign-in handler opens and closes sessions; the
+  // server's start hook writes the admin from the server settings and the heartbeat. The account test harness creates
+  // people and the admin the way those doors do, for the handler tests.
+  { writer: 'createPersonAccount', allowed: ['src/app/api/_lib/admin-people.ts', 'src/app/api/_lib/account-test-support.ts'] },
+  { writer: 'resetPersonPassword', allowed: ['src/app/api/_lib/admin-people.ts'] },
+  { writer: 'setPersonDisabled', allowed: ['src/app/api/_lib/admin-people.ts'] },
+  { writer: 'changeOwnPassword', allowed: ['src/app/api/_lib/account-password.ts'] },
+  { writer: 'openSession', allowed: ['src/app/api/_lib/sign-in.ts'] },
+  { writer: 'closeSession', allowed: ['src/app/api/_lib/sign-in.ts'] },
+  { writer: 'bootstrapServerAdmin', allowed: ['src/server/accounts/runtime.ts', 'src/app/api/_lib/account-test-support.ts'] },
+  { writer: 'touchHeartbeat', allowed: ['src/server/accounts/runtime.ts'] },
 ] as const;
 
 describe.each(REGISTER_WRITERS)('only one module uses $writer', ({ writer, allowed }) => {

@@ -254,17 +254,42 @@ describe('AppShell on a hosted copy', () => {
     expect(screen.queryByText(/Chats stay on this computer/)).not.toBeInTheDocument();
   });
 
-  it('offers sign-out as a form that posts to the sign-out route when sign-in is on', () => {
+  it('names the person signed in, with their password page and sign-out as a form that posts to the sign-out route', () => {
     render(
-      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} signOut>
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} account={{ username: 'member-one', isAdmin: false, canChangePassword: true }}>
         <p>Page body</p>
       </AppShell>,
     );
 
-    const button = screen.getByRole('button', { name: 'Sign out' });
-    const form = button.closest('form');
-    expect(form).not.toBeNull();
+    const header = within(screen.getByRole('banner'));
+    expect(header.getByText(/Signed in as/)).toHaveTextContent('Signed in as member-one');
+    expect(header.getByRole('link', { name: 'Change password' })).toHaveAttribute('href', '/account/password');
+    expect(header.queryByRole('link', { name: 'People' })).not.toBeInTheDocument();
+    const form = header.getByRole('button', { name: 'Sign out' }).closest('form');
     expect(form?.getAttribute('method')).toBe('post');
     expect(form?.getAttribute('action')).toBe('/api/logout');
+  });
+
+  it('gives the admin the People page, and no password page for an admin set in the server settings', () => {
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} account={{ username: 'admin', isAdmin: true, canChangePassword: false }}>
+        <p>Page body</p>
+      </AppShell>,
+    );
+
+    const header = within(screen.getByRole('banner'));
+    expect(header.getByRole('link', { name: 'People' })).toHaveAttribute('href', '/admin');
+    expect(header.queryByRole('link', { name: 'Change password' })).not.toBeInTheDocument();
+  });
+
+  it('offers sign-out alone when sign-in is on but no account could be read', () => {
+    render(
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} account={null}>
+        <p>Page body</p>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(screen.queryByText(/Signed in as/)).not.toBeInTheDocument();
   });
 });

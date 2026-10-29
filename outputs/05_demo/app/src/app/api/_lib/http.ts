@@ -1,4 +1,5 @@
 import 'server-only';
+import { ACCESS_DENIAL_MESSAGES } from '@/server/access-gate';
 import type { ApiErrorBody, ApiErrorCode } from '@/shared/contracts';
 
 // Shared response helpers for the API. Client errors are generic and carry a correlation
@@ -28,6 +29,12 @@ const STATUS: Record<ApiErrorCode, number> = {
   gate_facts_changed: 409,
   gate_decision_not_found: 404,
   llm_not_configured: 503,
+  sign_in_required: 401,
+  password_change_required: 403,
+  admin_only: 403,
+  username_taken: 409,
+  person_not_found: 404,
+  server_managed_account: 409,
   internal: 500,
 };
 
@@ -53,6 +60,13 @@ const MESSAGE: Record<ApiErrorCode, string> = {
   gate_facts_changed: 'The facts changed since you opened this gate. Reload and look again.',
   gate_decision_not_found: 'There is no such decision at this gate.',
   llm_not_configured: 'The model connection is not set up, so nothing was sent.',
+  // The proxy answers these three itself, with the same words (src/server/access-gate.ts).
+  sign_in_required: ACCESS_DENIAL_MESSAGES.sign_in_required,
+  password_change_required: ACCESS_DENIAL_MESSAGES.password_change_required,
+  admin_only: ACCESS_DENIAL_MESSAGES.admin_only,
+  username_taken: 'That username is taken. Choose another.',
+  person_not_found: 'There is no such person.',
+  server_managed_account: 'This account is set in the server settings, not on this page.',
   internal: 'Something went wrong on the server. The server log has the details under this correlation id.',
 };
 

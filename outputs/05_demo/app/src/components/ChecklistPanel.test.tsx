@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiResult, ChatApi } from '@/client/chat-client';
 import { CHECKLIST_ITEM_IDS, LOCAL_PERSON, type ChecklistResponse, type ChecklistState } from '@/shared/contracts';
 import { ChecklistPanel } from './ChecklistPanel';
+import { SignInProvider } from './SignIn';
 import { ChecklistProvider, useChecklist } from './ChecklistProvider';
 import { ChecklistSummary } from './ChecklistSummary';
 
@@ -47,11 +48,13 @@ function clientWith(initial: ChecklistResponse = checklist()) {
   };
 }
 
-function mountPanel(client: ReturnType<typeof clientWith>) {
+function mountPanel(client: ReturnType<typeof clientWith>, options: { signedIn?: boolean } = {}) {
   render(
-    <ChecklistProvider client={client}>
-      <ChecklistPanel />
-    </ChecklistProvider>,
+    <SignInProvider signedIn={options.signedIn ?? false}>
+      <ChecklistProvider client={client}>
+        <ChecklistPanel />
+      </ChecklistProvider>
+    </SignInProvider>,
   );
 }
 
@@ -233,6 +236,14 @@ describe('ChecklistPanel', () => {
     expect(screen.getByText(/recorded as “person \(local, not authenticated\)”/)).toBeInTheDocument();
     expect(screen.getByText('1 checked · 1 checked: not applicable · 1 could not check · 3 not checked')).toBeInTheDocument();
     expect(screen.getByText('Flag them and hand them to HEOR. Do not assess them.')).toBeInTheDocument();
+  });
+
+  it('says a change is still recorded under the local stamp, not under the person, once they signed in', async () => {
+    mountPanel(clientWith(checklist({})), { signedIn: true });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Checklist' })).toBeInTheDocument();
+    expect(screen.getByText(/A change is still recorded as “person \(local, not authenticated\)”, not under your name/)).toBeInTheDocument();
+    expect(screen.queryByText(/This app has no login/)).not.toBeInTheDocument();
   });
 
   it('shows each item’s state in words, its reason and how many accepted findings back it', async () => {

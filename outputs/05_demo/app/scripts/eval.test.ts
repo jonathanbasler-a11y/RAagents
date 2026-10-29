@@ -200,12 +200,31 @@ describe('npm run eval: filters and options', () => {
   it('parses its options and refuses anything else', () => {
     expect(parseEvalArgs(['--agent', 'a,b', '--agent=c', '--case', 'x', '--reps=2', '--baseline', 'old.json'])).toEqual({
       ok: true,
-      args: { agents: ['a', 'b', 'c'], cases: ['x'], reps: 2, baseline: 'old.json', check: false, help: false },
+      args: { agents: ['a', 'b', 'c'], cases: ['x'], reps: 2, baseline: 'old.json', check: false, help: false, hostedWording: false },
     });
     expect(parseEvalArgs(['--check'])).toMatchObject({ ok: true, args: { check: true } });
+    expect(parseEvalArgs(['--hosted-wording'])).toMatchObject({ ok: true, args: { hostedWording: true } });
     expect(parseEvalArgs(['--fast'])).toEqual({ ok: false, message: 'unknown option "--fast"' });
     expect(parseEvalArgs(['--reps', 'three'])).toEqual({ ok: false, message: '--reps needs a whole number from 1 to 10' });
     expect(parseEvalArgs(['--agent'])).toEqual({ ok: false, message: '--agent needs a value' });
+  });
+
+  it('refuses to measure with the hosted wording unless asked to, and the other way round, before calling anything', async () => {
+    const notice = { ...settings(), RAAGENTS_HOSTED_NOTICE: 'Hosted practice copy' };
+    const unasked = await cli(harness(), [], { env: notice });
+    expect(unasked.code).toBe(2);
+    expect(unasked.output).toMatch(/RAAGENTS_HOSTED_NOTICE is set/);
+    expect(unasked.calls).toHaveLength(0);
+
+    const without = await cli(harness(), ['--hosted-wording']);
+    expect(without.code).toBe(2);
+    expect(without.output).toMatch(/--hosted-wording needs RAAGENTS_HOSTED_NOTICE/);
+    expect(without.calls).toHaveLength(0);
+  });
+
+  it('says so in the output when it measures the hosted wording', async () => {
+    const { output } = await cli(harness(), ['--hosted-wording', '--check'], { env: { ...settings(), RAAGENTS_HOSTED_NOTICE: 'Hosted practice copy' } });
+    expect(output).toMatch(/Hosted wording: on/);
   });
 
   it('prints help and exits 0 for --help, without calling anything', async () => {

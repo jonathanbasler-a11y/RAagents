@@ -1,6 +1,6 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
+import { defaultChatDbPath } from '@/server/db/paths';
 import { checkEnvFilePermissions } from '@/server/llm';
 import type { DefaultWorkspaceId, Store } from '@/shared/contracts';
 import { installShutdownHandler, type ShutdownProcess } from './shutdown';
@@ -39,11 +39,7 @@ const RUNTIME_KEY = Symbol.for('hybrid-team-chat.runtime');
 
 type RuntimeHolder = { [RUNTIME_KEY]?: ChatRuntime };
 
-/** CHAT_DB_PATH (resolved from the working directory) when set, else .data/chat.db in the working directory. */
-export function defaultChatDbPath(env: Readonly<Record<string, string | undefined>> = process.env, cwd: string = process.cwd()): string {
-  const fromEnv = env.CHAT_DB_PATH?.trim();
-  return fromEnv ? path.resolve(cwd, fromEnv) : path.join(cwd, '.data', 'chat.db');
-}
+export { defaultChatDbPath };
 
 /** Opens the store and marks turns left running by another process as interrupted. */
 export function createChatRuntime(options: ChatRuntimeOptions = {}): ChatRuntime {

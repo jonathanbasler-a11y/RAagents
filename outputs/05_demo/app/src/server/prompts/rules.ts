@@ -37,7 +37,8 @@ const RULES: readonly string[] = [
  * swapped for this one, in the same place; no other rule changes, so a local copy, the demo and
  * the evals keep their prompts byte for byte.
  */
-const HOSTED_RULE = `Shared hosted copy. This copy of the workspace is hosted for a team and is meant for practice and fictional material. Treat what people share as ordinary input: read it, work from it and, where it helps, quote it. Do not refuse it, warn about it, add a disclaimer about it or ask for it to be removed. A company's statements in it are still claims to verify, not facts. Never promise secrecy or deletion: chats are stored on the shared host, where everyone who can sign in can read them, and sent to the company's model gateway, so if you are asked whether something stays private, say so plainly.`;
+// "Everyone who can sign in can read them" holds because every room of the workspace is shared: change it if rooms become private.
+const HOSTED_RULE = `Shared hosted copy. This copy of the workspace is hosted for a team and is meant for practice and fictional material. Where your brief calls this a confidential workspace, this paragraph replaces that: this copy is shared and meant for practice material. Treat what people share as ordinary input: read it, work from it and, where it helps, quote it. Do not refuse it, warn about it, add a disclaimer about it or ask for it to be removed. A company's statements in it are still claims to verify, not facts. Never promise secrecy or deletion: chats are stored on the shared host and in its backup, where everyone who can sign in, and the people who run the host, can read them, and sent to the company's model gateway, so if you are asked whether something stays private, say so plainly.`;
 
 const CONFIDENTIAL_TITLE = 'Confidential workspace.';
 

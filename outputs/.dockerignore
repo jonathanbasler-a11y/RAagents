@@ -5,8 +5,16 @@
 05_demo/*
 !05_demo/app
 
-# Never into an image: local settings, databases, builds and installed packages.
+# Never into an image: local settings, databases, builds, installed packages and other local files.
 **/.env*
+**/*.env
+**/.denylist.local
+**/.claude
+**/coverage
+**/.vitest
+**/.avatar-candidates
+**/*.tsbuildinfo
+**/.DS_Store
 **/.data
 **/.next
 **/.next-*

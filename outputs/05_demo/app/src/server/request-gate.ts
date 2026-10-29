@@ -158,7 +158,7 @@ export function exposureWarning(env: GateEnv): string | null {
   const access = readAccessSetting(env);
   const login =
     access.state === 'on'
-      ? 'Sign-in is required: every request needs the shared access password (RAAGENTS_ACCESS_PASSWORD). '
+      ? 'Sign-in is required: each person signs in with their own account, and the admin manages the accounts on the People page. '
       : access.state === 'misconfigured'
         ? `Nobody can sign in: ${access.reason} `
         : 'The app has no login: keep the port private (reachable only by you). ';

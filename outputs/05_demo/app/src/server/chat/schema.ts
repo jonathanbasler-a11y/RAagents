@@ -491,6 +491,117 @@ export const CHAT_MIGRATIONS: readonly string[] = [
     SELECT RAISE(ABORT, 'a gate dissent cannot be deleted');
   END;
   `,
+  // Version 7: accounts, for a copy hosted for a team (sign-in is on when RAAGENTS_ADMIN_PASSWORD is set; a local copy gets
+  // these tables empty and never reads them). One row per person, never deleted: a person is disabled, so the record keeps
+  // every name. The admin named in the server settings has a row too ('server'), refreshed at every start. Passwords are
+  // scrypt hashes; a one-time password set by the admin must be replaced at the first sign-in and expires. A session row
+  // holds only the SHA-256 of the cookie's token and is revoked once, never deleted. Account events are append-only. The
+  // heartbeat row is rewritten every few seconds by a hosted copy, so that a second copy can tell this one is still writing.
+  `
+  CREATE TABLE accounts (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE CHECK (
+      length(username) BETWEEN 2 AND 32
+      AND username NOT GLOB '*[^a-z0-9._-]*'
+      AND substr(username, 1, 1) GLOB '[a-z0-9]'
+    ),
+    role TEXT NOT NULL CHECK (role IN ('admin', 'member')),
+    managed_by TEXT NOT NULL CHECK (managed_by IN ('server', 'app')),
+    password_hash TEXT NOT NULL CHECK (password_hash GLOB 'scrypt$*'),
+    must_change_password INTEGER NOT NULL CHECK (must_change_password IN (0, 1)),
+    one_time_expires_at TEXT,
+    disabled_at TEXT,
+    created_at TEXT NOT NULL,
+    created_by TEXT NOT NULL CHECK (length(created_by) BETWEEN 1 AND 64),
+    -- Exactly the accounts waiting for their own password carry an expiry for the one-time password.
+    CHECK ((must_change_password = 1) = (one_time_expires_at IS NOT NULL)),
+    -- The admin from the server settings is an admin and never holds a one-time password.
+    CHECK (managed_by = 'app' OR (role = 'admin' AND must_change_password = 0))
+  ) STRICT;
+
+  -- At most one enabled account comes from the server settings.
+  CREATE UNIQUE INDEX accounts_one_server_admin ON accounts (managed_by) WHERE managed_by = 'server' AND disabled_at IS NULL;
+
+  CREATE TRIGGER accounts_identity_fixed
+  BEFORE UPDATE ON accounts
+  WHEN NOT (
+    NEW.id IS OLD.id AND NEW.username IS OLD.username AND NEW.role IS OLD.role AND NEW.managed_by IS OLD.managed_by
+    AND NEW.created_at IS OLD.created_at AND NEW.created_by IS OLD.created_by
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'the name, role and origin of an account never change');
+  END;
+
+  CREATE TRIGGER accounts_no_delete
+  BEFORE DELETE ON accounts
+  BEGIN
+    SELECT RAISE(ABORT, 'an account is disabled, never deleted');
+  END;
+
+  CREATE TABLE account_sessions (
+    token_hash TEXT PRIMARY KEY CHECK (length(token_hash) = 64 AND token_hash NOT GLOB '*[^0-9a-f]*'),
+    account_id TEXT NOT NULL REFERENCES accounts (id),
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT,
+    CHECK (expires_at > created_at)
+  ) STRICT;
+
+  CREATE INDEX account_sessions_open ON account_sessions (account_id) WHERE revoked_at IS NULL;
+
+  CREATE TRIGGER account_sessions_need_enabled_account
+  BEFORE INSERT ON account_sessions
+  WHEN (SELECT disabled_at FROM accounts WHERE id = NEW.account_id) IS NOT NULL
+  BEGIN
+    SELECT RAISE(ABORT, 'a disabled account cannot get a session');
+  END;
+
+  CREATE TRIGGER account_sessions_revoke_once
+  BEFORE UPDATE ON account_sessions
+  WHEN NOT (
+    OLD.revoked_at IS NULL AND NEW.revoked_at IS NOT NULL
+    AND NEW.token_hash IS OLD.token_hash AND NEW.account_id IS OLD.account_id
+    AND NEW.created_at IS OLD.created_at AND NEW.expires_at IS OLD.expires_at
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'a session can only be revoked, once');
+  END;
+
+  CREATE TRIGGER account_sessions_no_delete
+  BEFORE DELETE ON account_sessions
+  BEGIN
+    SELECT RAISE(ABORT, 'a session is revoked, never deleted');
+  END;
+
+  CREATE TABLE account_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id TEXT NOT NULL REFERENCES accounts (id),
+    kind TEXT NOT NULL CHECK (
+      kind IN ('created', 'password_reset', 'password_changed', 'disabled', 'enabled', 'signed_in', 'signed_out')
+    ),
+    at TEXT NOT NULL,
+    actor TEXT NOT NULL CHECK (length(actor) BETWEEN 1 AND 64)
+  ) STRICT;
+
+  CREATE INDEX account_events_by_account ON account_events (account_id, kind, at);
+
+  CREATE TRIGGER account_events_no_update
+  BEFORE UPDATE ON account_events
+  BEGIN
+    SELECT RAISE(ABORT, 'an account event cannot be changed');
+  END;
+
+  CREATE TRIGGER account_events_no_delete
+  BEFORE DELETE ON account_events
+  BEGIN
+    SELECT RAISE(ABORT, 'an account event cannot be deleted');
+  END;
+
+  CREATE TABLE host_heartbeat (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    at TEXT NOT NULL
+  ) STRICT;
+  `,
 ];
 
 /**

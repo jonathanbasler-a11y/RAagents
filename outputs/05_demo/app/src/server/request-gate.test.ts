@@ -279,22 +279,21 @@ describe('exposureWarning', () => {
   });
 
   it('says sign-in is required instead of "no login" when the access gate is on', () => {
-    const text = exposureWarning({
-      HOST: '0.0.0.0',
-      RAAGENTS_ACCESS_PASSWORD: 'pw',
-      RAAGENTS_SESSION_SECRET: 'a-session-secret-of-at-least-32-chars!',
-    });
+    const text = exposureWarning({ HOST: '0.0.0.0', RAAGENTS_ADMIN_PASSWORD: 'a-long-admin-password-1' });
 
     expect(text).not.toMatch(/no login/i);
     expect(text).toMatch(/sign-in is required/i);
+    expect(text).toMatch(/own account/i);
+    expect(text).not.toContain('a-long-admin-password-1');
   });
 
-  it('says nobody can sign in when the access password is set without a usable session secret', () => {
-    const text = exposureWarning({ HOST: '0.0.0.0', RAAGENTS_ACCESS_PASSWORD: 'pw' });
+  it('says nobody can sign in when the admin password is too short, and why', () => {
+    const text = exposureWarning({ HOST: '0.0.0.0', RAAGENTS_ADMIN_PASSWORD: 'tiny-pw' });
 
-    expect(text).toMatch(/RAAGENTS_SESSION_SECRET/);
+    expect(text).toMatch(/RAAGENTS_ADMIN_PASSWORD/);
     expect(text).toMatch(/nobody can sign in/i);
     expect(text).not.toMatch(/no login/i);
+    expect(text).not.toContain('tiny-pw');
   });
 
   it('prints no host name from the settings', () => {

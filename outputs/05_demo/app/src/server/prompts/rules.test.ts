@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { PROMPT_MARKER, SHARED_RULES, sharedRulesFor } from '@/server/prompts';
 
@@ -101,6 +102,13 @@ describe('shared rules', () => {
   });
 });
 
+describe('the default shared rules', () => {
+  it('stay byte for byte what every agent baseline was measured with', () => {
+    // Changing this text re-baselines every agent (BUILD-LEARNINGS Part 9): change the hash only with a fresh baseline.
+    expect(createHash('sha256').update(SHARED_RULES, 'utf8').digest('hex')).toBe('a67179f10992c5e78fb266c8873c1297386fc9960891933e1f9c19830da8196a');
+  });
+});
+
 describe('shared rules for a hosted copy', () => {
   const hosted = sharedRulesFor({ RAAGENTS_HOSTED_NOTICE: 'Practice copy for the team.' });
   const hostedParagraphs = hosted.split(/\n\s*\n/).map((paragraph) => paragraph.trim());
@@ -121,12 +129,14 @@ describe('shared rules for a hosted copy', () => {
   it('say the copy is shared and for practice and fictional material, and where chats really go', () => {
     const text = hostedParagraphs.find((paragraph) => /^Shared hosted copy\./.test(paragraph)) ?? '';
     expect(text).toMatch(/practice and fictional material/);
-    expect(text).toMatch(/stored on the shared host/);
-    expect(text).toMatch(/everyone who can sign in/);
+    expect(text).toMatch(/stored on the shared host and in its backup/);
+    expect(text).toMatch(/everyone who can sign in, and the people who run the host, can read them/);
     expect(text).toMatch(/Never promise secrecy or deletion/);
     expect(text).toMatch(/still claims to verify, not facts/);
     // Agents still work from what is shared rather than policing it; the banner tells people the rule.
     expect(text).toMatch(/Do not refuse it, warn about it/);
+    // Every agent's brief calls the workspace confidential; on a hosted copy this paragraph has to win over that line.
+    expect(text).toMatch(/Where your brief calls this a confidential workspace, this paragraph replaces that: this copy is shared and meant for practice material\./);
     expect(hosted).not.toMatch(/cleared to share confidential material/);
     expect(hosted).not.toMatch(/person's computer/);
   });

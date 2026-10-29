@@ -51,17 +51,19 @@ export interface EvalArgs {
   /** Validate the cases and show the settings; no model call. */
   check: boolean;
   help: boolean;
+  /** Measure the hosted copy's wording (RAAGENTS_HOSTED_NOTICE must be set); without it, a set notice is refused. */
+  hostedWording: boolean;
 }
 
 export type ParsedEvalArgs = { ok: true; args: EvalArgs } | { ok: false; message: string };
 
 const LIST_OPTIONS = new Set(['--agent', '--case']);
 const VALUE_OPTIONS = new Set(['--reps', '--baseline']);
-const FLAG_OPTIONS = new Set(['--check', '--help', '-h']);
+const FLAG_OPTIONS = new Set(['--check', '--help', '-h', '--hosted-wording']);
 
 /** Parses the options after `npm run eval --`. Never throws: a problem comes back as a message. */
 export function parseEvalArgs(argv: readonly string[]): ParsedEvalArgs {
-  const args: EvalArgs = { agents: [], cases: [], reps: EVAL_REPETITIONS, baseline: null, check: false, help: false };
+  const args: EvalArgs = { agents: [], cases: [], reps: EVAL_REPETITIONS, baseline: null, check: false, help: false, hostedWording: false };
   for (let index = 0, count = argv.length; index < count; index += 1) {
     const token = argv[index];
     if (!token.startsWith('-')) return { ok: false, message: `unexpected argument "${token}"` };
@@ -71,6 +73,7 @@ export function parseEvalArgs(argv: readonly string[]): ParsedEvalArgs {
     if (FLAG_OPTIONS.has(name)) {
       if (equals !== -1) return { ok: false, message: `${name} does not take a value` };
       if (name === '--check') args.check = true;
+      else if (name === '--hosted-wording') args.hostedWording = true;
       else args.help = true;
       continue;
     }
@@ -207,6 +210,7 @@ const HELP = [
   `  --reps <1-${MAX_REPS}>       repetitions per case (default ${EVAL_REPETITIONS}; fewer than ${EVAL_REPETITIONS} makes the run INVALID)`,
   '  --baseline <file>   compare the run with a saved run, case by case',
   '  --check             validate the cases against the roster and show the settings; no model is called',
+  '  --hosted-wording    measure the hosted copy\'s wording (needs RAAGENTS_HOSTED_NOTICE); without it a set notice is refused',
   '  --help              show this text',
   '',
   'Exit codes: 0 valid run (PASS) · 1 complete but INVALID or UNVERIFIABLE (saved) · 2 setup problem, nothing run · 3 aborted, nothing saved.',
@@ -329,6 +333,18 @@ export async function runEvalCli(options: EvalCliOptions): Promise<number> {
     for (const line of HELP) print(line);
     return 0;
   }
+  // The shared rules are fixed when they load, from the hosted notice in the environment: a notice left set in a shell
+  // would change every prompt of the run without anyone noticing. Measuring the hosted wording is a deliberate choice.
+  const hostedNotice = (options.env.RAAGENTS_HOSTED_NOTICE ?? '').trim() !== '';
+  if (hostedNotice && !args.hostedWording) {
+    print('error: RAAGENTS_HOSTED_NOTICE is set, so the agents would get the hosted copy\'s wording. Unset it, or pass --hosted-wording to measure that wording on purpose.');
+    return 2;
+  }
+  if (args.hostedWording && !hostedNotice) {
+    print('error: --hosted-wording needs RAAGENTS_HOSTED_NOTICE set, which switches the agents to the hosted copy\'s wording.');
+    return 2;
+  }
+  if (args.hostedWording) print("Hosted wording: on (the agents get the hosted copy's shared rule; compare only with runs that had it too).");
 
   let registry: AgentRegistry;
   try {

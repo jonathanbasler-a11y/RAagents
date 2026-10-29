@@ -5,6 +5,7 @@ import { CHECKLIST_STATES, LOCAL_PERSON, type ChecklistState } from '@/shared/co
 import { CHECKLIST_ITEMS, MAX_STATE_REASON_CHARS } from '@/shared/checklist';
 import { useChecklist, type ChecklistItemView } from './ChecklistProvider';
 import { CHECKLIST_STATE_LABELS } from './labels';
+import { useSignedIn } from './SignIn';
 
 // The checklist page: the regulatory checklist of the DD playbook. Every item is in exactly one of four states. A person
 // sets them (the app has no login, so the change is stamped as a local person); "checked" needs an accepted finding
@@ -109,6 +110,7 @@ function ItemCard({ entry }: { entry: ChecklistItemView }) {
 /** The checklist page's body. */
 export function ChecklistPanel() {
   const checklist = useChecklist();
+  const signedIn = useSignedIn();
   const { refresh } = checklist;
   // The accepted findings behind an item change on the Findings page, so read the checklist again when this page opens.
   useEffect(() => {
@@ -153,7 +155,11 @@ export function ChecklistPanel() {
           The regulatory checklist of the due diligence. Every item is in one of four states, so that nothing is skipped silently: not checked, checked, checked:
           not applicable, or could not check. “Checked” needs at least one accepted finding tagged to the item; the other two need a reason.
         </p>
-        <p className="note">This app has no login: a change is recorded as “{LOCAL_PERSON}”.</p>
+        {signedIn ? (
+          <p className="note">A change is still recorded as “{LOCAL_PERSON}”, not under your name; names on changes come in a later step.</p>
+        ) : (
+          <p className="note">This app has no login: a change is recorded as “{LOCAL_PERSON}”.</p>
+        )}
       </div>
       {body}
     </section>
