@@ -24,7 +24,7 @@ const JANE: SessionView = {
   signIn: 'company',
 };
 const withCookie = (cookie: string | null) => new Request('http://localhost:3200/api/gates/scope/decision', cookie === null ? {} : { headers: { cookie } });
-const lookupOnly = (session: SessionView | null) => (token: string) => (token === TOKEN ? session : null);
+const lookupOnly = (session: SessionView | null) => (cookieValue: string) => (cookieValue === TOKEN ? session : null);
 
 describe('deciderFor', () => {
   it('is the local person when the copy has no sign-in, without reading any cookie or session', () => {

@@ -11,14 +11,14 @@ import type { Decider } from './deps';
 // no person the session counts (none, expired, a one-time password still to replace, the admin of earlier settings, or a
 // session that cannot be read), it is nobody, and the handler refuses with 401.
 
-export function deciderFor(request: Request, env: AccessEnv, lookup: (token: string) => SessionView | null): Decider {
+export function deciderFor(request: Request, env: AccessEnv, lookup: (cookieValue: string) => SessionView | null): Decider {
   const setting = readAccessSetting(env);
   if (setting.state === 'off') return { kind: 'local' };
-  const token = sessionTokenFrom(request);
-  if (token === null || !isSessionToken(token)) return { kind: 'nobody' };
+  const cookieValue = sessionTokenFrom(request);
+  if (cookieValue === null || !isSessionToken(cookieValue)) return { kind: 'nobody' };
   let session: SessionView | null;
   try {
-    session = countedSession(setting, lookup(token));
+    session = countedSession(setting, lookup(cookieValue));
   } catch {
     return { kind: 'nobody' };
   }
