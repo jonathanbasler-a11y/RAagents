@@ -237,6 +237,8 @@ function isAdminPath(pathname: string): boolean {
 export function countedSession(setting: AccessSetting, session: SessionView | null): SessionView | null {
   if (setting.state !== 'on' || session === null) return null;
   if (session.managedBy === 'server' && session.username !== setting.admin.username) return null;
+  // A session opened the other way (before the settings switched between passwords and company sign-in) is nobody.
+  if (session.signIn !== (setting.method === 'oidc' ? 'company' : 'password')) return null;
   return session;
 }
 

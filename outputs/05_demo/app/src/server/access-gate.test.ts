@@ -186,9 +186,18 @@ describe('readAccessSetting with company sign-in', () => {
 
   it('counts a server-admin session only under the username the settings name, as with passwords', () => {
     const setting = readAccessSetting(COMPANY_ENV);
-    expect(countedSession(setting, ADMIN)).toEqual(ADMIN);
-    expect(countedSession(setting, { ...ADMIN, username: 'old-admin' })).toBeNull();
-    expect(countedSession(setting, MEMBER)).toEqual(MEMBER);
+    const admin = { ...ADMIN, signIn: 'company' as const };
+    const member = { ...MEMBER, signIn: 'company' as const };
+    expect(countedSession(setting, admin)).toEqual(admin);
+    expect(countedSession(setting, { ...admin, username: 'old-admin' })).toBeNull();
+    expect(countedSession(setting, member)).toEqual(member);
+  });
+
+  it('counts no session opened the other way: after a switch, password sessions end under company sign-in, and back', () => {
+    expect(countedSession(readAccessSetting(COMPANY_ENV), MEMBER)).toBeNull();
+    expect(countedSession(readAccessSetting(COMPANY_ENV), { ...MEMBER, mustChangePassword: true })).toBeNull();
+    expect(countedSession(ON, { ...MEMBER, signIn: 'company' })).toBeNull();
+    expect(countedSession(ON, MEMBER)).toEqual(MEMBER);
   });
 });
 
