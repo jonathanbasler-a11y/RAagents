@@ -38,19 +38,24 @@ export async function readFormBody(request: Request, maxBytes: number = MAX_FORM
   return new URLSearchParams(new TextDecoder().decode(bytes));
 }
 
-/** The session cookie's value, or null. */
-export function sessionTokenFrom(request: Request): string | null {
+/** A cookie's value from the request, or null. */
+export function cookieFrom(request: Request, name: string): string | null {
   for (const part of (request.headers.get('cookie') ?? '').split(';')) {
     const separator = part.indexOf('=');
     if (separator < 0) continue;
-    if (part.slice(0, separator).trim() === SESSION_COOKIE) return part.slice(separator + 1).trim();
+    if (part.slice(0, separator).trim() === name) return part.slice(separator + 1).trim();
   }
   return null;
 }
 
-export function seeOther(location: string, cookie?: string): Response {
+/** The session cookie's value, or null. */
+export function sessionTokenFrom(request: Request): string | null {
+  return cookieFrom(request, SESSION_COOKIE);
+}
+
+export function seeOther(location: string, cookie?: string | readonly string[]): Response {
   const headers = new Headers({ Location: location, 'Cache-Control': 'no-store' });
-  if (cookie !== undefined) headers.append('Set-Cookie', cookie);
+  for (const line of cookie === undefined ? [] : typeof cookie === 'string' ? [cookie] : cookie) headers.append('Set-Cookie', line);
   return new Response(null, { status: 303, headers });
 }
 

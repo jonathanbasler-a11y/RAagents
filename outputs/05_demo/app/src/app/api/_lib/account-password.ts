@@ -28,7 +28,8 @@ function backToPage(error: string, next: string): Response {
 
 export function getPasswordPage(request: Request, deps: AccountDeps): Response {
   const setting = deps.setting();
-  if (setting.state === 'off') return plainText(404, 'Not found.');
+  // Company sign-in has no passwords: the page does not exist there.
+  if (setting.state === 'off' || (setting.state === 'on' && setting.method === 'oidc')) return plainText(404, 'Not found.');
   const token = sessionTokenFrom(request);
   const session = countedSession(setting, token === null ? null : deps.store().findSession(token));
   if (session === null) return seeOther('/login');
@@ -47,7 +48,7 @@ export function getPasswordPage(request: Request, deps: AccountDeps): Response {
 
 export async function postPassword(request: Request, deps: AccountDeps): Promise<Response> {
   const setting = deps.setting();
-  if (setting.state === 'off') return plainText(404, 'Not found.');
+  if (setting.state === 'off' || (setting.state === 'on' && setting.method === 'oidc')) return plainText(404, 'Not found.');
   if (!isSameOriginRequest(request)) return plainText(403, 'Forbidden: change your password from this site.');
   const fields = await readFormBody(request);
   if (fields === null) return plainText(413, 'The request body is too large.');

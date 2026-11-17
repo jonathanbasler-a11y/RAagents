@@ -102,9 +102,10 @@ export async function prepareHostedServer(
     log.error(`[accounts] the database could not be opened, so sign-in is unavailable: ${error instanceof Error ? error.message : String(error)}`);
     return {};
   }
-  if (setting.state === 'on' && setting.method === 'password') {
+  if (setting.state === 'on') {
     try {
-      await prepareAccounts(setting, store, deps.passwords());
+      if (setting.method === 'password') await prepareAccounts(setting, store, deps.passwords());
+      else store.bootstrapServerAdminByEmail({ username: setting.admin.username, email: setting.admin.email });
     } catch (error) {
       // Members and existing sessions keep working; the admin from the settings cannot sign in until this is fixed.
       log.error(

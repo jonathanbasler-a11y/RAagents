@@ -222,6 +222,21 @@ describe('decideAccess', () => {
     }
   });
 
+  it('leaves the company sign-in start and callback open for GET and HEAD only, under either way of signing in', () => {
+    const company = readAccessSetting(COMPANY_ENV);
+    for (const setting of [ON, company]) {
+      for (const method of ['GET', 'HEAD']) {
+        for (const pathname of ['/api/auth/start', '/api/auth/callback']) {
+          expect(decideAccess(request(method, pathname), setting, never), `${method} ${pathname}`).toEqual({ kind: 'allow' });
+        }
+      }
+      const noSession = () => null;
+      expect(decideAccess(request('POST', '/api/auth/callback'), setting, noSession).kind).toBe('deny');
+      expect(decideAccess(request('GET', '/api/auth/other'), setting, noSession).kind).toBe('deny');
+      expect(decideAccess(request('GET', '/api/auth/start/x'), setting, noSession).kind).toBe('deny');
+    }
+  });
+
   it('opens those paths only for their own methods and exact spelling', () => {
     const noSession = () => null;
     expect(decideAccess(request('POST', '/api/health'), ON, noSession).kind).toBe('deny');

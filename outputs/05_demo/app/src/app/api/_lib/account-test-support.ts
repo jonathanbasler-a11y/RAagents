@@ -2,6 +2,8 @@
 // fresh throttles and a settable clock. Not imported by app code.
 import { createAttemptThrottle, type AccessSetting } from '@/server/access-gate';
 import { createPasswordHasher } from '@/server/accounts/crypto';
+import { SIGN_IN_TRANSACTION_TTL_MS, createOidcClient, createTransactionStore } from '@/server/accounts/oidc';
+import { FAKE_CLIENT_ID, FAKE_ISSUER, FAKE_REDIRECT } from '@/server/accounts/oidc-test-support';
 import { createAccountStore, type AccountStore } from '@/server/accounts/store';
 import { migrateChatSchema } from '@/server/chat/schema';
 import { IN_MEMORY_DATABASE, openDatabase, type SqliteDatabase } from '@/server/db/sqlite';
@@ -9,6 +11,25 @@ import { ONE_TIME_PASSWORD_TTL_MS, canonicalOneTimePassword } from '@/shared/acc
 import type { AccountDeps } from './account-deps';
 
 export const ADMIN_PASSWORD = 'a-long-admin-password-1';
+export const ADMIN_EMAIL = 'owner@example.test';
+
+/** Company sign-in against the in-memory provider of src/server/accounts/oidc-test-support.ts. */
+export function companySetting(adminUsername = 'admin'): AccessSetting {
+  return {
+    state: 'on',
+    method: 'oidc',
+    admin: { username: adminUsername, email: ADMIN_EMAIL },
+    oidc: {
+      issuer: FAKE_ISSUER,
+      clientId: FAKE_CLIENT_ID,
+      redirectUri: FAKE_REDIRECT,
+      scopes: 'openid email profile',
+      emailClaim: 'email',
+      label: 'Sign in with your company account',
+    },
+    trustedProxyHops: 0,
+  };
+}
 export const T0 = new Date('2026-10-29T10:00:00.000Z');
 const CHEAP = { N: 2 ** 10, r: 8, p: 1 };
 
@@ -25,7 +46,7 @@ export interface AccountHarness {
   cleanup(): void;
 }
 
-export function accountHarness(options: { setting?: AccessSetting; hops?: 0 | 1 } = {}): AccountHarness {
+export function accountHarness(options: { setting?: AccessSetting; hops?: 0 | 1; oidcFetch?: typeof fetch } = {}): AccountHarness {
   const db = openDatabase(IN_MEMORY_DATABASE);
   migrateChatSchema(db);
   let clock = T0.getTime();
@@ -47,6 +68,8 @@ export function accountHarness(options: { setting?: AccessSetting; hops?: 0 | 1 
     passwords: () => passwords,
     signInThrottle: createAttemptThrottle({ windowMs: 15 * 60 * 1000, maxKeys: 1000 }),
     passwordThrottle: createAttemptThrottle({ windowMs: 15 * 60 * 1000, maxKeys: 1000 }),
+    oidc: createOidcClient({ fetch: options.oidcFetch, now }),
+    signInTransactions: createTransactionStore({ ttlMs: SIGN_IN_TRANSACTION_TTL_MS, maxEntries: 100 }),
     newOneTimePassword: () => `k7qm-2xvd-9hpt-${String(++oneTimes).padStart(4, '2')}`,
     newSessionToken: () => String(++tokens).padStart(43, 'T'),
     now,

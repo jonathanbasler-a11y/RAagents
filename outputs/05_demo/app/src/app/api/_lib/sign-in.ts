@@ -172,6 +172,7 @@ export function getLoginPage(request: Request, deps: AccountDeps): Response {
       notice: (process.env.RAAGENTS_HOSTED_NOTICE ?? '').trim(),
       message,
       next: safeNextPath(url.searchParams.get('next')),
+      companyLabel: setting.state === 'on' && setting.method === 'oidc' ? setting.oidc.label : undefined,
     }),
   );
 }

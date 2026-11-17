@@ -99,6 +99,30 @@ describe('prepareHostedServer', () => {
     expect(String(log.error.mock.calls[0][0])).not.toContain(ADMIN_PASSWORD);
   });
 
+  const COMPANY = {
+    RAAGENTS_OIDC_ISSUER: 'https://idp.example.test',
+    RAAGENTS_OIDC_CLIENT_ID: 'client-123',
+    RAAGENTS_OIDC_REDIRECT_URI: 'https://app.example.test/api/auth/callback',
+    RAAGENTS_ADMIN_EMAIL: 'owner@example.test',
+  };
+  const noHashing = () => {
+    throw new Error('company sign-in hashes no password');
+  };
+
+  it('prepares company sign-in: the admin from the settings, with their company e-mail and no password', async () => {
+    await prepareHostedServer(COMPANY, console, { store: () => store, passwords: noHashing });
+    expect(store.findIdentityAccount('owner@example.test')).toMatchObject({ username: 'admin', role: 'admin', managedBy: 'server' });
+  });
+
+  it('keeps the server up with company sign-in too, logging why without the e-mail', async () => {
+    store.addPersonByEmail({ email: 'owner@example.test', actor: 'someone' });
+    const log = { warn: vi.fn(), error: vi.fn() };
+    await prepareHostedServer(COMPANY, log, { store: () => store, passwords: noHashing });
+    expect(log.error).toHaveBeenCalledTimes(1);
+    expect(String(log.error.mock.calls[0][0])).toMatch(/the admin from the server settings cannot sign in until this is fixed/);
+    expect(String(log.error.mock.calls[0][0])).not.toContain('owner@');
+  });
+
   it('starts the heartbeat when the database is backed up', async () => {
     vi.useFakeTimers();
     const result = await prepareHostedServer(

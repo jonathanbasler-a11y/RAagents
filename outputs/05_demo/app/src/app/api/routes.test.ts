@@ -29,6 +29,8 @@ import * as logoutRoute from './logout/route';
 import * as accountPasswordRoute from './account/password/route';
 import * as adminPeopleRoute from './admin/people/route';
 import * as adminPersonRoute from './admin/people/[username]/route';
+import * as authStartRoute from './auth/start/route';
+import * as authCallbackRoute from './auth/callback/route';
 
 // The route files are thin: each wires one handler to the process-wide dependencies.
 // These tests pin the wiring: Node runtime, dynamic rendering, the methods, and the
@@ -59,6 +61,8 @@ const ROUTES = [
   ['account/password', accountPasswordRoute, ['POST']],
   ['admin/people', adminPeopleRoute, ['GET', 'POST']],
   ['admin/people/[username]', adminPersonRoute, ['POST']],
+  ['auth/start', authStartRoute, ['GET']],
+  ['auth/callback', authCallbackRoute, ['GET']],
 ] as const;
 
 let dataDir: string;

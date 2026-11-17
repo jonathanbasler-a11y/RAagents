@@ -22,6 +22,15 @@ export const LOGIN_MESSAGES: ReadonlyMap<string, string> = new Map([
   ['setup', 'Sign-in is not set up on this server. Ask the person who runs it.'],
   ['ended', 'Your sign-in has ended. Sign in again.'],
   ['many', 'Too many sign-ins in a short time. Wait 15 minutes and try again.'],
+  // Company sign-in (src/app/api/_lib/company-sign-in.ts).
+  ['not_listed', 'Your company account is not on the list for this workspace. Ask the admin to add your e-mail address.'],
+  ['disabled', 'Your account in this workspace is disabled. Ask the admin.'],
+  ['identity_mismatch', 'This e-mail address is linked to a different company account here. Ask the admin.'],
+  ['stale', 'That sign-in took too long or was already used. Sign in again.'],
+  ['provider', 'The company sign-in could not be completed. Try again in a moment; if it keeps happening, tell the person who runs this server.'],
+  ['denied', 'The sign-in was cancelled on the company sign-in page.'],
+  ['no_email', 'The company sign-in did not say which e-mail address you have. Tell the person who runs this server.'],
+  ['unverified_email', 'The company sign-in says your e-mail address is not verified. Tell the person who runs this server.'],
 ]);
 
 /** Why the last password change did not work. */
@@ -50,6 +59,7 @@ const STYLE = `
   label { display: block; margin: 1rem 0 0.4rem; }
   input[type=text], input[type=password] { width: 100%; box-sizing: border-box; padding: 0.55rem; font-size: 1rem; }
   button { margin-top: 1rem; padding: 0.55rem 1.1rem; font-size: 1rem; }
+  a.button { display: inline-block; margin-top: 1rem; padding: 0.55rem 1.1rem; font-size: 1rem; background: #1d2433; color: #fff; border-radius: 6px; text-decoration: none; }
 `;
 
 function shell(title: string, notice: string, message: string, body: string): string {
@@ -73,7 +83,21 @@ ${body}
 `;
 }
 
-export function loginPage(input: { notice: string; message: string; next: string }): string {
+/**
+ * The login page. With company sign-in it is one link to the provider and no password field: that way of signing in has
+ * no password at all.
+ */
+export function loginPage(input: { notice: string; message: string; next: string; companyLabel?: string }): string {
+  if (input.companyLabel !== undefined) {
+    const start = `/api/auth/start?next=${encodeURIComponent(input.next)}`;
+    return shell(
+      'Sign in',
+      input.notice,
+      input.message,
+      `<p><a class="button" href="${escapeHtml(start)}">${escapeHtml(input.companyLabel)}</a></p>
+<p class="hint">Only people the admin has added can enter.</p>`,
+    );
+  }
   return shell(
     'Sign in',
     input.notice,

@@ -152,11 +152,14 @@ export function createOidcClient(deps: OidcClientDeps): OidcClient {
   };
 }
 
-/** Sign-ins in progress, in this process's memory (one server process; a restart only means signing in again). */
-export function createTransactionStore(options: { ttlMs: number; maxEntries: number }): {
+export interface TransactionStore {
   put(transaction: SignInTransaction): void;
+  /** The transaction, once; null when unknown, already taken or older than the time limit. */
   take(id: string, nowMs: number): SignInTransaction | null;
-} {
+}
+
+/** Sign-ins in progress, in this process's memory (one server process; a restart only means signing in again). */
+export function createTransactionStore(options: { ttlMs: number; maxEntries: number }): TransactionStore {
   const held = new Map<string, SignInTransaction>();
   return {
     put(transaction) {

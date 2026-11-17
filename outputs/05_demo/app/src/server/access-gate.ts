@@ -197,9 +197,14 @@ export function readAccessSetting(env: AccessEnv): AccessSetting {
 const isGetOrHead = (method: string) => method === 'GET' || method === 'HEAD';
 const isApiPath = (pathname: string) => pathname === '/api' || pathname.startsWith('/api/');
 
-/** Exactly these stay open, each for its own methods and spelling: the load balancer's check, and the way in and out. */
+/**
+ * Exactly these stay open, each for its own methods and spelling: the load balancer's check, and the way in and out (the
+ * company sign-in's start and callback answer 404 unless company sign-in is on).
+ */
 function isOpen(method: string, pathname: string): boolean {
-  if (isGetOrHead(method)) return pathname === '/api/health' || pathname === '/login';
+  if (isGetOrHead(method)) {
+    return pathname === '/api/health' || pathname === '/login' || pathname === '/api/auth/start' || pathname === COMPANY_SIGN_IN_CALLBACK_PATH;
+  }
   if (method === 'POST') return pathname === '/api/login' || pathname === '/api/logout';
   return false;
 }

@@ -67,10 +67,13 @@ const REGISTER_WRITERS = [
   { writer: 'resetPersonPassword', allowed: ['src/app/api/_lib/admin-people.ts'] },
   { writer: 'setPersonDisabled', allowed: ['src/app/api/_lib/admin-people.ts'] },
   { writer: 'changeOwnPassword', allowed: ['src/app/api/_lib/account-password.ts'] },
-  { writer: 'openSession', allowed: ['src/app/api/_lib/sign-in.ts'] },
+  { writer: 'openSession', allowed: ['src/app/api/_lib/sign-in.ts', 'src/app/api/_lib/company-sign-in.ts'] },
+  { writer: 'bindIdentity', allowed: ['src/app/api/_lib/company-sign-in.ts'] },
+  { writer: 'noteIdentityRefusal', allowed: ['src/app/api/_lib/company-sign-in.ts'] },
   { writer: 'closeSession', allowed: ['src/app/api/_lib/sign-in.ts'] },
   { writer: 'bootstrapServerAdmin', allowed: ['src/server/accounts/runtime.ts', 'src/app/api/_lib/account-test-support.ts'] },
   { writer: 'touchHeartbeat', allowed: ['src/server/accounts/runtime.ts'] },
+  { writer: 'bootstrapServerAdminByEmail', allowed: ['src/server/accounts/runtime.ts'] },
 ] as const;
 
 describe.each(REGISTER_WRITERS)('only one module uses $writer', ({ writer, allowed }) => {

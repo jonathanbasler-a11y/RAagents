@@ -2,6 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { createAttemptThrottle, readAccessSetting, type AccessSetting, type AttemptThrottle } from '@/server/access-gate';
 import { newOneTimePassword, newSessionToken, type PasswordHasher } from '@/server/accounts/crypto';
+import { SIGN_IN_TRANSACTION_TTL_MS, createOidcClient, createTransactionStore, type OidcClient, type TransactionStore } from '@/server/accounts/oidc';
 import { getAccountStore, getPasswordHasher } from '@/server/accounts/runtime';
 import type { AccountStore } from '@/server/accounts/store';
 
@@ -16,6 +17,9 @@ export interface AccountDeps {
   signInThrottle: AttemptThrottle;
   /** Wrong current passwords on the password page, per account. */
   passwordThrottle: AttemptThrottle;
+  /** Company sign-in: the provider client, and the sign-ins in progress (src/server/accounts/oidc.ts). */
+  oidc: OidcClient;
+  signInTransactions: TransactionStore;
   newOneTimePassword: () => string;
   newSessionToken: () => string;
   now: () => Date;
@@ -28,6 +32,9 @@ const WINDOW_MS = 15 * 60 * 1000;
 // hashes, so 50,000 of them take a few megabytes; that many keep a flood of made-up names from pushing a real one out.
 const signInThrottle = createAttemptThrottle({ windowMs: WINDOW_MS, maxKeys: 50_000 });
 const passwordThrottle = createAttemptThrottle({ windowMs: WINDOW_MS, maxKeys: 50_000 });
+// One provider client (it remembers the provider's settings) and one store of sign-ins in progress per route bundle.
+const oidc = createOidcClient({ now: () => new Date() });
+const signInTransactions = createTransactionStore({ ttlMs: SIGN_IN_TRANSACTION_TTL_MS, maxEntries: 10_000 });
 
 export function accountDeps(): AccountDeps {
   return {
@@ -36,6 +43,8 @@ export function accountDeps(): AccountDeps {
     passwords: getPasswordHasher,
     signInThrottle,
     passwordThrottle,
+    oidc,
+    signInTransactions,
     newOneTimePassword,
     newSessionToken,
     now: () => new Date(),
