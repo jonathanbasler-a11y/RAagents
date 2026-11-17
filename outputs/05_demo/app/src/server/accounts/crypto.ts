@@ -15,6 +15,13 @@ export interface ScryptCost {
 
 /** OWASP's minimum for scrypt. About 32 MiB per hash; measure in the container (N=2^14, p=5 is the equivalent fallback). */
 export const SCRYPT_COST: ScryptCost = { N: 2 ** 15, r: 8, p: 3 };
+
+/**
+ * What an account that signs in with the company account holds in place of a password hash. It passes the accounts
+ * table's CHECK (version 7) and is no scrypt hash, so no password can match it; sign-in never checks a password against it
+ * (src/app/api/_lib/sign-in.ts), and the database refuses any other hash for such an account (schema version 8).
+ */
+export const NO_PASSWORD_HASH = 'scrypt$no-password';
 /** Node's default (32 MiB) is too small for N=2^15, r=8: the call throws before it starts. */
 const SCRYPT_MAXMEM = 64 * 1024 * 1024;
 const SALT_BYTES = 16;

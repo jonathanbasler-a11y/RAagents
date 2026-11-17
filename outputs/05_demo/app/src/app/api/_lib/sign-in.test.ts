@@ -48,6 +48,19 @@ describe('postLogin', () => {
     expect(response.headers.get('set-cookie')).toBeNull();
   });
 
+  it('password sign-in treats a company account as unknown: it has no password to match', async () => {
+    const harness = setup();
+    harness.deps.store().addPersonByEmail({ email: 'jane.doe@example.test', actor: 'admin' });
+    // As long as for an unknown name: the password is checked against the dummy hash, so the time taken tells nothing.
+    const verify = vi.spyOn(harness.deps.passwords(), 'verify');
+    for (const password of ['', 'scrypt$no-password', 'no-password', ADMIN_PASSWORD]) {
+      const response = await postLogin(login({ username: 'jane.doe', password }), harness.deps);
+      expect(location(response), password).toBe('/login?error=wrong');
+      expect(response.headers.get('set-cookie'), password).toBeNull();
+    }
+    expect(verify.mock.calls.map((call) => call[1])).toEqual(Array(4).fill(harness.deps.passwords().dummy));
+  });
+
   it('refuses a cross-site sign-in before it opens the database', async () => {
     const harness = setup();
     const store = vi.spyOn(harness.deps, 'store');

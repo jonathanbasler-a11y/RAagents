@@ -25,6 +25,8 @@ function statusText(person: PersonSummary): string {
       return `Waiting for their own password (until ${formatDate(person.oneTimeExpiresAt)})`;
     case 'expired':
       return 'One-time password expired: reset it';
+    case 'invited':
+      return 'Has not signed in yet';
     case 'disabled':
       return 'Disabled';
   }

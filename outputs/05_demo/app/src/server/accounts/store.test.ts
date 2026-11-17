@@ -57,6 +57,8 @@ describe('createPersonAccount', () => {
       role: 'member',
       managedBy: 'app',
       status: 'waiting',
+      signIn: 'password',
+      email: null,
       oneTimeExpiresAt: iso(WEEK),
       createdAt: T0.toISOString(),
       createdBy: 'admin',

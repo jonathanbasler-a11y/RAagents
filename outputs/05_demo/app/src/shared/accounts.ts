@@ -24,6 +24,8 @@ export interface SessionView {
   /** True until the person has replaced a one-time password with their own. */
   mustChangePassword: boolean;
   expiresAt: string;
+  /** With company sign-in: the name the provider sent at the last sign-in; null otherwise. */
+  displayName: string | null;
 }
 
 /** The person signed in, as the app's header shows them. */
@@ -34,8 +36,14 @@ export interface ShellAccount {
   canChangePassword: boolean;
 }
 
-/** waiting: has a one-time password that still works; expired: that password no longer works. */
-export type PersonStatus = 'active' | 'waiting' | 'expired' | 'disabled';
+/**
+ * waiting: has a one-time password that still works; expired: that password no longer works; invited: added by company
+ * e-mail and has not signed in yet.
+ */
+export type PersonStatus = 'active' | 'waiting' | 'expired' | 'invited' | 'disabled';
+
+/** How a person signs in: with a password, or with the company account (company sign-in). */
+export type SignInMethod = 'password' | 'company';
 
 /** One row of the People page. Never holds a password or a hash. */
 export interface PersonSummary {
@@ -43,6 +51,9 @@ export interface PersonSummary {
   role: AccountRole;
   managedBy: AccountManagedBy;
   status: PersonStatus;
+  signIn: SignInMethod;
+  /** The company e-mail address, for a person who signs in with the company account; null otherwise. */
+  email: string | null;
   /** Until when the one-time password works; null when the person has their own password. */
   oneTimeExpiresAt: string | null;
   createdAt: string;
@@ -94,6 +105,26 @@ export function checkUsername(username: string): RuleCheck {
   }
   if (RESERVED_USERNAMES.has(username)) return { ok: false, message: `"${username}" is reserved. Choose another username.` };
   return { ok: true };
+}
+
+const MIN_USERNAME_CHARS = 2;
+const MAX_USERNAME_CHARS = 32;
+
+/**
+ * A username for a person added by company e-mail: the part before the @, with every character the username rule does not
+ * allow turned into a dash, starting with a letter or a digit, cut to 32 characters; a name too short gets "-person", and
+ * a taken or reserved one "-2", "-3"... (cut again so the suffix fits). Always a name checkUsername accepts.
+ */
+export function usernameFromEmail(email: string, taken: (username: string) => boolean): string {
+  const local = email.slice(0, Math.max(0, email.indexOf('@')));
+  let base = local.toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/^[^a-z0-9]+/, '').slice(0, MAX_USERNAME_CHARS);
+  if (base.length < MIN_USERNAME_CHARS) base = base === '' ? 'person' : `${base}-person`;
+  for (let n = 1; n < 10_000; n += 1) {
+    const suffix = n === 1 ? '' : `-${n}`;
+    const candidate = `${base.slice(0, MAX_USERNAME_CHARS - suffix.length)}${suffix}`;
+    if (checkUsername(candidate).ok && !taken(candidate)) return candidate;
+  }
+  throw new Error('no free username for this e-mail address');
 }
 
 /** One company address: a name, one @, a domain with a dot; lower-case letters, digits and . + _ - only. */

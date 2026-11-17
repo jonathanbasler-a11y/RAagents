@@ -602,6 +602,96 @@ export const CHAT_MIGRATIONS: readonly string[] = [
     at TEXT NOT NULL
   ) STRICT;
   `,
+  // Version 8: company sign-in. An account the admin adds by company e-mail gets an identity row, and the first sign-in
+  // binds the provider's issuer and subject to it, once. Such an account holds no password (the marker of
+  // src/server/accounts/crypto.ts), and the database refuses any other hash for it. An identity is never deleted and
+  // never moves to another account; its e-mail changes only for the admin from the server settings (when the settings name
+  // a new e-mail), and then the binding is cleared with it. The events are append-only.
+  `
+  CREATE TABLE account_identities (
+    account_id TEXT PRIMARY KEY REFERENCES accounts (id),
+    email TEXT NOT NULL UNIQUE CHECK (
+      length(email) BETWEEN 3 AND 254
+      AND email = lower(email)
+      AND email NOT GLOB '*[^a-z0-9.+_@-]*'
+      AND email GLOB '?*@?*.?*'
+      AND email NOT GLOB '*@*@*'
+    ),
+    issuer TEXT CHECK (issuer IS NULL OR length(issuer) BETWEEN 1 AND 500),
+    subject TEXT CHECK (subject IS NULL OR length(subject) BETWEEN 1 AND 255),
+    display_name TEXT CHECK (display_name IS NULL OR length(display_name) BETWEEN 1 AND 120),
+    bound_at TEXT,
+    created_at TEXT NOT NULL,
+    CHECK ((issuer IS NULL) = (subject IS NULL) AND (subject IS NULL) = (bound_at IS NULL))
+  ) STRICT;
+
+  CREATE UNIQUE INDEX account_identities_one_subject ON account_identities (issuer, subject) WHERE subject IS NOT NULL;
+
+  CREATE TRIGGER account_identities_need_no_password
+  BEFORE INSERT ON account_identities
+  WHEN (SELECT password_hash FROM accounts WHERE id = NEW.account_id) IS NOT 'scrypt$no-password'
+  BEGIN
+    SELECT RAISE(ABORT, 'an account with a company identity holds no password');
+  END;
+
+  CREATE TRIGGER accounts_company_hold_no_password
+  BEFORE UPDATE OF password_hash ON accounts
+  WHEN NEW.password_hash IS NOT 'scrypt$no-password' AND EXISTS (SELECT 1 FROM account_identities WHERE account_id = NEW.id)
+  BEGIN
+    SELECT RAISE(ABORT, 'an account with a company identity holds no password');
+  END;
+
+  CREATE TRIGGER account_identities_fixed
+  BEFORE UPDATE ON account_identities
+  WHEN NOT (NEW.account_id IS OLD.account_id AND NEW.created_at IS OLD.created_at)
+  BEGIN
+    SELECT RAISE(ABORT, 'an identity never moves to another account');
+  END;
+
+  CREATE TRIGGER account_identities_email_for_server_admin
+  BEFORE UPDATE OF email ON account_identities
+  WHEN NEW.email IS NOT OLD.email
+    AND ((SELECT managed_by FROM accounts WHERE id = OLD.account_id) IS NOT 'server' OR NEW.subject IS NOT NULL)
+  BEGIN
+    SELECT RAISE(ABORT, 'only the admin from the server settings changes e-mail, and the binding is cleared with it');
+  END;
+
+  CREATE TRIGGER account_identities_bind_once
+  BEFORE UPDATE OF issuer, subject, bound_at ON account_identities
+  WHEN OLD.subject IS NOT NULL AND (
+    (NEW.subject IS NOT NULL AND (NEW.subject IS NOT OLD.subject OR NEW.issuer IS NOT OLD.issuer OR NEW.bound_at IS NOT OLD.bound_at))
+    OR (NEW.subject IS NULL AND NEW.email IS OLD.email)
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'an identity is bound once; only a new e-mail of the server admin clears the binding');
+  END;
+
+  CREATE TRIGGER account_identities_no_delete
+  BEFORE DELETE ON account_identities
+  BEGIN
+    SELECT RAISE(ABORT, 'an identity is never deleted');
+  END;
+
+  CREATE TABLE account_identity_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id TEXT NOT NULL REFERENCES accounts (id),
+    kind TEXT NOT NULL CHECK (kind IN ('added', 'bound', 'email_changed', 'refused_mismatch', 'refused_disabled')),
+    at TEXT NOT NULL,
+    actor TEXT NOT NULL CHECK (length(actor) BETWEEN 1 AND 64)
+  ) STRICT;
+
+  CREATE TRIGGER account_identity_events_no_update
+  BEFORE UPDATE ON account_identity_events
+  BEGIN
+    SELECT RAISE(ABORT, 'an identity event cannot be changed');
+  END;
+
+  CREATE TRIGGER account_identity_events_no_delete
+  BEFORE DELETE ON account_identity_events
+  BEGIN
+    SELECT RAISE(ABORT, 'an identity event cannot be deleted');
+  END;
+  `,
 ];
 
 /**

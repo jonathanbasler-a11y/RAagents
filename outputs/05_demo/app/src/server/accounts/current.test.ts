@@ -71,7 +71,7 @@ describe('currentAccount', () => {
 });
 
 describe('layoutPlan', () => {
-  const session = { accountId: 'a', username: 'member-one', role: 'member' as const, managedBy: 'app' as const, mustChangePassword: false, expiresAt: 'x' };
+  const session = { accountId: 'a', username: 'member-one', role: 'member' as const, managedBy: 'app' as const, mustChangePassword: false, expiresAt: 'x', displayName: null };
 
   it('keeps today\'s shell, with no account line, when sign-in is off', () => {
     expect(layoutPlan({ signIn: 'off' })).toEqual({ shell: true, account: undefined });

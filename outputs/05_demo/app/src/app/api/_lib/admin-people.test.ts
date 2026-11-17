@@ -80,7 +80,7 @@ describe('getPeople', () => {
       ['admin', 'active'],
       ['member-one', 'waiting'],
     ]);
-    expect(JSON.stringify(body)).not.toMatch(/scrypt|password/i);
+    expect(JSON.stringify(body)).not.toMatch(/scrypt|"[a-z_]*password[a-z_]*":/i);
   });
 });
 

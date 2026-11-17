@@ -7,7 +7,7 @@ import {
   sessionCookieHeader,
   type AttemptBucket,
 } from '@/server/access-gate';
-import { HashingBusyError, secretEquals } from '@/server/accounts/crypto';
+import { HashingBusyError, NO_PASSWORD_HASH, secretEquals } from '@/server/accounts/crypto';
 import { isSessionToken, tokenHash } from '@/server/accounts/session-lookup';
 import { SESSION_TTL_MS, canonicalOneTimePassword, checkUsername, normalizeUsername } from '@/shared/accounts';
 import type { AccountDeps } from './account-deps';
@@ -87,7 +87,9 @@ export async function postLogin(request: Request, deps: AccountDeps): Promise<Re
   const passwords = deps.passwords();
   const now = deps.now();
   // Looked up before anything is counted: a database error here is a server error, never a failed attempt.
-  const account = username.length <= MAX_LOOKUP_CHARS && checkUsername(username).ok ? store.findAccountForSignIn(username) : null;
+  const found = username.length <= MAX_LOOKUP_CHARS && checkUsername(username).ok ? store.findAccountForSignIn(username) : null;
+  // An account that signs in with the company account has no password: to a password, it is an unknown name.
+  const account = found !== null && found.passwordHash === NO_PASSWORD_HASH ? null : found;
   const isServerAdmin = account !== null && account.managedBy === 'server' && username === setting.admin.username;
 
   const key = nameKey(username);

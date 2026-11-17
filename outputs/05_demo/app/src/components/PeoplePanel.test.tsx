@@ -11,6 +11,8 @@ const ADMIN: PersonSummary = {
   role: 'admin',
   managedBy: 'server',
   status: 'active',
+  signIn: 'password',
+  email: null,
   oneTimeExpiresAt: null,
   createdAt: '2026-10-29T08:00:00.000Z',
   createdBy: 'server',
@@ -48,6 +50,12 @@ afterEach(() => {
 });
 
 describe('PeoplePanel', () => {
+  it('says a person added by company e-mail has not signed in yet', async () => {
+    const invited: PersonSummary = { ...MEMBER, username: 'jane.doe', status: 'invited', signIn: 'company', email: 'jane.doe@example.test', oneTimeExpiresAt: null };
+    render(<PeoplePanel client={fakeClient([ADMIN, invited])} />);
+    expect(await row('jane.doe')).toHaveTextContent('Has not signed in yet');
+  });
+
   it('lists everyone with their status; the admin from the server settings has no actions', async () => {
     render(<PeoplePanel client={fakeClient()} />);
 

@@ -8,6 +8,7 @@ import {
   checkUsername,
   normalizeEmail,
   normalizeUsername,
+  usernameFromEmail,
 } from './accounts';
 
 describe('checkUsername', () => {
@@ -85,6 +86,41 @@ describe('normalizeEmail and checkEmail', () => {
       const check = checkEmail(email);
       expect(check.ok, email).toBe(false);
       if (!check.ok) expect(check.message.length).toBeGreaterThan(10);
+    }
+  });
+});
+
+describe('usernameFromEmail', () => {
+  const none = () => false;
+
+  it('takes the part before the @', () => {
+    expect(usernameFromEmail('jane.doe@example.test', none)).toBe('jane.doe');
+  });
+
+  it('adds -2, -3 to a name that is taken', () => {
+    const taken = new Set(['jane.doe', 'jane.doe-2']);
+    expect(usernameFromEmail('jane.doe@example.test', (name) => taken.has(name))).toBe('jane.doe-3');
+  });
+
+  it('turns characters outside the username rule into dashes and starts with a letter or digit', () => {
+    expect(usernameFromEmail('j+dd@example.test', none)).toBe('j-dd');
+    expect(usernameFromEmail('_jane@example.test', none)).toBe('jane');
+  });
+
+  it('cuts a long name to fit, with its suffix', () => {
+    const long = `${'a'.repeat(40)}@example.test`;
+    expect(usernameFromEmail(long, none)).toBe('a'.repeat(32));
+    expect(usernameFromEmail(long, (name) => name === 'a'.repeat(32))).toBe(`${'a'.repeat(30)}-2`);
+  });
+
+  it('skips a reserved name and pads a name too short to be one', () => {
+    expect(usernameFromEmail('server@example.test', none)).toBe('server-2');
+    expect(usernameFromEmail('j@example.test', none)).toBe('j-person');
+  });
+
+  it('always gives a name the username rule accepts', () => {
+    for (const email of ['jane.doe@example.test', '-x@example.test', '..@example.test', 'a@example.test', `${'z'.repeat(64)}@example.test`]) {
+      expect(checkUsername(usernameFromEmail(email, none)), email).toEqual({ ok: true });
     }
   });
 });

@@ -27,7 +27,7 @@ vi.mock('@/server/demo-mode', () => ({ readDemoMode: () => 'live' }));
 
 import RootLayout from './layout';
 
-const SESSION = { accountId: 'a', username: 'member-one', role: 'member' as const, managedBy: 'app' as const, mustChangePassword: false, expiresAt: 'x' };
+const SESSION = { accountId: 'a', username: 'member-one', role: 'member' as const, managedBy: 'app' as const, mustChangePassword: false, expiresAt: 'x', displayName: null };
 
 async function render(): Promise<string> {
   return renderToStaticMarkup(await RootLayout({ children: <p>Page body</p> }));

@@ -26,6 +26,7 @@ const MEMBER: SessionView = {
   managedBy: 'app',
   mustChangePassword: false,
   expiresAt: '2026-10-30T00:00:00.000Z',
+  displayName: null,
 };
 const ADMIN: SessionView = { ...MEMBER, accountId: 'acc-admin', username: 'admin', role: 'admin', managedBy: 'server' };
 

@@ -51,6 +51,7 @@ describe('readSession', () => {
       managedBy: 'app',
       mustChangePassword: false,
       expiresAt: '2026-10-29T22:00:00.000Z',
+      displayName: null,
     });
   });
 
