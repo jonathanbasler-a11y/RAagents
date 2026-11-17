@@ -121,7 +121,7 @@ describe('verdictOf (BUILD-LEARNINGS 9.6)', () => {
     const declined = makeResult({ caseId: 'a', rep: 3, unusable: 'llm_declined' });
     declined.answer.errorCode = 'llm_declined';
     expect(verdictOf(makeRecord([...caseResults('a', [4, 4]), declined])).reasons).toEqual([
-      '1 unusable answer (blank, error or broken off; 1 declined by the model)',
+      '1 unusable answer (blank, error or broken off; 1 declined or empty: the model may have declined)',
     ]);
   });
 

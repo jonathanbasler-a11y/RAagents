@@ -166,7 +166,7 @@ export function verdictOf(record: EvalRunRecord): { verdict: RunVerdict; reasons
   const unusable = results.filter((result) => !isUsable(result)).length;
   const declined = results.filter((result) => !isUsable(result) && result.answer.errorCode === 'llm_declined').length;
   if (unusable > 0) {
-    invalid.push(`${plural(unusable, 'unusable answer')} (blank, error or broken off${declined > 0 ? `; ${declined} declined by the model` : ''})`);
+    invalid.push(`${plural(unusable, 'unusable answer')} (blank, error or broken off${declined > 0 ? `; ${declined} declined or empty: the model may have declined` : ''})`);
   }
   const unscored = results.filter((result) => isUsable(result) && !result.judge?.ok).length;
   if (unscored > 0) invalid.push(`${plural(unscored, 'answer')} the judge could not score`);

@@ -13,7 +13,7 @@
 //   and judge prompt hashes, and the configured and resolved models.
 import { createHash } from 'node:crypto';
 import type { RunAgentContext, RunAgentDeps, RunAgentResult } from '@/server/chat/run-agent';
-import { LlmError, modelFamily, type ModelFamily } from '@/server/llm';
+import { LlmError, isSameModel, modelFamily, type ModelFamily } from '@/server/llm';
 import { buildAgentPrompt, type AgentPrompt } from '@/server/prompts';
 import type { AgentId, AgentSpec, ChatErrorCode, ChatLimits, LlmClient, LlmMessage, MessageStatus } from '@/shared/contracts';
 import type { CaseCategory, CaseRisk, EvalCase } from './cases';
@@ -25,6 +25,24 @@ import { JUDGE_MAX_TOKENS, buildJudgeMessages, judgePromptHash, parseJudgeReply,
 export const EVAL_REPETITIONS = 3;
 /** Unusable answers (or unscored ones) in a row that abort the run. */
 export const FAIL_FAST_AFTER = 3;
+
+interface UnusableEntry {
+  text: string;
+  caseId: string;
+  declined: boolean;
+}
+
+/**
+ * The length of a run of unusable answers, for the fail-fast. A refusal is usually the same on every
+ * try, and a case's tries run back to back, so declines of one case in a row count once: one case
+ * the model always declines no longer stops the suite, while three different cases in a row still do.
+ */
+export function unusableStreak(run: readonly UnusableEntry[]): number {
+  return run.filter((entry, index) => {
+    const previous = run[index - 1];
+    return !(entry.declined && previous?.declined && previous.caseId === entry.caseId);
+  }).length;
+}
 /** The prompt's time zone in every eval call. */
 export const EVAL_TIME_ZONE = 'UTC';
 export const RUN_RECORD_SCHEMA = 'dhht-eval-run/1';
@@ -344,7 +362,7 @@ export async function runEval(options: EvalRunOptions, deps: EvalRunDeps): Promi
   const resolvedAgents = new Set<string>();
   const resolvedJudge = new Set<string>();
   const specVersions: Record<AgentId, string> = {};
-  let unusableRun: string[] = [];
+  let unusableRun: UnusableEntry[] = [];
   let unscoredRun: string[] = [];
   const total = cases.length * reps;
 
@@ -392,9 +410,9 @@ export async function runEval(options: EvalRunOptions, deps: EvalRunDeps): Promi
         const entry: EvalResult = { ...base, checks: [], judge: null };
         results.push(entry);
         print(progressLine(position, entry));
-        unusableRun.push(`${label}: ${unusable}`);
-        if (unusableRun.length >= FAIL_FAST_AFTER) {
-          throw new EvalAbortedError(`${FAIL_FAST_AFTER} unusable answers in a row (${unusableRun.join('; ')})`);
+        unusableRun.push({ text: `${label}: ${unusable}`, caseId: evalCase.id, declined: result.errorCode === 'llm_declined' });
+        if (unusableStreak(unusableRun) >= FAIL_FAST_AFTER) {
+          throw new EvalAbortedError(`${FAIL_FAST_AFTER} unusable answers in a row (${unusableRun.map((entry) => entry.text).join('; ')})`);
         }
         continue;
       }
@@ -405,6 +423,11 @@ export async function runEval(options: EvalRunOptions, deps: EvalRunDeps): Promi
         throw new EvalAbortedError(`${label}: ${judgeFamilyProblem(agentModel, deps.judgeLlm.model)}`);
       }
       resolvedAgents.add(agentModel);
+      // A run answered by another model measures that model: stop at the first such answer instead of
+      // spending the whole run before the verdict says INVALID.
+      if (!isSameModel(deps.agentsLlm.model, agentModel)) {
+        throw new EvalAbortedError(`${label}: the agents route reported another model than configured: ${agentModel} (configured ${deps.agentsLlm.model})`);
+      }
 
       const checks = runChecks(evalCase.expected, result.text);
       const judge = await judgeAnswer(evalCase, agent, prompt, result, { judgeLlm: deps.judgeLlm, elapsed, deadline });
@@ -412,6 +435,9 @@ export async function runEval(options: EvalRunOptions, deps: EvalRunDeps): Promi
         const problem = judgeFamilyProblem(agentModel, judge.model);
         if (problem !== null) throw new EvalAbortedError(`${label}: the judge route reported another model than configured: ${problem}`);
         resolvedJudge.add(judge.model);
+        if (!isSameModel(deps.judgeLlm.model, judge.model)) {
+          throw new EvalAbortedError(`${label}: the judge route reported another model than configured: ${judge.model} (configured ${deps.judgeLlm.model})`);
+        }
       }
       const entry: EvalResult = { ...base, checks, judge };
       results.push(entry);

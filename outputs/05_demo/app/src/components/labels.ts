@@ -248,7 +248,7 @@ export type ErrorKind = 'setup' | 'service' | 'model' | 'app';
 export const ERROR_KIND_TITLES: Record<ErrorKind, string> = {
   setup: 'Setup problem',
   service: 'Service problem',
-  model: 'Stopped by the model',
+  model: 'Reply stopped',
   app: 'App error',
 };
 
@@ -263,7 +263,7 @@ const CHAT_ERRORS: Record<ChatErrorCode, { kind: ErrorKind; text: string }> = {
   // reply, so the wording says "may have": the cause is likely, not known.
   llm_declined: {
     kind: 'model',
-    text: 'It may have declined the request, or a content filter stopped the reply. Rephrasing it may help.',
+    text: 'The model may have declined the request, or a content filter stopped the reply. Rephrasing it may help.',
   },
   llm_rate_limit: { kind: 'service', text: 'The model gateway is limiting requests. Try again in a moment.' },
   llm_outage: { kind: 'service', text: 'The model service is having an outage. Try again later.' },

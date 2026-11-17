@@ -86,6 +86,18 @@ describe('npm run smoke', () => {
     expect(output).toMatch(/judge family \(openai\) differs from the agents' family \(anthropic\)/);
   });
 
+  // A gateway can answer with another model than the one asked for; the smoke check used to print OK.
+  it('exits 1 and says so when a route answers as another model than configured', async () => {
+    const swapped: Answer = (call) =>
+      String(call.body.model).startsWith('anthropic.')
+        ? completionResponse('OK', { model: 'claude-other-9' })
+        : healthy(call);
+    const { code, output } = await smoke({ ...AGENTS, ...JUDGE }, swapped);
+
+    expect(code).toBe(1);
+    expect(output).toMatch(/^agents\s+plain\b.*FAIL another model answered than the one configured: .*model=claude-other-9/m);
+  });
+
   it('exits 1 when the judge is the same family as the agents', async () => {
     const { code, output } = await smoke({ ...AGENTS, ...JUDGE, LLM_JUDGE_MODEL: 'anthropic.claude-test-2' });
 

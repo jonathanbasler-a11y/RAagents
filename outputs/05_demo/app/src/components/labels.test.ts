@@ -192,8 +192,9 @@ describe('describeChatError', () => {
 
   it('says the model stopped a declined reply, without calling it a setup problem or an outage', () => {
     const info = describeChatError('llm_declined');
-    expect(info.title).toBe('Stopped by the model');
-    expect(info.text).toMatch(/may have declined the request/);
+    // The title states only what is known: the reply stopped. The text hedges why.
+    expect(info.title).toBe('Reply stopped');
+    expect(info.text).toMatch(/model may have declined the request/);
     expect(info.text).toMatch(/content filter/);
     expect(info.kind).not.toBe('setup');
   });
