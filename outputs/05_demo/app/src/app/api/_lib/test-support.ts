@@ -67,6 +67,8 @@ export function apiHarness(options: ApiHarnessOptions = {}): ApiHarness {
     now: () => FROZEN_NOW,
     newId: sequentialIds('api'),
     log: console,
+    // No sign-in, as on one computer; a test of names on decisions passes its own.
+    decider: () => ({ kind: 'local' }),
     ...options.overrides,
   };
 

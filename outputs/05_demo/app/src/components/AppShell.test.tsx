@@ -256,7 +256,7 @@ describe('AppShell on a hosted copy', () => {
 
   it('names the person signed in, with their password page and sign-out as a form that posts to the sign-out route', () => {
     render(
-      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} account={{ username: 'member-one', isAdmin: false, canChangePassword: true }}>
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} account={{ username: 'member-one', isAdmin: false, canChangePassword: true, decisionName: 'member-one' }}>
         <p>Page body</p>
       </AppShell>,
     );
@@ -272,7 +272,7 @@ describe('AppShell on a hosted copy', () => {
 
   it('gives the admin the People page, and no password page for an admin set in the server settings', () => {
     render(
-      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} account={{ username: 'admin', isAdmin: true, canChangePassword: false }}>
+      <AppShell agentsLoad={{ ok: true, agents: ROSTER }} account={{ username: 'admin', isAdmin: true, canChangePassword: false, decisionName: 'admin' }}>
         <p>Page body</p>
       </AppShell>,
     );

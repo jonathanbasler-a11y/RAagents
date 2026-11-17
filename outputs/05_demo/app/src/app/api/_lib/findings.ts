@@ -9,12 +9,13 @@ import {
 import { checkTagInput } from '@/shared/checklist';
 import type { FindingDecisionResponse, FindingsResponse, FindingTagInput, FindingTagResponse } from '@/shared/contracts';
 import type { ApiDeps } from './deps';
+import { actorOf } from './decision-actor';
 import { apiError, json, logFailure } from './http';
 import { checkSameOriginJson, readJsonBody } from './request-guard';
 
 // The findings register over HTTP. Reading is open to anyone who can reach the app. A decision is the person's: a
-// same-origin JSON post with a strictly validated body, made once. The app has no login, so the register stamps the
-// decision "person (local, not authenticated)" and the page says so. There is no route for an agent to write here:
+// same-origin JSON post with a strictly validated body, made once. The register stamps the decision with
+// the person the server's session names (decision-actor.ts), or "person (local, not authenticated)" on a copy without sign-in, and the page says which. There is no route for an agent to write here:
 // agents propose through a findings proposal turn, which only ever creates drafts.
 
 const FINDING_ID = /^F-\d{3,}$/;
@@ -66,6 +67,8 @@ export async function postFindingDecision(request: Request, deps: ApiDeps, findi
     deps.log.warn(`[api] refused ${where} (correlation ${correlationId}): ${guard.reason}`);
     return apiError('forbidden', correlationId);
   }
+  const actor = actorOf(deps.decider(request));
+  if (actor === null) return apiError('sign_in_required', correlationId);
   try {
     const body = await readJsonBody(request);
     if (!body.ok) return apiError('invalid_request', correlationId, { message: body.message });
@@ -74,7 +77,7 @@ export async function postFindingDecision(request: Request, deps: ApiDeps, findi
     if (!decision.ok) return apiError('invalid_request', correlationId, { message: decision.message });
 
     const { store, workspaceId } = deps.runtime();
-    const finding = store.decideFinding(workspaceId, findingId, decision.decision, decision.note, decision.tag ?? undefined);
+    const finding = store.decideFinding(workspaceId, findingId, decision.decision, decision.note, decision.tag ?? undefined, actor);
     const tag = store.listFindingTags(workspaceId).find((entry) => entry.findingId === findingId) ?? null;
     const decided: FindingDecisionResponse = { finding, tag };
     return json(decided);
@@ -96,6 +99,8 @@ export async function postFindingTag(request: Request, deps: ApiDeps, findingId:
     deps.log.warn(`[api] refused ${where} (correlation ${correlationId}): ${guard.reason}`);
     return apiError('forbidden', correlationId);
   }
+  const actor = actorOf(deps.decider(request));
+  if (actor === null) return apiError('sign_in_required', correlationId);
   try {
     const body = await readJsonBody(request);
     if (!body.ok) return apiError('invalid_request', correlationId, { message: body.message });
@@ -106,7 +111,7 @@ export async function postFindingTag(request: Request, deps: ApiDeps, findingId:
     if (!tag.ok) return apiError('invalid_request', correlationId, { message: tag.message });
 
     const { store, workspaceId } = deps.runtime();
-    const saved: FindingTagResponse = { tag: store.tagFinding(workspaceId, findingId, tag.tag) };
+    const saved: FindingTagResponse = { tag: store.tagFinding(workspaceId, findingId, tag.tag, actor) };
     return json(saved);
   } catch (error) {
     if (error instanceof FindingNotFoundError) return apiError('finding_not_found', correlationId);

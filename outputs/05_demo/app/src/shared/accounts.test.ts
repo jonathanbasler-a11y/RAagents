@@ -7,6 +7,7 @@ import {
   checkEmail,
   checkUsername,
   normalizeEmail,
+  decisionActor,
   normalizeUsername,
   usernameFromEmail,
 } from './accounts';
@@ -122,5 +123,15 @@ describe('usernameFromEmail', () => {
     for (const email of ['jane.doe@example.test', '-x@example.test', '..@example.test', 'a@example.test', `${'z'.repeat(64)}@example.test`]) {
       expect(checkUsername(usernameFromEmail(email, none)), email).toEqual({ ok: true });
     }
+  });
+});
+
+describe('decisionActor', () => {
+  it('names the person by the name the provider sent, with the username', () => {
+    expect(decisionActor({ username: 'jane.doe', displayName: 'Jane Doe' })).toBe('Jane Doe (jane.doe)');
+  });
+
+  it('uses the username alone when there is no name', () => {
+    expect(decisionActor({ username: 'member-one', displayName: null })).toBe('member-one');
   });
 });

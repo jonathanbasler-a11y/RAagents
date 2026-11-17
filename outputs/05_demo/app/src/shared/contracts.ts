@@ -864,7 +864,7 @@ export interface Store {
    * FindingAlreadyDecidedError, FindingSourceWithdrawnError (accepting a finding whose document was withdrawn; rejecting
    * it is allowed) or RangeError (a decision other than accepted or rejected, or a long note).
    */
-  decideFinding(workspaceId: WorkspaceId, findingId: string, decision: 'accepted' | 'rejected', note: string | null, tag?: FindingTagInput): Finding;
+  decideFinding(workspaceId: WorkspaceId, findingId: string, decision: 'accepted' | 'rejected', note: string | null, tag?: FindingTagInput, actor?: string): Finding;
   /**
    * Which checklist item an accepted finding supports and whether it is a positive, a risk or neutral, set once by a
    * person (insert-only: a tag is never changed). The ONLY writer of a tag. Accepting a finding can carry the tag in the
@@ -872,14 +872,14 @@ export interface Store {
    * FindingNotAcceptedError (a draft or rejected finding has no tag), FindingAlreadyTaggedError or RangeError (an unknown
    * item or category).
    */
-  tagFinding(workspaceId: WorkspaceId, findingId: string, tag: FindingTagInput): FindingTag;
+  tagFinding(workspaceId: WorkspaceId, findingId: string, tag: FindingTagInput, actor?: string): FindingTag;
   listFindingTags(workspaceId: WorkspaceId): FindingTag[];
   /**
    * Moves one checklist item to a state, as a person's action, with an append-only event. "checked" needs at least one
    * accepted finding tagged to the item (ChecklistNeedsFindingError); "not applicable" and "could not check" need a
    * reason (RangeError). The ONLY writer of a checklist state.
    */
-  setChecklistState(workspaceId: WorkspaceId, item: ChecklistItemId, state: ChecklistState, reason: string | null): ChecklistEntry;
+  setChecklistState(workspaceId: WorkspaceId, item: ChecklistItemId, state: ChecklistState, reason: string | null, actor?: string): ChecklistEntry;
   /** Every checklist item in the order of CHECKLIST_ITEM_IDS; an item nobody touched is "not checked". */
   listChecklist(workspaceId: WorkspaceId): ChecklistEntry[];
   /** The checklist's audit trail, oldest first. */
@@ -895,12 +895,12 @@ export interface Store {
    * facts hash of an older view), GateReasonRequiredError (the option differs from the recommended call and no reason was
    * given) or RangeError (an unknown gate or option, a reason that is not text or is too long).
    */
-  decideGate(workspaceId: WorkspaceId, gate: GateId, request: unknown, team: GateTeam): GateDecision;
+  decideGate(workspaceId: WorkspaceId, gate: GateId, request: unknown, team: GateTeam, actor?: string): GateDecision;
   /**
    * Records a dissent under an existing decision of the same gate. The ONLY writer of a dissent; it never changes the
    * decision. Throws GateDecisionNotFoundError or RangeError (a role or reason that is missing, not text or too long).
    */
-  recordGateDissent(workspaceId: WorkspaceId, gate: GateId, request: unknown): GateDissent;
+  recordGateDissent(workspaceId: WorkspaceId, gate: GateId, request: unknown, actor?: string): GateDissent;
   close(): void;
 }
 
@@ -1370,6 +1370,10 @@ export interface FindingEvent {
 }
 
 /** What the person who decides is recorded as, while the app has no login. */
+/**
+ * Who decided, on a copy without sign-in. With sign-in, a decision carries the signed-in person (decisionActor in
+ * src/shared/accounts.ts), which the handlers pass to the writers above as their `actor`.
+ */
 export const LOCAL_PERSON = 'person (local, not authenticated)';
 
 /** GET /api/findings */

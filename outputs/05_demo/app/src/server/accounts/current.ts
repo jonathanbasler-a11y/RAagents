@@ -1,7 +1,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE, countedSession, readAccessSetting, type AccessEnv } from '@/server/access-gate';
-import type { SessionView, ShellAccount } from '@/shared/accounts';
+import { decisionActor, type SessionView, type ShellAccount } from '@/shared/accounts';
 import { getAccountStore } from './runtime';
 
 // Who is signed in, for server components (the root layout and the People page). The proxy has already refused requests
@@ -38,6 +38,7 @@ export function layoutPlan(current: CurrentAccount): { shell: false } | { shell:
       isAdmin: current.session.role === 'admin',
       // A person who signs in with the company account has no password (and the password page answers 404).
       canChangePassword: current.session.managedBy === 'app' && current.session.signIn === 'password',
+      decisionName: decisionActor(current.session),
     },
   };
 }

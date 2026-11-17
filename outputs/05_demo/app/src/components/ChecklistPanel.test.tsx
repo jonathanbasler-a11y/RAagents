@@ -50,7 +50,7 @@ function clientWith(initial: ChecklistResponse = checklist()) {
 
 function mountPanel(client: ReturnType<typeof clientWith>, options: { signedIn?: boolean } = {}) {
   render(
-    <SignInProvider signedIn={options.signedIn ?? false}>
+    <SignInProvider decisionName={options.signedIn ? 'Jane Doe (jane.doe)' : null}>
       <ChecklistProvider client={client}>
         <ChecklistPanel />
       </ChecklistProvider>
@@ -238,11 +238,12 @@ describe('ChecklistPanel', () => {
     expect(screen.getByText('Flag them and hand them to HEOR. Do not assess them.')).toBeInTheDocument();
   });
 
-  it('says a change is still recorded under the local stamp, not under the person, once they signed in', async () => {
+  it('says a change is recorded under the signed-in person’s name', async () => {
     mountPanel(clientWith(checklist({})), { signedIn: true });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Checklist' })).toBeInTheDocument();
-    expect(screen.getByText(/A change is still recorded as “person \(local, not authenticated\)”, not under your name/)).toBeInTheDocument();
+    expect(screen.getByText('A change is recorded under your name: Jane Doe (jane.doe).')).toBeInTheDocument();
+    expect(screen.queryByText(/not authenticated/)).not.toBeInTheDocument();
     expect(screen.queryByText(/This app has no login/)).not.toBeInTheDocument();
   });
 

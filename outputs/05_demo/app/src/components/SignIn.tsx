@@ -2,16 +2,17 @@
 
 import { createContext, useContext, type ReactNode } from 'react';
 
-// Whether the person signed in with their own account (a hosted copy with sign-in on). The pages that record a person's
-// decisions say so: the decisions are still stamped as a local, unauthenticated person, not under the person's name.
+// Who is signed in, for the pages that record a person's decisions: the name those decisions are recorded under
+// (decisionActor, from the server's session), or null on a copy without sign-in, where they are recorded as the local,
+// unauthenticated person.
 
-const SignInContext = createContext(false);
+const SignInContext = createContext<string | null>(null);
 
-export function SignInProvider({ signedIn, children }: { signedIn: boolean; children: ReactNode }) {
-  return <SignInContext.Provider value={signedIn}>{children}</SignInContext.Provider>;
+export function SignInProvider({ decisionName, children }: { decisionName: string | null; children: ReactNode }) {
+  return <SignInContext.Provider value={decisionName}>{children}</SignInContext.Provider>;
 }
 
-/** True when the person signed in with their own account; false on a copy without sign-in. */
-export function useSignedIn(): boolean {
+/** The name the signed-in person's decisions are recorded under; null on a copy without sign-in. */
+export function useDecisionName(): string | null {
   return useContext(SignInContext);
 }

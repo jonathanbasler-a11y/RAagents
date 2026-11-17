@@ -65,7 +65,7 @@ function setup(initial: FindingsResponse, room: DataRoomResponse = roomWith(), o
     withdrawDocument: vi.fn<ChatApi['withdrawDocument']>(),
   };
   render(
-    <SignInProvider signedIn={options.signedIn ?? false}>
+    <SignInProvider decisionName={options.signedIn ? 'Jane Doe (jane.doe)' : null}>
       <DataRoomProvider client={dataRoomClient}>
         <FindingsProvider client={client}>
           <FindingsPanel />
@@ -96,11 +96,12 @@ describe('FindingsPanel', () => {
     expect(screen.getByText(/A draft is not a finding until a person accepts it/)).toBeInTheDocument();
   });
 
-  it('says a decision is still recorded under the local stamp, not under the person, once they signed in', async () => {
+  it('says a decision is recorded under the signed-in person’s name', async () => {
     setup(register(), roomWith(), { signedIn: true });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Findings' })).toBeInTheDocument();
-    expect(screen.getByText(/A decision is still recorded as “person \(local, not authenticated\)”, not under your name/)).toBeInTheDocument();
+    expect(screen.getByText('A decision is recorded under your name: Jane Doe (jane.doe).')).toBeInTheDocument();
+    expect(screen.queryByText(/not authenticated/)).not.toBeInTheDocument();
     expect(screen.queryByText(/This app has no login/)).not.toBeInTheDocument();
   });
 

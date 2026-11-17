@@ -71,7 +71,7 @@ export function AppShell({
               </div>
             )}
           </header>
-          <SignInProvider signedIn={account !== undefined && account !== null}>
+          <SignInProvider decisionName={account?.decisionName ?? null}>
           <FindingsProvider>
             <ChecklistProvider>
             <GatesProvider>

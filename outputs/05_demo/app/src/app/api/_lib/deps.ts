@@ -1,14 +1,19 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
+import { getAccountStore } from '@/server/accounts/runtime';
 import { getAgent, listAgents, listPublicAgents } from '@/server/agents';
 import { getChatRuntime, type ChatRuntime } from '@/server/chat/boot';
 import { loadPracticeRoom, type PracticeRoom } from '@/server/data-room/practice-pack';
 import { createLlmClient, readLlmConfig, rememberedRefusal, type RememberedRefusal } from '@/server/llm';
 import { redact, type RedactionTargets } from '@/server/llm/errors';
 import type { AgentId, AgentSpec, LlmClient, LlmConfigResult, LlmRouteConfig, LlmRouteName, PublicAgent } from '@/shared/contracts';
+import { deciderFor } from './decision-actor';
 
 // What the API handlers need from the rest of the server. The route files pass apiDeps();
 // tests pass a store on a temporary file, a temporary roster and a scripted model endpoint.
+
+/** Who makes a decision a handler records (src/app/api/_lib/decision-actor.ts). */
+export type Decider = { kind: 'local' } | { kind: 'person'; actor: string } | { kind: 'nobody' };
 
 export interface ApiDeps {
   /** The process-wide chat runtime: opened, and stale turns reconciled, on first use. */
@@ -29,6 +34,8 @@ export interface ApiDeps {
   now: () => Date;
   newId: () => string;
   log: Pick<Console, 'error' | 'warn'>;
+  /** Who decides, from the request's session as the server reads it (never from the body). */
+  decider: (request: Request) => Decider;
   /** Default: the turn runner's 180 s. */
   turnDeadlineMs?: number;
   /** Default: the SSE writer's 15 s. */
@@ -79,6 +86,7 @@ export function apiDeps(): ApiDeps {
     now: () => new Date(),
     newId: () => randomUUID(),
     log: redactingLog(),
+    decider: (request) => deciderFor(request, process.env, (token) => getAccountStore().findSession(token)),
     practiceRoom: () => loadPracticeRoom(),
   };
 }

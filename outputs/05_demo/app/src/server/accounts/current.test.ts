@@ -84,15 +84,18 @@ describe('layoutPlan', () => {
   it('offers no password page to a person who signs in with the company account', () => {
     expect(layoutPlan({ signIn: 'on', session: { ...session, signIn: 'company', displayName: 'Jane Doe' } })).toEqual({
       shell: true,
-      account: { username: 'member-one', isAdmin: false, canChangePassword: false },
+      account: { username: 'member-one', isAdmin: false, canChangePassword: false, decisionName: 'Jane Doe (member-one)' },
     });
   });
 
   it('names the person in the shell, with the People page for the admin and the password page for people created in the app', () => {
-    expect(layoutPlan({ signIn: 'on', session })).toEqual({ shell: true, account: { username: 'member-one', isAdmin: false, canChangePassword: true } });
+    expect(layoutPlan({ signIn: 'on', session })).toEqual({
+      shell: true,
+      account: { username: 'member-one', isAdmin: false, canChangePassword: true, decisionName: 'member-one' },
+    });
     expect(layoutPlan({ signIn: 'on', session: { ...session, username: 'admin', role: 'admin', managedBy: 'server' } })).toEqual({
       shell: true,
-      account: { username: 'admin', isAdmin: true, canChangePassword: false },
+      account: { username: 'admin', isAdmin: true, canChangePassword: false, decisionName: 'admin' },
     });
   });
 });

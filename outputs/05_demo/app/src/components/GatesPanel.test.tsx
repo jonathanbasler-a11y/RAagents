@@ -21,7 +21,7 @@ function fakeClient(initial: GatesResponse = gatesResponse()) {
 
 const renderPanel = (client: ReturnType<typeof fakeClient>, options: { signedIn?: boolean } = {}) =>
   render(
-    <SignInProvider signedIn={options.signedIn ?? false}>
+    <SignInProvider decisionName={options.signedIn ? 'Jane Doe (jane.doe)' : null}>
       <GatesProvider client={client}>
         <GatesPanel />
       </GatesProvider>
@@ -76,11 +76,12 @@ describe('GatesPanel: reading', () => {
     expect(screen.getByText(new RegExp(`This app has no login: a decision is recorded as “${LOCAL_PERSON.replace(/[()]/g, '\\$&')}”`))).toBeInTheDocument();
   });
 
-  it('says a decision is still recorded under the local stamp, not under the person, once they signed in', async () => {
+  it('says a decision is recorded under the signed-in person’s name', async () => {
     renderPanel(fakeClient(), { signedIn: true });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Gates' })).toBeInTheDocument();
-    expect(screen.getByText(/A decision is still recorded as “person \(local, not authenticated\)”, not under your name/)).toBeInTheDocument();
+    expect(screen.getByText('A decision is recorded under your name: Jane Doe (jane.doe).')).toBeInTheDocument();
+    expect(screen.queryByText(/not authenticated/)).not.toBeInTheDocument();
     expect(screen.queryByText(/This app has no login/)).not.toBeInTheDocument();
   });
 

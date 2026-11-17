@@ -34,8 +34,18 @@ export interface SessionView {
 export interface ShellAccount {
   username: string;
   isAdmin: boolean;
-  /** False for the admin from the server settings, whose password is set there. */
+  /** False for the admin from the server settings, whose password is set there, and for company accounts. */
   canChangePassword: boolean;
+  /** How the person's decisions are recorded (decisionActor). */
+  decisionName: string;
+}
+
+/**
+ * The name a person's decisions are recorded under: the name the sign-in provider sent, with the username to tell two
+ * people of the same name apart, or the username alone. Always from the server's session, never from a request.
+ */
+export function decisionActor(person: { username: string; displayName: string | null }): string {
+  return person.displayName === null ? person.username : `${person.displayName} (${person.username})`;
 }
 
 /**

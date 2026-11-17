@@ -7,8 +7,8 @@
 // at all. Either way each person signs in to their own account (src/server/accounts): the admin named in the server
 // settings, and the people the admin added on the People page. Pages without a session show the login page, API calls get 401,
 // a person who must still replace a one-time password reaches only the password page, and the admin paths are for the
-// admin. The health check, the login page, sign-in and sign-out stay open. Decisions are still stamped "person (local,
-// not authenticated)": names on decisions come in a later step.
+// admin. The health check, the login page, sign-in and sign-out stay open. Decisions carry the signed-in person's name
+// (src/app/api/_lib/decision-actor.ts).
 //
 // Pure: the session comes from a lookup the caller passes in (the proxy reads it from the database), so tests need no
 // server. No import of server-only, Next or a Node module: the module has to load in any runtime.
