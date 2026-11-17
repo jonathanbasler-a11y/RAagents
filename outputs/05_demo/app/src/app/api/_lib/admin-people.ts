@@ -3,6 +3,7 @@ import { countedSession } from '@/server/access-gate';
 import { HashingBusyError } from '@/server/accounts/crypto';
 import {
   AccountRuleError,
+  EmailTakenError,
   PersonNotFoundError,
   ServerManagedAccountError,
   UsernameTakenError,
@@ -50,7 +51,9 @@ export function getPeople(request: Request, deps: AccountDeps): Response {
   const admin = requireAdmin(request, deps, correlationId);
   if (!admin.ok) return admin.response;
   try {
-    const body: PeopleResponse = { people: deps.store().listPeople() };
+    const setting = deps.setting();
+    const signIn = setting.state === 'on' && setting.method === 'oidc' ? 'company' : 'password';
+    const body: PeopleResponse = { people: deps.store().listPeople(), signIn };
     return json(body);
   } catch (error) {
     logFailure(deps.log, 'GET /api/admin/people', correlationId, error);
@@ -65,11 +68,15 @@ async function newOneTime(deps: AccountDeps): Promise<{ oneTimePassword: string;
   return { oneTimePassword, passwordHash, expiresAt: new Date(deps.now().getTime() + ONE_TIME_PASSWORD_TTL_MS).toISOString() };
 }
 
-/** POST /api/admin/people {username}: creates a person; 201 with their one-time password, once. */
+/**
+ * POST /api/admin/people. With passwords, {username}: creates a person; 201 with their one-time password, once. With
+ * company sign-in, {email}: adds a person who signs in with the company account; 201 with the person, and no password.
+ */
 export async function postPerson(request: Request, deps: AccountDeps): Promise<Response> {
   const correlationId = deps.newId();
   const where = 'POST /api/admin/people';
-  if (deps.setting().state === 'off') return apiError('not_found', correlationId, { message: 'There is no such page.' });
+  const setting = deps.setting();
+  if (setting.state === 'off') return apiError('not_found', correlationId, { message: 'There is no such page.' });
   const guard = checkSameOriginJson(request);
   if (!guard.ok) {
     deps.log.warn(`[api] refused ${where} (correlation ${correlationId}): ${guard.reason}`);
@@ -80,6 +87,12 @@ export async function postPerson(request: Request, deps: AccountDeps): Promise<R
   try {
     const body = await readJsonBody(request);
     if (!body.ok) return apiError('invalid_request', correlationId, { message: body.message });
+    if (setting.state === 'on' && setting.method === 'oidc') {
+      const email = (body.value as { email?: unknown } | null)?.email;
+      if (typeof email !== 'string') return apiError('invalid_request', correlationId, { message: "Give the new person's company e-mail address." });
+      const added: PersonResponse = { person: deps.store().addPersonByEmail({ email, actor: admin.session.username }) };
+      return json(added, 201);
+    }
     const raw = (body.value as { username?: unknown } | null)?.username;
     if (typeof raw !== 'string') return apiError('invalid_request', correlationId, { message: 'Give the new person a username.' });
     const username = normalizeUsername(raw);
@@ -97,6 +110,7 @@ export async function postPerson(request: Request, deps: AccountDeps): Promise<R
     return json(created, 201);
   } catch (error) {
     if (error instanceof UsernameTakenError) return apiError('username_taken', correlationId);
+    if (error instanceof EmailTakenError) return apiError('email_taken', correlationId);
     if (error instanceof AccountRuleError) return apiError('invalid_request', correlationId, { message: error.message });
     if (error instanceof HashingBusyError) return apiError('server_busy', correlationId, { message: BUSY_MESSAGE });
     logFailure(deps.log, where, correlationId, error);
@@ -127,6 +141,10 @@ export async function postPersonAction(request: Request, deps: AccountDeps, user
     if (!isPersonAction(action)) return apiError('invalid_request', correlationId, { message: 'The action must be reset, disable or enable.' });
     const store = deps.store();
     const actor = admin.session.username;
+    const setting = deps.setting();
+    if (action === 'reset' && setting.state === 'on' && setting.method === 'oidc') {
+      return apiError('invalid_request', correlationId, { message: 'People here sign in with the company account: there is no password to reset.' });
+    }
     if (action === 'reset') {
       const oneTime = await newOneTime(deps);
       const person = store.resetPersonPassword({ username, passwordHash: oneTime.passwordHash, oneTimeExpiresAt: oneTime.expiresAt, actor });

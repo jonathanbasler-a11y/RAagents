@@ -3,7 +3,15 @@
 import { useEffect, useEffectEvent, useRef, useState, type FormEvent } from 'react';
 import { createAccountsClient, type AccountsApi } from '@/client/accounts-client';
 import type { ApiResult } from '@/client/chat-client';
-import { checkUsername, normalizeUsername, type OneTimePasswordResponse, type PersonSummary } from '@/shared/accounts';
+import {
+  checkEmail,
+  checkUsername,
+  normalizeEmail,
+  normalizeUsername,
+  type OneTimePasswordResponse,
+  type PersonSummary,
+  type SignInMethod,
+} from '@/shared/accounts';
 
 // The People page of a hosted copy with sign-in: the admin creates people, resets a password, disables and enables. A
 // one-time password is shown once, in a box the admin closes; it lives only in this component's state, never in a URL,
@@ -46,6 +54,8 @@ type Failure = { message: string; correlationId: string | null } | null;
 
 export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }) {
   const [people, setPeople] = useState<PersonSummary[] | undefined>(undefined);
+  /** How people sign in to this copy, as the server says; unknown (and no form shown) until the list has loaded. */
+  const [signIn, setSignIn] = useState<SignInMethod | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
@@ -70,6 +80,7 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
       if (cancelled) return;
       if (result.ok) {
         setPeople(result.data.people);
+        setSignIn(result.data.signIn);
         setLoadError(null);
       } else {
         setLoadError(result.message);
@@ -124,6 +135,26 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
 
   async function create(event: FormEvent) {
     event.preventDefault();
+    if (signIn === 'company') {
+      const check = checkEmail(normalizeEmail(name));
+      if (!check.ok) {
+        setNameError(check.message);
+        return;
+      }
+      setNameError(null);
+      setFailure(null);
+      setBusy(true);
+      // The server normalizes the address too; no password is made for a person who signs in with the company account.
+      const result = await client.addPersonByCompanyEmail(name);
+      setBusy(false);
+      if (!result.ok) {
+        fail(result);
+        return;
+      }
+      setName('');
+      reload();
+      return;
+    }
     const username = normalizeUsername(name);
     const check = checkUsername(username);
     if (!check.ok) {
@@ -213,6 +244,7 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
         <thead>
           <tr>
             <th scope="col">Username</th>
+            {signIn === 'company' ? <th scope="col">E-mail</th> : null}
             <th scope="col">Role</th>
             <th scope="col">Status</th>
             <th scope="col">Created</th>
@@ -225,6 +257,7 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
           {people.map((person) => (
             <tr key={person.username}>
               <td>{person.username}</td>
+              {signIn === 'company' ? <td>{person.email ?? '—'}</td> : null}
               <td>{roleText(person)}</td>
               <td>{statusText(person)}</td>
               <td>
@@ -235,15 +268,19 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
               <td>
                 {person.managedBy === 'server' ? null : (
                   <>
-                    <button
-                      type="button"
-                      className="btn btn-quiet btn-sm"
-                      aria-label={`Reset password for ${person.username}`}
-                      disabled={busy}
-                      onClick={() => setPending({ username: person.username, action: 'reset' })}
-                    >
-                      Reset password
-                    </button>{' '}
+                    {person.signIn === 'company' ? null : (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-quiet btn-sm"
+                          aria-label={`Reset password for ${person.username}`}
+                          disabled={busy}
+                          onClick={() => setPending({ username: person.username, action: 'reset' })}
+                        >
+                          Reset password
+                        </button>{' '}
+                      </>
+                    )}
                     {person.status === 'disabled' ? (
                       <button type="button" className="btn btn-quiet btn-sm" aria-label={`Enable ${person.username}`} disabled={busy} onClick={() => void enable(person.username)}>
                         Enable
@@ -273,10 +310,17 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
     <section className="people" aria-labelledby="people-title" ref={sectionRef}>
       <div className="screen-head">
         <h1 id="people-title">People</h1>
-        <p className="lede">
-          Everyone who can sign in to this copy. Create a person here and send them their one-time password privately; at the first sign-in they choose their
-          own. Resetting a password or disabling a person signs them out everywhere at once.
-        </p>
+        {signIn === 'company' ? (
+          <p className="lede">
+            Everyone who can sign in to this copy, with their company account. Add a person by their company e-mail address; nobody else can enter. Disabling
+            a person signs them out everywhere at once.
+          </p>
+        ) : (
+          <p className="lede">
+            Everyone who can sign in to this copy. Create a person here and send them their one-time password privately; at the first sign-in they choose
+            their own. Resetting a password or disabling a person signs them out everywhere at once.
+          </p>
+        )}
         <p className="note">Everyone signed in works in the same workspace and sees all of its chats.</p>
       </div>
       {failure === null ? null : (
@@ -285,28 +329,30 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
           {failure.correlationId === null ? '' : ` (correlation ${failure.correlationId})`}
         </p>
       )}
-      <form className="people-add" onSubmit={(event) => void create(event)}>
-        <label htmlFor="new-person">Username of the new person</label>
-        <input
-          id="new-person"
-          ref={nameRef}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          aria-invalid={nameError !== null}
-          aria-describedby={nameError === null ? undefined : 'new-person-error'}
-        />
-        <button type="submit" className="btn btn-sm" disabled={busy}>
-          Create
-        </button>
-        {nameError === null ? null : (
-          <p id="new-person-error" className="field-error">
-            {nameError}
-          </p>
-        )}
-      </form>
+      {signIn === undefined ? null : (
+        <form className="people-add" onSubmit={(event) => void create(event)}>
+          <label htmlFor="new-person">{signIn === 'company' ? 'Company e-mail of the new person' : 'Username of the new person'}</label>
+          <input
+            id="new-person"
+            ref={nameRef}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            aria-invalid={nameError !== null}
+            aria-describedby={nameError === null ? undefined : 'new-person-error'}
+          />
+          <button type="submit" className="btn btn-sm" disabled={busy}>
+            {signIn === 'company' ? 'Add' : 'Create'}
+          </button>
+          {nameError === null ? null : (
+            <p id="new-person-error" className="field-error">
+              {nameError}
+            </p>
+          )}
+        </form>
+      )}
       {pending === null ? null : (
         <div className="people-confirm" role="group" aria-label={pending.action === 'reset' ? `Reset the password of ${pending.username}` : `Disable ${pending.username}`}>
           <p>

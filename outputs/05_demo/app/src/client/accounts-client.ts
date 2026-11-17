@@ -8,6 +8,8 @@ import { UNREACHABLE_MESSAGE, isApiErrorBody, readJson, type ApiResult } from '.
 export interface AccountsApi {
   listPeople(): Promise<ApiResult<PeopleResponse>>;
   createPerson(username: string): Promise<ApiResult<OneTimePasswordResponse>>;
+  /** With company sign-in: adds a person by company e-mail; no password is made. */
+  addPersonByCompanyEmail(email: string): Promise<ApiResult<PersonResponse>>;
   resetPerson(username: string): Promise<ApiResult<OneTimePasswordResponse>>;
   disablePerson(username: string): Promise<ApiResult<PersonResponse>>;
   enablePerson(username: string): Promise<ApiResult<PersonResponse>>;
@@ -38,6 +40,7 @@ export function createAccountsClient(deps: { fetch?: typeof fetch } = {}): Accou
   return {
     listPeople: () => requestJson<PeopleResponse>('/api/admin/people'),
     createPerson: (username) => postJson<OneTimePasswordResponse>('/api/admin/people', { username }),
+    addPersonByCompanyEmail: (email) => postJson<PersonResponse>('/api/admin/people', { email }),
     resetPerson: (username) => act<OneTimePasswordResponse>(username, 'reset'),
     disablePerson: (username) => act<PersonResponse>(username, 'disable'),
     enablePerson: (username) => act<PersonResponse>(username, 'enable'),

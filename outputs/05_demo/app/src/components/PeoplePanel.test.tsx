@@ -33,9 +33,10 @@ const MEMBER: PersonSummary = {
 
 const ok = <T,>(data: T) => ({ ok: true as const, data });
 
-function fakeClient(people: PersonSummary[] = [ADMIN, MEMBER]) {
+function fakeClient(people: PersonSummary[] = [ADMIN, MEMBER], signIn: 'password' | 'company' = 'password') {
   return {
-    listPeople: vi.fn<AccountsApi['listPeople']>().mockResolvedValue(ok({ people })),
+    listPeople: vi.fn<AccountsApi['listPeople']>().mockResolvedValue(ok({ people, signIn })),
+    addPersonByCompanyEmail: vi.fn<AccountsApi['addPersonByCompanyEmail']>(),
     createPerson: vi.fn<AccountsApi['createPerson']>(),
     resetPerson: vi.fn<AccountsApi['resetPerson']>(),
     disablePerson: vi.fn<AccountsApi['disablePerson']>(),
@@ -47,6 +48,58 @@ const row = async (username: string) => (await screen.findByRole('cell', { name:
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe('PeoplePanel with company sign-in', () => {
+  it('shows no form until the server has said how people sign in', async () => {
+    const client = fakeClient([], 'company');
+    let answer: (value: Awaited<ReturnType<AccountsApi['listPeople']>>) => void = () => {};
+    client.listPeople.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    render(<PeoplePanel client={client} />);
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    answer(ok({ people: [], signIn: 'company' as const }));
+    expect(await screen.findByLabelText('Company e-mail of the new person')).toBeInTheDocument();
+  });
+
+  const COMPANY_ADMIN: PersonSummary = { ...ADMIN, signIn: 'company', email: 'owner@example.test' };
+  const JANE: PersonSummary = { ...MEMBER, username: 'jane.doe', status: 'invited', signIn: 'company', email: 'jane.doe@example.test', oneTimeExpiresAt: null };
+
+  it('adds a person by company e-mail and lists them, with no reset button and no one-time password', async () => {
+    const client = fakeClient([COMPANY_ADMIN], 'company');
+    client.addPersonByCompanyEmail.mockResolvedValue(ok({ person: JANE }));
+    client.listPeople.mockResolvedValueOnce(ok({ people: [COMPANY_ADMIN], signIn: 'company' })).mockResolvedValue(ok({ people: [COMPANY_ADMIN, JANE], signIn: 'company' }));
+    const user = userEvent.setup();
+    render(<PeoplePanel client={client} />);
+
+    const field = await screen.findByLabelText('Company e-mail of the new person');
+    expect(screen.queryByLabelText('Username of the new person')).not.toBeInTheDocument();
+    await user.type(field, 'Jane.Doe@Example.TEST');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(client.addPersonByCompanyEmail).toHaveBeenCalledWith('Jane.Doe@Example.TEST');
+    expect(client.createPerson).not.toHaveBeenCalled();
+    const jane = await row('jane.doe');
+    expect(jane).toHaveTextContent('jane.doe@example.test');
+    expect(jane).toHaveTextContent('Has not signed in yet');
+    expect(within(jane).queryByRole('button', { name: /Reset password/ })).not.toBeInTheDocument();
+    expect(within(jane).getByRole('button', { name: 'Disable jane.doe' })).toBeInTheDocument();
+    expect(screen.queryByText(/one-time password/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the refusal when the e-mail is already on the list', async () => {
+    const client = fakeClient([COMPANY_ADMIN], 'company');
+    client.addPersonByCompanyEmail.mockResolvedValue({
+      ok: false,
+      status: 409,
+      error: { error: 'email_taken', message: 'That e-mail address is already on the list.', correlationId: 'c-1' },
+      message: 'That e-mail address is already on the list.',
+    });
+    const user = userEvent.setup();
+    render(<PeoplePanel client={client} />);
+    await user.type(await screen.findByLabelText('Company e-mail of the new person'), 'owner@example.test');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('That e-mail address is already on the list.');
+  });
 });
 
 describe('PeoplePanel', () => {
@@ -73,7 +126,7 @@ describe('PeoplePanel', () => {
     const client = fakeClient();
     const created = { ...MEMBER, username: 'member-two' };
     client.createPerson.mockResolvedValue(ok({ person: created, oneTimePassword: 'k7qm-2xvd-9hpt-4wcn', expiresAt: '2026-11-05T08:00:00.000Z' }));
-    client.listPeople.mockResolvedValueOnce(ok({ people: [ADMIN, MEMBER] })).mockResolvedValue(ok({ people: [ADMIN, MEMBER, created] }));
+    client.listPeople.mockResolvedValueOnce(ok({ signIn: 'password' as const, people: [ADMIN, MEMBER] })).mockResolvedValue(ok({ signIn: 'password' as const, people: [ADMIN, MEMBER, created] }));
     const user = userEvent.setup();
     render(<PeoplePanel client={client} />);
 
@@ -136,7 +189,7 @@ describe('PeoplePanel', () => {
   it('asks before disabling, then shows the person disabled with a way to enable them again', async () => {
     const client = fakeClient();
     client.disablePerson.mockResolvedValue(ok({ person: { ...MEMBER, status: 'disabled' } }));
-    client.listPeople.mockResolvedValueOnce(ok({ people: [ADMIN, MEMBER] })).mockResolvedValue(ok({ people: [ADMIN, { ...MEMBER, status: 'disabled' }] }));
+    client.listPeople.mockResolvedValueOnce(ok({ signIn: 'password' as const, people: [ADMIN, MEMBER] })).mockResolvedValue(ok({ signIn: 'password' as const, people: [ADMIN, { ...MEMBER, status: 'disabled' }] }));
     const user = userEvent.setup();
     render(<PeoplePanel client={client} />);
 
@@ -165,7 +218,7 @@ describe('PeoplePanel', () => {
   it('gives focus back to the row: after Cancel to the button that asked, after a disable to that button, now Enable', async () => {
     const client = fakeClient();
     client.disablePerson.mockResolvedValue(ok({ person: { ...MEMBER, status: 'disabled' } }));
-    client.listPeople.mockResolvedValueOnce(ok({ people: [ADMIN, MEMBER] })).mockResolvedValue(ok({ people: [ADMIN, { ...MEMBER, status: 'disabled' }] }));
+    client.listPeople.mockResolvedValueOnce(ok({ signIn: 'password' as const, people: [ADMIN, MEMBER] })).mockResolvedValue(ok({ signIn: 'password' as const, people: [ADMIN, { ...MEMBER, status: 'disabled' }] }));
     const user = userEvent.setup();
     render(<PeoplePanel client={client} />);
     const member = await row('member-one');
@@ -197,7 +250,7 @@ describe('PeoplePanel', () => {
     const client = fakeClient();
     client.disablePerson.mockResolvedValue(ok({ person: { ...MEMBER, status: 'disabled' } }));
     client.listPeople
-      .mockResolvedValueOnce(ok({ people: [ADMIN, MEMBER] }))
+      .mockResolvedValueOnce(ok({ signIn: 'password' as const, people: [ADMIN, MEMBER] }))
       .mockResolvedValueOnce({ ok: false, status: 401, error: null, message: 'Sign in first.' });
     const user = userEvent.setup();
     render(<PeoplePanel client={client} />);

@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HashingBusyError } from '@/server/accounts/crypto';
 import type { ApiErrorBody } from '@/shared/contracts';
 import type { OneTimePasswordResponse, PeopleResponse, PersonResponse } from '@/shared/accounts';
-import { ADMIN_PASSWORD, accountHarness, formPost, sessionTokenOf, withSession, type AccountHarness } from './account-test-support';
+import { tokenHash } from '@/server/accounts/session-lookup';
+import { ADMIN_EMAIL, ADMIN_PASSWORD, accountHarness, companySetting, formPost, sessionTokenOf, withSession, type AccountHarness } from './account-test-support';
 import { getPeople, postPerson, postPersonAction } from './admin-people';
 import { postLogin } from './sign-in';
 
@@ -159,5 +160,67 @@ describe('postPersonAction', () => {
     expect((await act(harness, admin, 'nobody', 'disable')).status).toBe(404);
     expect((await act(harness, admin, 'member-one', 'delete')).status).toBe(400);
     expect((await act(harness, admin, 'member-one', 'constructor')).status).toBe(400);
+  });
+});
+
+describe('the People API with company sign-in', () => {
+  /** The admin from the settings, signed in with the company account (the session is opened directly, as the callback does). */
+  function companySetup() {
+    const harness = accountHarness({ setting: companySetting() });
+    harnesses.push(harness);
+    harness.store.bootstrapServerAdminByEmail({ username: 'admin', email: ADMIN_EMAIL });
+    const { accountId } = harness.store.findIdentityAccount(ADMIN_EMAIL)!;
+    const admin = 'C'.repeat(43);
+    harness.store.openSession({ accountId, tokenHash: tokenHash(admin), expiresAt: '2999-01-01T00:00:00.000Z' });
+    return { harness, admin };
+  }
+
+  it('lists everyone and says the people sign in with the company account', async () => {
+    const { harness, admin } = companySetup();
+    const body = await json<PeopleResponse>(await getPeople(withSession('/api/admin/people', admin), harness.deps));
+    expect(body.signIn).toBe('company');
+    expect(body.people.map((person) => [person.username, person.email, person.signIn])).toEqual([['admin', ADMIN_EMAIL, 'company']]);
+  });
+
+  it('the password copy says so too', async () => {
+    const { harness, admin } = await setup();
+    expect((await json<PeopleResponse>(await getPeople(withSession('/api/admin/people', admin), harness.deps))).signIn).toBe('password');
+  });
+
+  it('adds a person by company e-mail: 201 with the person, and no password anywhere', async () => {
+    const { harness, admin } = companySetup();
+    const response = await postPerson(post('/api/admin/people', admin, { email: ' Jane.Doe@Example.TEST ' }), harness.deps);
+    expect(response.status).toBe(201);
+    const body = await json<PersonResponse>(response);
+    expect(body.person).toMatchObject({ username: 'jane.doe', email: 'jane.doe@example.test', signIn: 'company', status: 'invited', createdBy: 'admin' });
+    expect(JSON.stringify(body)).not.toMatch(/scrypt|"[a-z_]*password[a-z_]*":/i);
+  });
+
+  it('refuses an e-mail already on the list with 409, and what is not an address with 400', async () => {
+    const { harness, admin } = companySetup();
+    await postPerson(post('/api/admin/people', admin, { email: 'jane.doe@example.test' }), harness.deps);
+    const again = await postPerson(post('/api/admin/people', admin, { email: 'JANE.DOE@example.test' }), harness.deps);
+    expect(again.status).toBe(409);
+    expect((await json<ApiErrorBody>(again)).error).toBe('email_taken');
+    const bad = await postPerson(post('/api/admin/people', admin, { email: 'jane doe' }), harness.deps);
+    expect(bad.status).toBe(400);
+    const missing = await postPerson(post('/api/admin/people', admin, { username: 'jane' }), harness.deps);
+    expect(missing.status).toBe(400);
+  });
+
+  it('refuses a password reset: company sign-in has no passwords', async () => {
+    const { harness, admin } = companySetup();
+    await postPerson(post('/api/admin/people', admin, { email: 'jane.doe@example.test' }), harness.deps);
+    const reset = await postPersonAction(post('/api/admin/people/jane.doe', admin, { action: 'reset' }), harness.deps, 'jane.doe');
+    expect(reset.status).toBe(400);
+    expect((await json<ApiErrorBody>(reset)).error).toBe('invalid_request');
+    expect(harness.store.findIdentityAccount('jane.doe@example.test')?.disabled).toBe(false);
+  });
+
+  it('still disables and enables a person', async () => {
+    const { harness, admin } = companySetup();
+    await postPerson(post('/api/admin/people', admin, { email: 'jane.doe@example.test' }), harness.deps);
+    const disabled = await postPersonAction(post('/api/admin/people/jane.doe', admin, { action: 'disable' }), harness.deps, 'jane.doe');
+    expect((await json<PersonResponse>(disabled)).person.status).toBe('disabled');
   });
 });

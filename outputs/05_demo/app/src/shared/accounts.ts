@@ -66,6 +66,8 @@ export interface PersonSummary {
 /** GET /api/admin/people */
 export interface PeopleResponse {
   people: PersonSummary[];
+  /** How people sign in to this copy: the People page adds them by username (password) or by company e-mail (company). */
+  signIn: SignInMethod;
 }
 
 export const PERSON_ACTIONS = ['reset', 'disable', 'enable'] as const;
