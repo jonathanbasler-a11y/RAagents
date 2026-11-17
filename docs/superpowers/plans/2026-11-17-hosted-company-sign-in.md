@@ -1,7 +1,7 @@
 # Company sign-in for the hosted copy, then names on decisions: implementation plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
-> superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Carried out task by task, with the executing-plans or the subagent-driven-development skill; each step is a checkbox
+> (`- [ ]`) ticked when its check passed.
 
 **Goal:** a hosted copy signs people in through the company's OpenID Connect provider instead of passwords, lets in only
 the people the admin listed, and records the signed-in person's name on every human decision.
@@ -72,7 +72,7 @@ copied into Global Constraints below; this file is all an implementer needs.
   export type AccessSetting =
     | { state: 'off' }
     | { state: 'misconfigured'; reason: string }
-    | { state: 'on'; method: 'password'; admin: { username: string; password: string }; trustedProxyHops: 0 | 1 }
+    | { state: 'on'; method: 'password'; admin: AdminWithPassword; trustedProxyHops: 0 | 1 }   // the existing shape
     | { state: 'on'; method: 'oidc'; admin: { username: string; email: string }; oidc: OidcSetting; trustedProxyHops: 0 | 1 };
   ```
   `admin.username` keeps its meaning in both (default `admin`, from `RAAGENTS_ADMIN_USERNAME`).

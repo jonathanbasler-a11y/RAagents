@@ -71,11 +71,11 @@ describe('getCompanySignInStart', () => {
 
   it('does not exist without company sign-in, and says sign-in is not set up when the settings are broken', async () => {
     const off = accountHarness({ setting: { state: 'off' } });
-    const password = accountHarness();
+    const withPasswords = accountHarness();
     const broken = accountHarness({ setting: { state: 'misconfigured', reason: 'x' } });
-    harnesses.push(off, password, broken);
+    harnesses.push(off, withPasswords, broken);
     expect((await start(off.deps)).status).toBe(404);
-    expect((await start(password.deps)).status).toBe(404);
+    expect((await start(withPasswords.deps)).status).toBe(404);
     expect(location(await start(broken.deps))).toBe('/login?error=setup');
   });
 });
@@ -86,9 +86,9 @@ describe('getCompanySignInCallback', () => {
     const { response } = await signIn(ctx);
     expect(response.status).toBe(303);
     expect(location(response)).toBe('/team');
-    const token = /__Host-raagents_session=([^;]+)/.exec(cookies(response).join('\n'))?.[1] ?? '';
-    expect(token).toMatch(/^.{43}$/);
-    expect(ctx.harness.store.findSession(token)).toMatchObject({ username: 'jane.doe', role: 'member', displayName: 'Jane Doe' });
+    const sessionValue = /__Host-raagents_session=([^;]+)/.exec(cookies(response).join('\n'))?.[1] ?? '';
+    expect(sessionValue).toMatch(/^.{43}$/);
+    expect(ctx.harness.store.findSession(sessionValue)).toMatchObject({ username: 'jane.doe', role: 'member', displayName: 'Jane Doe' });
     expect(ctx.harness.store.findIdentityAccount('jane.doe@example.test')).toMatchObject({ subject: 'sub-jane', issuer: 'https://idp.example.test' });
     expect(cookies(response).some((line) => line.startsWith('__Host-raagents_signin=;') && line.includes('Max-Age=0'))).toBe(true);
   });
@@ -104,8 +104,8 @@ describe('getCompanySignInCallback', () => {
     ctx.provider.state.person = { sub: 'sub-owner', email: 'Owner@Example.test', name: 'Owner' };
     const { response } = await signIn(ctx, '/admin');
     expect(location(response)).toBe('/admin');
-    const token = /__Host-raagents_session=([^;]+)/.exec(cookies(response).join('\n'))![1];
-    expect(ctx.harness.store.findSession(token)).toMatchObject({ username: 'admin', role: 'admin', managedBy: 'server' });
+    const sessionValue = /__Host-raagents_session=([^;]+)/.exec(cookies(response).join('\n'))![1];
+    expect(ctx.harness.store.findSession(sessionValue)).toMatchObject({ username: 'admin', role: 'admin', managedBy: 'server' });
   });
 
   it('callback refuses a second subject for a bound e-mail', async () => {
@@ -192,9 +192,9 @@ describe('getCompanySignInCallback', () => {
   });
 
   it('does not exist without company sign-in', async () => {
-    const password = accountHarness();
-    harnesses.push(password);
-    expect((await getCompanySignInCallback(callback('code=x&state=y', null), password.deps)).status).toBe(404);
+    const withPasswords = accountHarness();
+    harnesses.push(withPasswords);
+    expect((await getCompanySignInCallback(callback('code=x&state=y', null), withPasswords.deps)).status).toBe(404);
   });
 });
 
@@ -228,9 +228,9 @@ describe('the login and password pages with company sign-in', () => {
   it('the password page and its API do not exist with company sign-in', async () => {
     const ctx = setup();
     const { response } = await signIn(ctx);
-    const token = /__Host-raagents_session=([^;]+)/.exec(cookies(response).join('\n'))![1];
-    expect(getPasswordPage(withSession('/account/password', token), ctx.harness.deps).status).toBe(404);
-    const post = formPost('/api/account/password', { current: 'x', password: 'y', repeat: 'y' }, { cookie: `__Host-raagents_session=${token}` });
+    const sessionValue = /__Host-raagents_session=([^;]+)/.exec(cookies(response).join('\n'))![1];
+    expect(getPasswordPage(withSession('/account/password', sessionValue), ctx.harness.deps).status).toBe(404);
+    const post = formPost('/api/account/password', { current: 'x', password: 'y', repeat: 'y' }, { cookie: `__Host-raagents_session=${sessionValue}` });
     expect((await postPassword(post, ctx.harness.deps)).status).toBe(404);
   });
 });

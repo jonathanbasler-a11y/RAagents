@@ -89,14 +89,14 @@ export async function getCompanySignInCallback(request: Request, deps: AccountDe
 
   const opened = deps.signInThrottle.reserve([{ key: `opened:${account.accountId}`, limit: SIGN_IN_LIMITS.sessions }], now.getTime());
   if (opened === null) return backToLogin('many', next);
-  const token = deps.newSessionToken();
+  const sessionToken = deps.newSessionToken();
   try {
-    store.openSession({ accountId: account.accountId, tokenHash: tokenHash(token), expiresAt: new Date(now.getTime() + SESSION_TTL_MS).toISOString() });
+    store.openSession({ accountId: account.accountId, tokenHash: tokenHash(sessionToken), expiresAt: new Date(now.getTime() + SESSION_TTL_MS).toISOString() });
   } catch (error) {
     opened.refund();
     // Disabled while the provider was being asked: the database refused the session. The same answer as any refusal.
     if (store.findIdentityAccount(identity.email)?.disabled) return backToLogin('disabled', next);
     throw error;
   }
-  return seeOther(next, [sessionCookieHeader(token), CLEAR_SIGN_IN_COOKIE]);
+  return seeOther(next, [sessionCookieHeader(sessionToken), CLEAR_SIGN_IN_COOKIE]);
 }
