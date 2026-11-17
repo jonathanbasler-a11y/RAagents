@@ -243,11 +243,12 @@ export const PRACTICE_REPLY_LABEL = 'Practice reply · not AI · not sourced';
 // Errors: setup problems read differently from service problems
 // ---------------------------------------------------------------------------
 
-export type ErrorKind = 'setup' | 'service' | 'app';
+export type ErrorKind = 'setup' | 'service' | 'model' | 'app';
 
 export const ERROR_KIND_TITLES: Record<ErrorKind, string> = {
   setup: 'Setup problem',
   service: 'Service problem',
+  model: 'Stopped by the model',
   app: 'App error',
 };
 
@@ -258,6 +259,12 @@ const CHAT_ERRORS: Record<ChatErrorCode, { kind: ErrorKind; text: string }> = {
   llm_request: { kind: 'setup', text: 'The model gateway refused the request.' },
   llm_tls: { kind: 'setup', text: 'A secure connection to the model gateway could not be made.' },
   llm_dns: { kind: 'setup', text: 'The model gateway address could not be found.' },
+  // A refusal under the gateway's strict OpenAI mode arrives as an empty, normal-looking
+  // reply, so the wording says "may have": the cause is likely, not known.
+  llm_declined: {
+    kind: 'model',
+    text: 'It may have declined the request, or a content filter stopped the reply. Rephrasing it may help.',
+  },
   llm_rate_limit: { kind: 'service', text: 'The model gateway is limiting requests. Try again in a moment.' },
   llm_outage: { kind: 'service', text: 'The model service is having an outage. Try again later.' },
   llm_timeout: { kind: 'service', text: 'The model took too long to answer.' },

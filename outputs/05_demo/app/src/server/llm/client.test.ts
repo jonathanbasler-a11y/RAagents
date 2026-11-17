@@ -8,6 +8,7 @@ import {
   captureLogs,
   completionResponse,
   createFakeFetch,
+  jsonResponse,
   recordingSleep,
   testConfig,
   textResponse,
@@ -137,6 +138,7 @@ describe('complete(): the reply', () => {
       truncated: false,
       partial: false,
       model: REPORTED_MODEL,
+      substituted: false,
     });
   });
 
@@ -169,8 +171,19 @@ describe('complete(): the reply', () => {
     expect(result).toMatchObject({ text: 'Hello th', finishReason: reason, truncated: true, partial: false });
   });
 
-  it('throws an outage error, without retrying, when the reply has no text', async () => {
+  it('throws a declined error, without retrying, when the reply has no text and finished normally', async () => {
+    // The gateway's strict OpenAI mode turns a Claude refusal into finish "stop" with no
+    // text, so this is most likely a refusal, not an outage.
     const { client, calls } = setup([completionResponse('   ')]);
+
+    const error = await failure(client.complete({ messages: USER_ONLY }));
+
+    expect(error.kind).toBe('declined');
+    expect(calls).toHaveLength(1);
+  });
+
+  it('still throws an outage error when the reply has no choices at all', async () => {
+    const { client, calls } = setup([jsonResponse({ id: 'x', object: 'chat.completion', choices: [] })]);
 
     const error = await failure(client.complete({ messages: USER_ONLY }));
 
@@ -336,5 +349,53 @@ describe('createLlmClient', () => {
 
     expect(client.route).toBe('judge');
     expect(client.model).toBe('vendor-b.model-2');
+  });
+});
+
+describe('complete(): which model answered, and replies the model declined', () => {
+  it('flags a reply from another model than configured, and logs both names once', async () => {
+    const { client } = setup([completionResponse('Hi', { model: 'vendor-b.other-2' }), completionResponse('Hi', { model: 'vendor-b.other-2' })]);
+    const logs = captureLogs();
+
+    const first = await client.complete({ messages: USER_ONLY });
+    await client.complete({ messages: USER_ONLY });
+
+    expect(first).toMatchObject({ model: 'vendor-b.other-2', substituted: true });
+    const said = logs.warnings().filter((line) => line.includes('vendor-b.other-2'));
+    expect(said).toHaveLength(1);
+    expect(said[0]).toContain('vendor-a.model-1');
+  });
+
+  it('calls a dated snapshot of the configured model the same model', async () => {
+    const { client } = setup([completionResponse('Hi', { model: 'model-1-2026-01-01' })]);
+
+    await expect(client.complete({ messages: USER_ONLY })).resolves.toMatchObject({ substituted: false });
+  });
+
+  it('claims nothing about a substitution when the gateway reports no model', async () => {
+    const { client } = setup([completionResponse('Hi', { model: null })]);
+
+    const result = await client.complete({ messages: USER_ONLY });
+
+    expect(result.substituted).toBeUndefined();
+  });
+
+  it.each(['refusal', 'content_filter'])('throws a declined error, without retrying, for an empty reply that ended with %s', async (reason) => {
+    const { client, calls } = setup([completionResponse('', { finishReason: reason })]);
+
+    const error = await failure(client.complete({ messages: USER_ONLY }));
+
+    expect(error.kind).toBe('declined');
+    expect(calls).toHaveLength(1);
+  });
+
+  it('keeps the text of a reply that ended with refusal, and its finish reason', async () => {
+    const { client } = setup([completionResponse('I can help with part of this', { finishReason: 'refusal' })]);
+
+    await expect(client.complete({ messages: USER_ONLY })).resolves.toMatchObject({
+      text: 'I can help with part of this',
+      finishReason: 'refusal',
+      truncated: false,
+    });
   });
 });
