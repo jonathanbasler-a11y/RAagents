@@ -15,6 +15,8 @@
 # - RAAGENTS_ADMIN_PASSWORD (16+ characters, random) and optionally RAAGENTS_ADMIN_USERNAME
 #   (default "admin"): the admin, who creates everyone else's account on the People page
 #   (src/server/access-gate.ts). Sessions need HTTPS: the cookie is Secure.
+#   Or, instead of the password, company sign-in: RAAGENTS_OIDC_ISSUER, RAAGENTS_OIDC_CLIENT_ID,
+#   RAAGENTS_OIDC_REDIRECT_URI and RAAGENTS_ADMIN_EMAIL (env.example); then no password exists.
 # - RAAGENTS_TRUSTED_PROXY_HOPS: 1 here, for one load balancer in front that appends
 #   X-Forwarded-For; set 0 if nothing in front adds that header.
 # - RAAGENTS_HOSTED_NOTICE: banner text for the hosted copy; also switches the agents' rule about
