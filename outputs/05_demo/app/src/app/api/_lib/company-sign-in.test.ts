@@ -119,6 +119,16 @@ describe('getCompanySignInCallback', () => {
     expect(kinds.at(-1)).toBe('refused_mismatch');
   });
 
+  it('after the admin re-invites a person whose identity changed at the provider, they sign in again', async () => {
+    const ctx = setup();
+    await signIn(ctx);
+    ctx.provider.state.person = { ...ctx.provider.state.person, sub: 'sub-jane-recreated' };
+    expect(location((await signIn(ctx)).response)).toBe('/login?error=identity_mismatch&next=%2Fteam');
+    ctx.harness.store.reinvitePerson({ username: 'jane.doe', actor: 'admin' });
+    expect(location((await signIn(ctx)).response)).toBe('/team');
+    expect(ctx.harness.store.findIdentityAccount('jane.doe@example.test')?.subject).toBe('sub-jane-recreated');
+  });
+
   it('refuses a person who is not on the list', async () => {
     const ctx = setup();
     ctx.provider.state.person = { sub: 'sub-john', email: 'john@example.test', name: 'John' };

@@ -67,6 +67,7 @@ const REGISTER_WRITERS = [
   { writer: 'resetPersonPassword', allowed: ['src/app/api/_lib/admin-people.ts'] },
   { writer: 'setPersonDisabled', allowed: ['src/app/api/_lib/admin-people.ts'] },
   { writer: 'addPersonByEmail', allowed: ['src/app/api/_lib/admin-people.ts'] },
+  { writer: 'reinvitePerson', allowed: ['src/app/api/_lib/admin-people.ts'] },
   { writer: 'changeOwnPassword', allowed: ['src/app/api/_lib/account-password.ts'] },
   { writer: 'openSession', allowed: ['src/app/api/_lib/sign-in.ts', 'src/app/api/_lib/company-sign-in.ts'] },
   { writer: 'bindIdentity', allowed: ['src/app/api/_lib/company-sign-in.ts'] },

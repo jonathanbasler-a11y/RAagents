@@ -138,12 +138,19 @@ export async function postPersonAction(request: Request, deps: AccountDeps, user
     const body = await readJsonBody(request);
     if (!body.ok) return apiError('invalid_request', correlationId, { message: body.message });
     const action = (body.value as { action?: unknown } | null)?.action;
-    if (!isPersonAction(action)) return apiError('invalid_request', correlationId, { message: 'The action must be reset, disable or enable.' });
+    if (!isPersonAction(action)) return apiError('invalid_request', correlationId, { message: 'The action must be reset, disable, enable or reinvite.' });
     const store = deps.store();
     const actor = admin.session.username;
     const setting = deps.setting();
     if (action === 'reset' && setting.state === 'on' && setting.method === 'oidc') {
       return apiError('invalid_request', correlationId, { message: 'People here sign in with the company account: there is no password to reset.' });
+    }
+    if (action === 'reinvite') {
+      if (setting.state !== 'on' || setting.method !== 'oidc') {
+        return apiError('invalid_request', correlationId, { message: 'People here sign in with a password: there is no company identity to clear.' });
+      }
+      const reinvited: PersonResponse = { person: store.reinvitePerson({ username, actor }) };
+      return json(reinvited);
     }
     if (action === 'reset') {
       const oneTime = await newOneTime(deps);

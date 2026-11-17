@@ -37,6 +37,7 @@ function fakeClient(people: PersonSummary[] = [ADMIN, MEMBER], signIn: 'password
   return {
     listPeople: vi.fn<AccountsApi['listPeople']>().mockResolvedValue(ok({ people, signIn })),
     addPersonByCompanyEmail: vi.fn<AccountsApi['addPersonByCompanyEmail']>(),
+    reinviteCompanyPerson: vi.fn<AccountsApi['reinviteCompanyPerson']>(),
     createPerson: vi.fn<AccountsApi['createPerson']>(),
     resetPerson: vi.fn<AccountsApi['resetPerson']>(),
     disablePerson: vi.fn<AccountsApi['disablePerson']>(),
@@ -84,6 +85,22 @@ describe('PeoplePanel with company sign-in', () => {
     expect(within(jane).queryByRole('button', { name: /Reset password/ })).not.toBeInTheDocument();
     expect(within(jane).getByRole('button', { name: 'Disable jane.doe' })).toBeInTheDocument();
     expect(screen.queryByText(/one-time password/i)).not.toBeInTheDocument();
+  });
+
+  it('re-invites a person who signed in, after a confirmation, and not one who never did', async () => {
+    const active: PersonSummary = { ...JANE, status: 'active' };
+    const never: PersonSummary = { ...JANE, username: 'john', email: 'john@example.test' };
+    const client = fakeClient([COMPANY_ADMIN, active, never], 'company');
+    client.reinviteCompanyPerson.mockResolvedValue(ok({ person: JANE }));
+    const user = userEvent.setup();
+    render(<PeoplePanel client={client} />);
+
+    expect(within(await row('john')).queryByRole('button', { name: /Re-invite/ })).not.toBeInTheDocument();
+    await user.click(within(await row('jane.doe')).getByRole('button', { name: 'Re-invite jane.doe' }));
+    expect(screen.getByText(/company identity linked to jane.doe is cleared/)).toBeInTheDocument();
+    expect(client.reinviteCompanyPerson).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Confirm re-invite' }));
+    expect(client.reinviteCompanyPerson).toHaveBeenCalledWith('jane.doe');
   });
 
   it('shows the refusal when the e-mail is already on the list', async () => {

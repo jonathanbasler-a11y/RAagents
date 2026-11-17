@@ -72,7 +72,7 @@ export interface PeopleResponse {
   signIn: SignInMethod;
 }
 
-export const PERSON_ACTIONS = ['reset', 'disable', 'enable'] as const;
+export const PERSON_ACTIONS = ['reset', 'disable', 'enable', 'reinvite'] as const;
 export type PersonAction = (typeof PERSON_ACTIONS)[number];
 
 /** POST /api/admin/people and the reset action: the only place a one-time password ever appears, once. */

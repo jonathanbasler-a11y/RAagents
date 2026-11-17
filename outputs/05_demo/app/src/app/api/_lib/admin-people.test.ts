@@ -217,6 +217,24 @@ describe('the People API with company sign-in', () => {
     expect(harness.store.findIdentityAccount('jane.doe@example.test')?.disabled).toBe(false);
   });
 
+  it('re-invites a person: their company identity is cleared, and they are invited again', async () => {
+    const { harness, admin } = companySetup();
+    await postPerson(post('/api/admin/people', admin, { email: 'jane.doe@example.test' }), harness.deps);
+    const { accountId } = harness.store.findIdentityAccount('jane.doe@example.test')!;
+    harness.store.bindIdentity({ accountId, issuer: 'https://idp.example.test', subject: 'sub-jane', displayName: 'Jane Doe' });
+    const response = await postPersonAction(post('/api/admin/people/jane.doe', admin, { action: 'reinvite' }), harness.deps, 'jane.doe');
+    expect(response.status).toBe(200);
+    expect((await json<PersonResponse>(response)).person.status).toBe('invited');
+    expect(harness.store.findIdentityAccount('jane.doe@example.test')?.subject).toBeNull();
+  });
+
+  it('refuses a re-invite on the password copy, where there is no company identity', async () => {
+    const { harness, admin } = await setup();
+    const response = await postPersonAction(post('/api/admin/people/member-one', admin, { action: 'reinvite' }), harness.deps, 'member-one');
+    expect(response.status).toBe(400);
+    expect((await json<ApiErrorBody>(response)).error).toBe('invalid_request');
+  });
+
   it('still disables and enables a person', async () => {
     const { harness, admin } = companySetup();
     await postPerson(post('/api/admin/people', admin, { email: 'jane.doe@example.test' }), harness.deps);

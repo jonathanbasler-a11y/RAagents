@@ -45,10 +45,22 @@ function roleText(person: PersonSummary): string {
   return person.role === 'admin' ? 'Admin' : 'Member';
 }
 
-type Pending = { username: string; action: 'reset' | 'disable' } | null;
+type Pending = { username: string; action: 'reset' | 'disable' | 'reinvite' } | null;
 
 /** The label of the row button that asked for this confirmation. */
-const askingButton = ({ username, action }: NonNullable<Pending>) => (action === 'reset' ? `Reset password for ${username}` : `Disable ${username}`);
+const askingButton = ({ username, action }: NonNullable<Pending>) =>
+  action === 'reset' ? `Reset password for ${username}` : action === 'reinvite' ? `Re-invite ${username}` : `Disable ${username}`;
+
+const CONFIRMATION = {
+  reset: { label: (name: string) => `Reset the password of ${name}`, text: (name: string) => `Reset the password of ${name}? Their current password stops working and they are signed out everywhere.`, button: 'Confirm reset' },
+  disable: { label: (name: string) => `Disable ${name}`, text: (name: string) => `Disable ${name}? They are signed out everywhere and cannot sign in until you enable them again.`, button: 'Confirm disable' },
+  reinvite: {
+    label: (name: string) => `Re-invite ${name}`,
+    text: (name: string) =>
+      `Re-invite ${name}? The company identity linked to ${name} is cleared and they are signed out everywhere; their next company sign-in links the identity it brings. Use it when their account at the provider changed.`,
+    button: 'Confirm re-invite',
+  },
+} as const;
 type Shown = { username: string; oneTimePassword: string; expiresAt: string } | null;
 type Failure = { message: string; correlationId: string | null } | null;
 
@@ -190,6 +202,13 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
         return;
       }
       show(result.data);
+    } else if (action === 'reinvite') {
+      const result = await client.reinviteCompanyPerson(username);
+      setBusy(false);
+      if (!result.ok) {
+        fail(result);
+        return;
+      }
     } else {
       const result = await client.disablePerson(username);
       setBusy(false);
@@ -268,6 +287,19 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
               <td>
                 {person.managedBy === 'server' ? null : (
                   <>
+                    {person.signIn === 'company' && person.status === 'active' ? (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-quiet btn-sm"
+                          aria-label={`Re-invite ${person.username}`}
+                          disabled={busy}
+                          onClick={() => setPending({ username: person.username, action: 'reinvite' })}
+                        >
+                          Re-invite
+                        </button>{' '}
+                      </>
+                    ) : null}
                     {person.signIn === 'company' ? null : (
                       <>
                         <button
@@ -354,14 +386,10 @@ export function PeoplePanel({ client = defaultClient }: { client?: AccountsApi }
         </form>
       )}
       {pending === null ? null : (
-        <div className="people-confirm" role="group" aria-label={pending.action === 'reset' ? `Reset the password of ${pending.username}` : `Disable ${pending.username}`}>
-          <p>
-            {pending.action === 'reset'
-              ? `Reset the password of ${pending.username}? Their current password stops working and they are signed out everywhere.`
-              : `Disable ${pending.username}? They are signed out everywhere and cannot sign in until you enable them again.`}
-          </p>
+        <div className="people-confirm" role="group" aria-label={CONFIRMATION[pending.action].label(pending.username)}>
+          <p>{CONFIRMATION[pending.action].text(pending.username)}</p>
           <button type="button" className="btn btn-sm" onClick={() => void confirm()}>
-            {pending.action === 'reset' ? 'Confirm reset' : 'Confirm disable'}
+            {CONFIRMATION[pending.action].button}
           </button>{' '}
           <button
             type="button"

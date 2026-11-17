@@ -603,10 +603,12 @@ export const CHAT_MIGRATIONS: readonly string[] = [
   ) STRICT;
   `,
   // Version 8: company sign-in. An account the admin adds by company e-mail gets an identity row, and the first sign-in
-  // binds the provider's issuer and subject to it, once. Such an account holds no password (the marker of
+  // binds the provider's issuer and subject to it. A binding never changes to another subject or issuer; it is only
+  // cleared, by the admin's re-invite (the person's identity changed at the provider) or by a new e-mail of the server
+  // admin, and the next sign-in binds again. Such an account holds no password (the marker of
   // src/server/accounts/crypto.ts), and the database refuses any other hash for it. An identity is never deleted and
-  // never moves to another account; its e-mail changes only for the admin from the server settings (when the settings name
-  // a new e-mail), and then the binding is cleared with it. The events are append-only.
+  // never moves to another account; its e-mail changes only for the admin from the server settings. The events are
+  // append-only.
   `
   CREATE TABLE account_identities (
     account_id TEXT PRIMARY KEY REFERENCES accounts (id),
@@ -658,12 +660,10 @@ export const CHAT_MIGRATIONS: readonly string[] = [
 
   CREATE TRIGGER account_identities_bind_once
   BEFORE UPDATE OF issuer, subject, bound_at ON account_identities
-  WHEN OLD.subject IS NOT NULL AND (
-    (NEW.subject IS NOT NULL AND (NEW.subject IS NOT OLD.subject OR NEW.issuer IS NOT OLD.issuer OR NEW.bound_at IS NOT OLD.bound_at))
-    OR (NEW.subject IS NULL AND NEW.email IS OLD.email)
-  )
+  WHEN OLD.subject IS NOT NULL AND NEW.subject IS NOT NULL
+    AND (NEW.subject IS NOT OLD.subject OR NEW.issuer IS NOT OLD.issuer OR NEW.bound_at IS NOT OLD.bound_at)
   BEGIN
-    SELECT RAISE(ABORT, 'an identity is bound once; only a new e-mail of the server admin clears the binding');
+    SELECT RAISE(ABORT, 'a bound identity never changes to another subject; it can only be cleared');
   END;
 
   CREATE TRIGGER account_identities_no_delete
@@ -675,7 +675,7 @@ export const CHAT_MIGRATIONS: readonly string[] = [
   CREATE TABLE account_identity_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id TEXT NOT NULL REFERENCES accounts (id),
-    kind TEXT NOT NULL CHECK (kind IN ('added', 'bound', 'email_changed', 'refused_mismatch', 'refused_disabled')),
+    kind TEXT NOT NULL CHECK (kind IN ('added', 'bound', 'unbound', 'email_changed', 'refused_mismatch', 'refused_disabled')),
     at TEXT NOT NULL,
     actor TEXT NOT NULL CHECK (length(actor) BETWEEN 1 AND 64)
   ) STRICT;

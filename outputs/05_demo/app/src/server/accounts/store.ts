@@ -151,6 +151,11 @@ export interface AccountStore {
   addPersonByEmail(input: { email: string; actor: string }): PersonSummary;
   /** Binds the first sign-in's issuer and subject, once; later sign-ins must match and only refresh the display name. */
   bindIdentity(input: { accountId: string; issuer: string; subject: string; displayName: string | null }): void;
+  /**
+   * Clears the company identity bound to a person the admin added (their identity changed at the provider), ends their
+   * sessions and records the admin; their next sign-in binds again. Nothing changes for a person who never signed in.
+   */
+  reinvitePerson(input: { username: string; actor: string }): PersonSummary;
   /** Records a refused company sign-in on the account. */
   noteIdentityRefusal(input: { accountId: string; reason: 'identity_mismatch' | 'disabled' }): void;
   /**
@@ -174,7 +179,7 @@ interface AccountRow {
 }
 
 type EventKind = 'created' | 'password_reset' | 'password_changed' | 'disabled' | 'enabled' | 'signed_in' | 'signed_out';
-type IdentityEventKind = 'added' | 'bound' | 'email_changed' | 'refused_mismatch' | 'refused_disabled';
+type IdentityEventKind = 'added' | 'bound' | 'unbound' | 'email_changed' | 'refused_mismatch' | 'refused_disabled';
 
 interface IdentityRow {
   account_id: string;
@@ -495,6 +500,19 @@ export function createAccountStore(db: SqliteDatabase, options: AccountStoreOpti
         }
         if (identity.issuer !== issuer || identity.subject !== subject) throw new IdentityMismatchError();
         if (identity.display_name !== name) db.prepare('UPDATE account_identities SET display_name = ? WHERE account_id = ?').run(name, accountId);
+      });
+    },
+
+    reinvitePerson({ username, actor }) {
+      return immediateTransaction(db, () => {
+        const row = appPerson(username);
+        const identity = identityOf(row.id);
+        if (identity === undefined) throw new AccountRuleError('This person signs in with a password: there is no company identity to clear.');
+        if (identity.subject === null) return summarize(row);
+        db.prepare('UPDATE account_identities SET issuer = NULL, subject = NULL, bound_at = NULL, display_name = NULL WHERE account_id = ?').run(row.id);
+        revokeSessionsOf(row.id);
+        recordIdentity(row.id, 'unbound', actor);
+        return summarize(byId(row.id) as AccountRow);
       });
     },
 

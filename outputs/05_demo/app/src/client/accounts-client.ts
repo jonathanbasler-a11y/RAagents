@@ -12,6 +12,8 @@ export interface AccountsApi {
   addPersonByCompanyEmail(email: string): Promise<ApiResult<PersonResponse>>;
   resetPerson(username: string): Promise<ApiResult<OneTimePasswordResponse>>;
   disablePerson(username: string): Promise<ApiResult<PersonResponse>>;
+  /** With company sign-in: clears the identity linked to the person; their next sign-in links a new one. */
+  reinviteCompanyPerson(username: string): Promise<ApiResult<PersonResponse>>;
   enablePerson(username: string): Promise<ApiResult<PersonResponse>>;
 }
 
@@ -43,6 +45,7 @@ export function createAccountsClient(deps: { fetch?: typeof fetch } = {}): Accou
     addPersonByCompanyEmail: (email) => postJson<PersonResponse>('/api/admin/people', { email }),
     resetPerson: (username) => act<OneTimePasswordResponse>(username, 'reset'),
     disablePerson: (username) => act<PersonResponse>(username, 'disable'),
+    reinviteCompanyPerson: (username) => act<PersonResponse>(username, 'reinvite'),
     enablePerson: (username) => act<PersonResponse>(username, 'enable'),
   };
 }

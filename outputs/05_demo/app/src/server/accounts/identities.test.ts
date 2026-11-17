@@ -9,6 +9,7 @@ import {
   EmailTakenError,
   IdentityMismatchError,
   PersonNotFoundError,
+  ServerManagedAccountError,
   createAccountStore,
   type AccountStore,
 } from './store';
@@ -151,6 +152,51 @@ describe('bindIdentity', () => {
   });
 });
 
+describe('reinvitePerson', () => {
+  const bound = () => {
+    store.addPersonByEmail({ email: 'jane.doe@example.test', actor: 'admin' });
+    const { accountId } = store.findIdentityAccount('jane.doe@example.test')!;
+    store.bindIdentity({ accountId, issuer: ISSUER, subject: 'sub-jane', displayName: 'Jane Doe' });
+    store.openSession({ accountId, tokenHash: tokenHash(TOKEN_A), expiresAt: iso(12 * HOUR) });
+    return accountId;
+  };
+
+  it('clears the binding, ends the sessions and records which admin did it; the next sign-in binds again', () => {
+    const accountId = bound();
+    const person = store.reinvitePerson({ username: 'jane.doe', actor: 'admin' });
+    expect(person.status).toBe('invited');
+    expect(store.findIdentityAccount('jane.doe@example.test')).toMatchObject({ issuer: null, subject: null, displayName: null });
+    expect(store.findSession(TOKEN_A)).toBeNull();
+    expect(identityEvents().at(-1)).toEqual({ account_id: accountId, kind: 'unbound', actor: 'admin' });
+    store.bindIdentity({ accountId, issuer: ISSUER, subject: 'sub-jane-new', displayName: 'Jane Doe' });
+    expect(store.findIdentityAccount('jane.doe@example.test')?.subject).toBe('sub-jane-new');
+  });
+
+  it('lets a new account bind the subject the old account held, once the old one is re-invited (an e-mail change)', () => {
+    bound();
+    store.addPersonByEmail({ email: 'jane.d@example.test', actor: 'admin' });
+    const fresh = store.findIdentityAccount('jane.d@example.test')!.accountId;
+    expect(() => store.bindIdentity({ accountId: fresh, issuer: ISSUER, subject: 'sub-jane', displayName: null })).toThrow(IdentityMismatchError);
+    store.reinvitePerson({ username: 'jane.doe', actor: 'admin' });
+    store.bindIdentity({ accountId: fresh, issuer: ISSUER, subject: 'sub-jane', displayName: null });
+    expect(store.findIdentityAccount('jane.d@example.test')?.subject).toBe('sub-jane');
+  });
+
+  it('changes and records nothing for a person who never signed in', () => {
+    store.addPersonByEmail({ email: 'jane.doe@example.test', actor: 'admin' });
+    store.reinvitePerson({ username: 'jane.doe', actor: 'admin' });
+    expect(identityEvents().map((event) => (event as { kind: string }).kind)).toEqual(['added']);
+  });
+
+  it('refuses a password account, the admin from the server settings and an unknown name', () => {
+    store.createPersonAccount({ username: 'member-one', passwordHash: 'scrypt$x', oneTimeExpiresAt: iso(HOUR), actor: 'admin' });
+    expect(() => store.reinvitePerson({ username: 'member-one', actor: 'admin' })).toThrow(AccountRuleError);
+    store.bootstrapServerAdminByEmail({ username: 'admin', email: 'owner@example.test' });
+    expect(() => store.reinvitePerson({ username: 'admin', actor: 'admin' })).toThrow(ServerManagedAccountError);
+    expect(() => store.reinvitePerson({ username: 'nobody', actor: 'admin' })).toThrow(PersonNotFoundError);
+  });
+});
+
 describe('bootstrapServerAdminByEmail', () => {
   it('creates the admin from the settings with their company e-mail and no password', () => {
     store.bootstrapServerAdminByEmail({ username: 'admin', email: 'owner@example.test' });
@@ -265,10 +311,15 @@ describe('the database rules for company identities (schema version 8)', () => {
     expect(raw(`UPDATE account_identities SET email = 'other@example.test'`)).toThrow();
   });
 
-  it('binds a subject once: no other subject, and no clearing without an e-mail change', () => {
+  it('never moves a bound identity to another subject or issuer; clearing it (a re-invite) is allowed', () => {
     db.prepare(`UPDATE account_identities SET issuer = ?, subject = 'sub-jane', bound_at = ?`).run(ISSUER, iso(0));
     expect(raw(`UPDATE account_identities SET subject = 'sub-other'`)).toThrow();
-    expect(raw(`UPDATE account_identities SET issuer = NULL, subject = NULL, bound_at = NULL`)).toThrow();
+    expect(raw(`UPDATE account_identities SET issuer = 'https://other.example.test'`)).toThrow();
+    expect(raw(`UPDATE account_identities SET issuer = NULL, subject = NULL, bound_at = NULL`)).not.toThrow();
+  });
+
+  it('accepts the re-invite event kind', () => {
+    expect(raw(`INSERT INTO account_identity_events (account_id, kind, at, actor) VALUES ('id-1', 'unbound', ?, 'admin')`, iso(0))).not.toThrow();
   });
 
   it('keeps issuer, subject and the binding time together', () => {
