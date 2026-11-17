@@ -306,6 +306,15 @@ describe('runEval: fail fast (BUILD-LEARNINGS 9.6)', () => {
     expect(agent.calls).toHaveLength(7);
   });
 
+  it('counts another kind of unusable answer after a decline of the same case as a new one', async () => {
+    const declined = { status: 'error' as const, text: '', errorCode: 'llm_declined' as const, state: 'failed' as const, model: null };
+    const outage = { ...declined, errorCode: 'llm_outage' as const };
+    const { deps, agent } = setup({ answers: [declined, declined, outage] });
+
+    expect(await abortReason(runEval({ cases: [testCase({ id: 'a' }), testCase({ id: 'b' })] }, deps))).toMatch(/3 unusable answers in a row/);
+    expect(agent.calls).toHaveLength(4);
+  });
+
   it('counts a decline after another kind of unusable answer as a new one', async () => {
     const outage = { status: 'error' as const, text: '', errorCode: 'llm_outage' as const, state: 'failed' as const, model: null };
     const declined = { ...outage, errorCode: 'llm_declined' as const };
