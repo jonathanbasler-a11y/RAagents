@@ -45,8 +45,7 @@ function signJwt(payload: Record<string, unknown>, key: KeyObject): string {
   return `${head}.${body}.${sign('sha256', Buffer.from(`${head}.${body}`), key).toString('base64url')}`;
 }
 
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+const json = (status: number, body: unknown) => Response.json(body, { status });
 
 export function createFakeProvider() {
   const keys = generateKeyPairSync('rsa', { modulusLength: 2048 });
