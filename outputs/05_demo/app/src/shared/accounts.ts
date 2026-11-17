@@ -26,6 +26,8 @@ export interface SessionView {
   expiresAt: string;
   /** With company sign-in: the name the provider sent at the last sign-in; null otherwise. */
   displayName: string | null;
+  /** How this person signs in: an account added by company e-mail has no password. */
+  signIn: SignInMethod;
 }
 
 /** The person signed in, as the app's header shows them. */

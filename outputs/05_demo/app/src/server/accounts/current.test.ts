@@ -71,7 +71,7 @@ describe('currentAccount', () => {
 });
 
 describe('layoutPlan', () => {
-  const session = { accountId: 'a', username: 'member-one', role: 'member' as const, managedBy: 'app' as const, mustChangePassword: false, expiresAt: 'x', displayName: null };
+  const session = { accountId: 'a', username: 'member-one', role: 'member' as const, managedBy: 'app' as const, mustChangePassword: false, expiresAt: 'x', displayName: null, signIn: 'password' as const };
 
   it('keeps today\'s shell, with no account line, when sign-in is off', () => {
     expect(layoutPlan({ signIn: 'off' })).toEqual({ shell: true, account: undefined });
@@ -79,6 +79,13 @@ describe('layoutPlan', () => {
 
   it('renders no shell and no roster for a request without a valid session', () => {
     expect(layoutPlan({ signIn: 'on', session: null })).toEqual({ shell: false });
+  });
+
+  it('offers no password page to a person who signs in with the company account', () => {
+    expect(layoutPlan({ signIn: 'on', session: { ...session, signIn: 'company', displayName: 'Jane Doe' } })).toEqual({
+      shell: true,
+      account: { username: 'member-one', isAdmin: false, canChangePassword: false },
+    });
   });
 
   it('names the person in the shell, with the People page for the admin and the password page for people created in the app', () => {

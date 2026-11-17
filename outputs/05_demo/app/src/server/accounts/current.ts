@@ -36,7 +36,8 @@ export function layoutPlan(current: CurrentAccount): { shell: false } | { shell:
     account: {
       username: current.session.username,
       isAdmin: current.session.role === 'admin',
-      canChangePassword: current.session.managedBy === 'app',
+      // A person who signs in with the company account has no password (and the password page answers 404).
+      canChangePassword: current.session.managedBy === 'app' && current.session.signIn === 'password',
     },
   };
 }

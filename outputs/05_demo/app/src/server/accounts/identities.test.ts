@@ -208,12 +208,12 @@ describe('sessions and the People list with company sign-in', () => {
     const { accountId } = store.findIdentityAccount('jane.doe@example.test')!;
     store.bindIdentity({ accountId, issuer: ISSUER, subject: 'sub-jane', displayName: 'Jane Doe' });
     store.openSession({ accountId, tokenHash: tokenHash(TOKEN_A), expiresAt: iso(12 * HOUR) });
-    expect(store.findSession(TOKEN_A)).toMatchObject({ username: 'jane.doe', displayName: 'Jane Doe' });
+    expect(store.findSession(TOKEN_A)).toMatchObject({ username: 'jane.doe', displayName: 'Jane Doe', signIn: 'company' });
 
     store.bootstrapServerAdmin({ username: 'admin', passwordHash: 'scrypt$env-1' });
     const admin = store.findAccountForSignIn('admin')!;
     store.openSession({ accountId: admin.id, tokenHash: tokenHash('B'.repeat(43)), expiresAt: iso(12 * HOUR) });
-    expect(store.findSession('B'.repeat(43))).toMatchObject({ username: 'admin', displayName: null });
+    expect(store.findSession('B'.repeat(43))).toMatchObject({ username: 'admin', displayName: null, signIn: 'password' });
   });
 
   it('lists e-mail and sign-in method for every person', () => {

@@ -27,7 +27,7 @@ export function isSessionToken(value: string): boolean {
 
 /** The only session query. A session counts while it is not revoked, not expired and its account is enabled. */
 const SESSION_SQL = `
-  SELECT a.id AS account_id, a.username, a.role, a.managed_by, a.must_change_password, s.expires_at, i.display_name
+  SELECT a.id AS account_id, a.username, a.role, a.managed_by, a.must_change_password, s.expires_at, i.display_name, i.account_id AS identity_of
   FROM account_sessions s JOIN accounts a ON a.id = s.account_id LEFT JOIN account_identities i ON i.account_id = a.id
   WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND a.disabled_at IS NULL`;
 
@@ -39,6 +39,7 @@ interface SessionRow {
   must_change_password: number;
   expires_at: string;
   display_name: string | null;
+  identity_of: string | null;
 }
 
 /** The person behind a session token, or null. */
@@ -54,6 +55,7 @@ export function readSession(db: SqliteDatabase, token: string, nowIso: string): 
     mustChangePassword: row.must_change_password === 1,
     expiresAt: row.expires_at,
     displayName: row.display_name,
+    signIn: row.identity_of === null ? 'password' : 'company',
   };
 }
 

@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({ notFound }));
 
 import AdminPage from './page';
 
-const session = { accountId: 'a', username: 'member-one', role: 'member' as const, managedBy: 'app' as const, mustChangePassword: false, expiresAt: 'x', displayName: null };
+const session = { accountId: 'a', username: 'member-one', role: 'member' as const, managedBy: 'app' as const, mustChangePassword: false, expiresAt: 'x', displayName: null, signIn: 'password' as const };
 
 afterEach(() => {
   current.value = { signIn: 'off' };
