@@ -154,8 +154,12 @@ export function createOidcClient(deps: OidcClientDeps): OidcClient {
 
 export interface TransactionStore {
   put(transaction: SignInTransaction): void;
-  /** The transaction, once; null when unknown, already taken or older than the time limit. */
-  take(id: string, nowMs: number): SignInTransaction | null;
+  /**
+   * The transaction, once, if `state` is its state; null when unknown, already taken or older than the time limit. A
+   * transaction asked for with another state stays: the browser holds one sign-in cookie, so a second tab's start
+   * replaces it, and the answer to that second start must still find its transaction.
+   */
+  take(id: string, state: string, nowMs: number): SignInTransaction | null;
 }
 
 /** Sign-ins in progress, in this process's memory (one server process; a restart only means signing in again). */
@@ -170,11 +174,16 @@ export function createTransactionStore(options: { ttlMs: number; maxEntries: num
       }
       held.set(transaction.id, transaction);
     },
-    take(id, nowMs) {
+    take(id, state, nowMs) {
       const transaction = held.get(id);
       if (transaction === undefined) return null;
+      if (nowMs - transaction.createdAtMs > options.ttlMs) {
+        held.delete(id);
+        return null;
+      }
+      if (transaction.state !== state) return null;
       held.delete(id);
-      return nowMs - transaction.createdAtMs > options.ttlMs ? null : transaction;
+      return transaction;
     },
   };
 }

@@ -61,11 +61,13 @@ export async function getCompanySignInCallback(request: Request, deps: AccountDe
   if (setting.state !== 'on' || setting.method !== 'oidc') return plainText(404, 'Not found.');
   const now = deps.now();
   const id = cookieFrom(request, OIDC_COOKIE);
-  const transaction = id !== null && TRANSACTION_ID.test(id) ? deps.signInTransactions.take(id, now.getTime()) : null;
+  const query = new URL(request.url).searchParams;
+  // Taken only with its own state: an answer to another start (a second tab) or a forged refusal leaves it in place.
+  const transaction = id !== null && TRANSACTION_ID.test(id) ? deps.signInTransactions.take(id, query.get('state') ?? '', now.getTime()) : null;
   if (transaction === null) return backToLogin('stale');
   const next = transaction.next;
 
-  const result = await deps.oidc.completeSignIn(setting.oidc, new URL(request.url).searchParams, transaction);
+  const result = await deps.oidc.completeSignIn(setting.oidc, query, transaction);
   if (!result.ok) {
     if (result.failure !== 'denied') noteProblem(deps.log, result.failure, now.getTime());
     return backToLogin(result.failure, next);

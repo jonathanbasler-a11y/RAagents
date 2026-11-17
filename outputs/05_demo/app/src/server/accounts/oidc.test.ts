@@ -165,9 +165,9 @@ describe('createTransactionStore', () => {
   it('gives a transaction back once', () => {
     const store = createTransactionStore({ ttlMs: SIGN_IN_TRANSACTION_TTL_MS, maxEntries: 10 });
     store.put(transaction('a'));
-    expect(store.take('a', 1)?.id).toBe('a');
-    expect(store.take('a', 2)).toBeNull();
-    expect(store.take('unknown', 2)).toBeNull();
+    expect(store.take('a', 's', 1)?.id).toBe('a');
+    expect(store.take('a', 's', 2)).toBeNull();
+    expect(store.take('unknown', 's', 2)).toBeNull();
   });
 
   it('forgets a transaction after 10 minutes', () => {
@@ -175,8 +175,8 @@ describe('createTransactionStore', () => {
     store.put(transaction('a', 0));
     store.put(transaction('b', 0));
     expect(SIGN_IN_TRANSACTION_TTL_MS).toBe(10 * 60 * 1000);
-    expect(store.take('a', SIGN_IN_TRANSACTION_TTL_MS)?.id).toBe('a');
-    expect(store.take('b', SIGN_IN_TRANSACTION_TTL_MS + 1)).toBeNull();
+    expect(store.take('a', 's', SIGN_IN_TRANSACTION_TTL_MS)?.id).toBe('a');
+    expect(store.take('b', 's', SIGN_IN_TRANSACTION_TTL_MS + 1)).toBeNull();
   });
 
   it('keeps at most maxEntries, dropping the oldest first', () => {
@@ -184,9 +184,16 @@ describe('createTransactionStore', () => {
     store.put(transaction('a'));
     store.put(transaction('b'));
     store.put(transaction('c'));
-    expect(store.take('a', 1)).toBeNull();
-    expect(store.take('b', 1)?.id).toBe('b');
-    expect(store.take('c', 1)?.id).toBe('c');
+    expect(store.take('a', 's', 1)).toBeNull();
+    expect(store.take('b', 's', 1)?.id).toBe('b');
+    expect(store.take('c', 's', 1)?.id).toBe('c');
+  });
+
+  it('leaves a transaction in place when the state does not match, so the right answer can still use it', () => {
+    const store = createTransactionStore({ ttlMs: SIGN_IN_TRANSACTION_TTL_MS, maxEntries: 10 });
+    store.put(transaction('a'));
+    expect(store.take('a', 'another-state', 1)).toBeNull();
+    expect(store.take('a', 's', 2)?.id).toBe('a');
   });
 
   it('names a __Host- cookie for the transaction, so a sibling host cannot plant one', () => {

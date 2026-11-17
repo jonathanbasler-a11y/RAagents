@@ -165,6 +165,29 @@ describe('getCompanySignInCallback', () => {
     for (const secret of [query.get('code')!, query.get('state')!, 'jane', 'Jane']) expect(logged).not.toContain(secret);
   });
 
+  it('two tabs signing in at once: the tab whose sign-in was replaced is told to sign in again, the other signs in', async () => {
+    const ctx = setup();
+    const tabA = await start(ctx.harness.deps);
+    const tabB = await start(ctx.harness.deps);
+    // The browser keeps one sign-in cookie: tab B's start replaced tab A's.
+    const cookie = signInCookieOf(tabB);
+    const answerA = ctx.provider.authorize(new URL(location(tabA)));
+    const answerB = ctx.provider.authorize(new URL(location(tabB)));
+    expect(location(await getCompanySignInCallback(callback(answerA, cookie), ctx.harness.deps))).toBe('/login?error=stale');
+    expect(location(await getCompanySignInCallback(callback(answerB, cookie), ctx.harness.deps))).toBe('/team');
+    expect(ctx.log.warn).not.toHaveBeenCalled();
+  });
+
+  it('a refusal sent with another sign-in\'s state cannot use up the sign-in in progress', async () => {
+    const ctx = setup();
+    const started = await start(ctx.harness.deps);
+    const cookie = signInCookieOf(started);
+    const forged = new URLSearchParams({ error: 'access_denied', state: 'not-this-sign-in' });
+    expect(location(await getCompanySignInCallback(callback(forged, cookie), ctx.harness.deps))).toBe('/login?error=stale');
+    const answer = ctx.provider.authorize(new URL(location(started)));
+    expect(location(await getCompanySignInCallback(callback(answer, cookie), ctx.harness.deps))).toBe('/team');
+  });
+
   it('says the person declined at the provider', async () => {
     const ctx = setup();
     const started = await start(ctx.harness.deps);
