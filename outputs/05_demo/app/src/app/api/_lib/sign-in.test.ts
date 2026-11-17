@@ -26,6 +26,28 @@ describe('postLogin', () => {
     expect((await postLogin(login({ username: 'admin', password: ADMIN_PASSWORD }), harness.deps)).status).toBe(404);
   });
 
+  it('does not exist with company sign-in, which has no password way in, not even for the admin', async () => {
+    const harness = setup({
+      setting: {
+        state: 'on',
+        method: 'oidc',
+        admin: { username: 'admin', email: 'owner@example.test' },
+        oidc: {
+          issuer: 'https://idp.example.test',
+          clientId: 'client-123',
+          redirectUri: 'https://app.example.test/api/auth/callback',
+          scopes: 'openid email profile',
+          emailClaim: 'email',
+          label: 'Sign in with your company account',
+        },
+        trustedProxyHops: 0,
+      },
+    });
+    const response = await postLogin(login({ username: 'admin', password: ADMIN_PASSWORD }), harness.deps);
+    expect(response.status).toBe(404);
+    expect(response.headers.get('set-cookie')).toBeNull();
+  });
+
   it('refuses a cross-site sign-in before it opens the database', async () => {
     const harness = setup();
     const store = vi.spyOn(harness.deps, 'store');
@@ -57,7 +79,7 @@ describe('postLogin', () => {
   });
 
   it('refuses the old admin password once the settings name a new one, even before a restart', async () => {
-    const harness = setup({ setting: { state: 'on', admin: { username: 'admin', password: 'the-new-long-admin-password' }, trustedProxyHops: 0 } });
+    const harness = setup({ setting: { state: 'on', method: 'password', admin: { username: 'admin', password: 'the-new-long-admin-password' }, trustedProxyHops: 0 } });
     await harness.addServerAdmin();
     const response = await postLogin(login({ username: 'admin', password: ADMIN_PASSWORD }), harness.deps);
     expect(location(response)).toBe('/login?error=wrong');
@@ -176,7 +198,7 @@ describe('postLogin', () => {
   });
 
   it('keeps the per-name budget for a member whose name the settings give to the admin', async () => {
-    const harness = setup({ setting: { state: 'on', admin: { username: 'member-one', password: ADMIN_PASSWORD }, trustedProxyHops: 0 } });
+    const harness = setup({ setting: { state: 'on', method: 'password', admin: { username: 'member-one', password: ADMIN_PASSWORD }, trustedProxyHops: 0 } });
     const oneTime = await harness.addMember('member-one');
     for (let i = 0; i < 10; i++) await postLogin(login({ username: 'member-one', password: 'wrong password' }), harness.deps);
     expect(location(await postLogin(login({ username: 'member-one', password: oneTime }), harness.deps))).toBe('/login?error=locked');

@@ -69,7 +69,7 @@ describe('getPasswordPage', () => {
     const harness = setup();
     await harness.addServerAdmin();
     const token = sessionTokenOf(await postLogin(formPost('/api/login', { username: 'admin', password: ADMIN_PASSWORD }), harness.deps))!;
-    const renamed = { ...harness.deps, setting: () => ({ state: 'on' as const, admin: { username: 'owner', password: ADMIN_PASSWORD }, trustedProxyHops: 0 as const }) };
+    const renamed = { ...harness.deps, setting: () => ({ state: 'on' as const, method: 'password' as const, admin: { username: 'owner', password: ADMIN_PASSWORD }, trustedProxyHops: 0 as const }) };
     expect(location(getPasswordPage(withSession('/account/password', token), renamed))).toBe('/login');
     expect(location(await postPassword(change(token, { current: ADMIN_PASSWORD, password: NEW_PASSWORD, repeat: NEW_PASSWORD }), renamed))).toBe('/login');
   });

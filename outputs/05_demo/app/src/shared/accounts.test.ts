@@ -4,7 +4,9 @@ import {
   MIN_PASSWORD_CHARS,
   canonicalOneTimePassword,
   checkNewPassword,
+  checkEmail,
   checkUsername,
+  normalizeEmail,
   normalizeUsername,
 } from './accounts';
 
@@ -64,5 +66,25 @@ describe('checkNewPassword', () => {
 describe('canonicalOneTimePassword', () => {
   it('ignores case, dashes and spaces, as a person may type a code from a message', () => {
     expect(canonicalOneTimePassword(' K7QM-2xvd 9hpt-4WCN ')).toBe('k7qm2xvd9hpt4wcn');
+  });
+});
+
+describe('normalizeEmail and checkEmail', () => {
+  it("trims and lower-cases, so the admin's typing and the provider's claim compare equal", () => {
+    expect(normalizeEmail('  Jane.Doe@Example.TEST \n')).toBe('jane.doe@example.test');
+  });
+
+  it('accepts plain company addresses', () => {
+    for (const email of ['jane.doe@example.test', 'j+dd@example.test', 'a_b-c@sub.example.test']) {
+      expect(checkEmail(email), email).toEqual({ ok: true });
+    }
+  });
+
+  it('refuses what is not one address, with a readable message', () => {
+    for (const email of ['', 'jane', 'jane@', '@example.test', 'jane@@example.test', 'a@b@example.test', 'jane doe@example.test', 'Jane@example.test', `${'x'.repeat(250)}@example.test`, 'jane@example']) {
+      const check = checkEmail(email);
+      expect(check.ok, email).toBe(false);
+      if (!check.ok) expect(check.message.length).toBeGreaterThan(10);
+    }
   });
 });

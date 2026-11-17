@@ -37,7 +37,7 @@ export function getPasswordHasher(): PasswordHasher {
  * sessions) when the password in the settings changed. The password is checked and hashed before the transaction.
  */
 export async function prepareAccounts(
-  setting: Extract<AccessSetting, { state: 'on' }>,
+  setting: Extract<AccessSetting, { state: 'on'; method: 'password' }>,
   store: AccountStore,
   passwords: PasswordHasher,
 ): Promise<void> {
@@ -102,7 +102,7 @@ export async function prepareHostedServer(
     log.error(`[accounts] the database could not be opened, so sign-in is unavailable: ${error instanceof Error ? error.message : String(error)}`);
     return {};
   }
-  if (setting.state === 'on') {
+  if (setting.state === 'on' && setting.method === 'password') {
     try {
       await prepareAccounts(setting, store, deps.passwords());
     } catch (error) {

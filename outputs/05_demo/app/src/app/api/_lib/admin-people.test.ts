@@ -62,7 +62,7 @@ describe('the People API, for anyone but the admin', () => {
 describe('the People API, for a former server admin', () => {
   it('answers 401 to an admin the settings no longer name, as the proxy does', async () => {
     const { harness, admin } = await setup();
-    const renamed = { ...harness.deps, setting: () => ({ state: 'on' as const, admin: { username: 'owner', password: ADMIN_PASSWORD }, trustedProxyHops: 0 as const }) };
+    const renamed = { ...harness.deps, setting: () => ({ state: 'on' as const, method: 'password' as const, admin: { username: 'owner', password: ADMIN_PASSWORD }, trustedProxyHops: 0 as const }) };
     const response = await getPeople(withSession('/api/admin/people', admin), renamed);
     expect(response.status).toBe(401);
     expect((await json<ApiErrorBody>(response)).error).toBe('sign_in_required');

@@ -17,7 +17,7 @@ import {
 } from './access-gate';
 
 const ADMIN_PASSWORD = 'a-long-admin-password-1';
-const ON: AccessSetting = { state: 'on', admin: { username: 'admin', password: ADMIN_PASSWORD }, trustedProxyHops: 0 };
+const ON: AccessSetting = { state: 'on', method: 'password', admin: { username: 'admin', password: ADMIN_PASSWORD }, trustedProxyHops: 0 };
 
 const MEMBER: SessionView = {
   accountId: 'acc-member',
@@ -81,11 +81,112 @@ describe('readAccessSetting', () => {
         RAAGENTS_ADMIN_USERNAME: ' Owner ',
         RAAGENTS_TRUSTED_PROXY_HOPS: '1',
       }),
-    ).toEqual({ state: 'on', admin: { username: 'owner', password: ADMIN_PASSWORD }, trustedProxyHops: 1 });
+    ).toEqual({ state: 'on', method: 'password', admin: { username: 'owner', password: ADMIN_PASSWORD }, trustedProxyHops: 1 });
   });
 
   it('ignores the old settings once an admin password is set', () => {
     expect(readAccessSetting({ RAAGENTS_ADMIN_PASSWORD: ADMIN_PASSWORD, RAAGENTS_ACCESS_PASSWORD: 'old' })).toEqual(ON);
+  });
+});
+
+const COMPANY_ENV = {
+  RAAGENTS_OIDC_ISSUER: 'https://idp.example.test',
+  RAAGENTS_OIDC_CLIENT_ID: 'client-123',
+  RAAGENTS_OIDC_REDIRECT_URI: 'https://app.example.test/api/auth/callback',
+  RAAGENTS_ADMIN_EMAIL: ' Owner@Example.TEST \n',
+} as const;
+
+const reasonOf = (setting: AccessSetting) => (setting.state === 'misconfigured' ? setting.reason : `not locked: ${setting.state}`);
+
+describe('readAccessSetting with company sign-in', () => {
+  it('company sign-in is on with issuer, client id, redirect and admin e-mail', () => {
+    expect(readAccessSetting(COMPANY_ENV)).toEqual({
+      state: 'on',
+      method: 'oidc',
+      admin: { username: 'admin', email: 'owner@example.test' },
+      oidc: {
+        issuer: 'https://idp.example.test',
+        clientId: 'client-123',
+        redirectUri: 'https://app.example.test/api/auth/callback',
+        scopes: 'openid email profile',
+        emailClaim: 'email',
+        label: 'Sign in with your company account',
+      },
+      trustedProxyHops: 0,
+    });
+  });
+
+  it('takes the optional scopes, e-mail claim, label, admin username and proxy setting', () => {
+    const setting = readAccessSetting({
+      ...COMPANY_ENV,
+      RAAGENTS_OIDC_SCOPES: '  openid   email ',
+      RAAGENTS_OIDC_EMAIL_CLAIM: 'upn',
+      RAAGENTS_OIDC_LABEL: ' Sign in with Example ',
+      RAAGENTS_ADMIN_USERNAME: 'Owner',
+      RAAGENTS_TRUSTED_PROXY_HOPS: '1',
+    });
+    expect(setting).toMatchObject({
+      state: 'on',
+      method: 'oidc',
+      admin: { username: 'owner', email: 'owner@example.test' },
+      oidc: { scopes: 'openid email', emailClaim: 'upn', label: 'Sign in with Example' },
+      trustedProxyHops: 1,
+    });
+  });
+
+  it('accepts a callback on this computer over plain http', () => {
+    for (const redirect of ['http://localhost:3200/api/auth/callback', 'http://127.0.0.1:3200/api/auth/callback']) {
+      expect(readAccessSetting({ ...COMPANY_ENV, RAAGENTS_OIDC_REDIRECT_URI: redirect }).state, redirect).toBe('on');
+    }
+  });
+
+  it('a password set as well locks the app', () => {
+    const setting = readAccessSetting({ ...COMPANY_ENV, RAAGENTS_ADMIN_PASSWORD: ADMIN_PASSWORD });
+    expect(setting.state).toBe('misconfigured');
+    expect(reasonOf(setting)).toContain('RAAGENTS_ADMIN_PASSWORD');
+  });
+
+  it.each([
+    ['a missing client id', { RAAGENTS_OIDC_CLIENT_ID: ' ' }, 'RAAGENTS_OIDC_CLIENT_ID'],
+    ['a client id with a space', { RAAGENTS_OIDC_CLIENT_ID: 'client 123' }, 'RAAGENTS_OIDC_CLIENT_ID'],
+    ['a missing admin e-mail', { RAAGENTS_ADMIN_EMAIL: '' }, 'RAAGENTS_ADMIN_EMAIL'],
+    ['an admin e-mail without @', { RAAGENTS_ADMIN_EMAIL: 'owner.example.test' }, 'RAAGENTS_ADMIN_EMAIL'],
+    ['an issuer that is not https', { RAAGENTS_OIDC_ISSUER: 'http://idp.example.test' }, 'RAAGENTS_OIDC_ISSUER'],
+    ['an issuer that is not a web address', { RAAGENTS_OIDC_ISSUER: 'idp.example.test' }, 'RAAGENTS_OIDC_ISSUER'],
+    ['a missing redirect', { RAAGENTS_OIDC_REDIRECT_URI: '' }, 'RAAGENTS_OIDC_REDIRECT_URI'],
+    ['a redirect whose path is not the callback', { RAAGENTS_OIDC_REDIRECT_URI: 'https://app.example.test/callback' }, 'RAAGENTS_OIDC_REDIRECT_URI'],
+    ['a redirect with a query', { RAAGENTS_OIDC_REDIRECT_URI: 'https://app.example.test/api/auth/callback?x=1' }, 'RAAGENTS_OIDC_REDIRECT_URI'],
+    ['an http redirect on another host', { RAAGENTS_OIDC_REDIRECT_URI: 'http://app.example.test/api/auth/callback' }, 'RAAGENTS_OIDC_REDIRECT_URI'],
+    ['scopes without openid', { RAAGENTS_OIDC_SCOPES: 'email profile' }, 'RAAGENTS_OIDC_SCOPES'],
+    ['an e-mail claim that is not a plain name', { RAAGENTS_OIDC_EMAIL_CLAIM: 'e mail' }, 'RAAGENTS_OIDC_EMAIL_CLAIM'],
+    ['a label over 60 characters', { RAAGENTS_OIDC_LABEL: 'x'.repeat(61) }, 'RAAGENTS_OIDC_LABEL'],
+    ['an admin username the accounts table would refuse', { RAAGENTS_ADMIN_USERNAME: 'the owner' }, 'RAAGENTS_ADMIN_USERNAME'],
+    ['a trusted-proxy setting other than 0 or 1', { RAAGENTS_TRUSTED_PROXY_HOPS: '2' }, 'RAAGENTS_TRUSTED_PROXY_HOPS'],
+  ])('locks the app for %s', (_name, change, named) => {
+    const setting = readAccessSetting({ ...COMPANY_ENV, ...change });
+    expect(setting.state).toBe('misconfigured');
+    expect(reasonOf(setting)).toContain(named);
+  });
+
+  it('locks, never opens, when company settings are set but the issuer is missing', () => {
+    for (const name of ['RAAGENTS_OIDC_CLIENT_ID', 'RAAGENTS_OIDC_REDIRECT_URI', 'RAAGENTS_ADMIN_EMAIL', 'RAAGENTS_OIDC_LABEL']) {
+      const setting = readAccessSetting({ [name]: 'something' });
+      expect(setting.state, name).toBe('misconfigured');
+      expect(reasonOf(setting), name).toContain('RAAGENTS_OIDC_ISSUER');
+    }
+  });
+
+  it('RAAGENTS_REQUIRE_SIGN_IN with neither method names both settings', () => {
+    const reason = reasonOf(readAccessSetting({ RAAGENTS_REQUIRE_SIGN_IN: '1' }));
+    expect(reason).toContain('RAAGENTS_ADMIN_PASSWORD');
+    expect(reason).toContain('RAAGENTS_OIDC_ISSUER');
+  });
+
+  it('counts a server-admin session only under the username the settings name, as with passwords', () => {
+    const setting = readAccessSetting(COMPANY_ENV);
+    expect(countedSession(setting, ADMIN)).toEqual(ADMIN);
+    expect(countedSession(setting, { ...ADMIN, username: 'old-admin' })).toBeNull();
+    expect(countedSession(setting, MEMBER)).toEqual(MEMBER);
   });
 });
 

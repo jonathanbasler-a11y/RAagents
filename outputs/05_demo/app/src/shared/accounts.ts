@@ -96,6 +96,26 @@ export function checkUsername(username: string): RuleCheck {
   return { ok: true };
 }
 
+/** One company address: a name, one @, a domain with a dot; lower-case letters, digits and . + _ - only. */
+const EMAIL = /^[a-z0-9.+_-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/;
+const MAX_EMAIL_CHARS = 254;
+
+/** An e-mail address as typed by the admin or sent by the sign-in provider: trimmed and lower-cased, so the two compare equal. */
+export function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+/** The rule for a company e-mail address (the database checks the same, schema version 8), on a normalized address. */
+export function checkEmail(email: string): RuleCheck {
+  if (email.length > MAX_EMAIL_CHARS || !EMAIL.test(email)) {
+    return {
+      ok: false,
+      message: 'An e-mail address has a name, one @ and a domain with a dot, in lower-case letters, digits and . + _ - only.',
+    };
+  }
+  return { ok: true };
+}
+
 export type PasswordRule = 'too_short' | 'too_long' | 'repeated' | 'contains_username' | 'same_as_current';
 
 export type PasswordCheck = { ok: true } | { ok: false; rule: PasswordRule; message: string };

@@ -78,6 +78,8 @@ export async function postLogin(request: Request, deps: AccountDeps): Promise<Re
   if (fields === null) return plainText(413, 'The request body is too large.');
   const next = safeNextPath(fields.get('next'));
   if (setting.state === 'misconfigured') return backToLogin('setup', next);
+  // Company sign-in has no password way in at all, not even for the admin.
+  if (setting.method !== 'password') return plainText(404, 'Not found.');
 
   const username = normalizeUsername(fields.get('username') ?? '');
   const password = fields.get('password') ?? '';

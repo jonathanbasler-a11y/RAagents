@@ -1,9 +1,11 @@
 // The sign-in gate behind src/proxy.ts, for a copy of the app that other people reach over a network. It is off unless
-// RAAGENTS_ADMIN_PASSWORD is set (or RAAGENTS_REQUIRE_SIGN_IN, which the container image sets so that a hosted copy can
-// never start open), so a copy run on one computer behaves exactly as before.
+// RAAGENTS_ADMIN_PASSWORD or RAAGENTS_OIDC_ISSUER is set (or RAAGENTS_REQUIRE_SIGN_IN, which the container image sets so
+// that a hosted copy can never start open), so a copy run on one computer behaves exactly as before.
 //
-// When on, each person signs in with their own account (src/server/accounts): the admin named in the server settings,
-// and the people the admin created on the People page. Pages without a session show the login page, API calls get 401,
+// Two ways to sign in, never both: with a password (RAAGENTS_ADMIN_PASSWORD), or with the company account through an
+// OpenID Connect provider (RAAGENTS_OIDC_ISSUER), where the provider proves who someone is and there is no password way in
+// at all. Either way each person signs in to their own account (src/server/accounts): the admin named in the server
+// settings, and the people the admin added on the People page. Pages without a session show the login page, API calls get 401,
 // a person who must still replace a one-time password reaches only the password page, and the admin paths are for the
 // admin. The health check, the login page, sign-in and sign-out stay open. Decisions are still stamped "person (local,
 // not authenticated)": names on decisions come in a later step.
@@ -11,14 +13,30 @@
 // Pure: the session comes from a lookup the caller passes in (the proxy reads it from the database), so tests need no
 // server. No import of server-only, Next or a Node module: the module has to load in any runtime.
 
-import { SESSION_TTL_MS, checkUsername, normalizeUsername, type SessionView } from '@/shared/accounts';
+import { SESSION_TTL_MS, checkEmail, checkUsername, normalizeEmail, normalizeUsername, type SessionView } from '@/shared/accounts';
 
 export type AccessEnv = Readonly<Record<string, string | undefined>>;
+
+/** Company sign-in: the provider, this app's registration with it, and what the login page and the claims look like. */
+export interface OidcSetting {
+  /** The provider's issuer identifier (https), where its discovery document is found. */
+  issuer: string;
+  clientId: string;
+  /** This app's callback, exactly as registered with the provider. */
+  redirectUri: string;
+  /** Space-separated, always with "openid". */
+  scopes: string;
+  /** The ID token claim that holds the person's e-mail address. */
+  emailClaim: string;
+  /** The words on the login page's button. */
+  label: string;
+}
 
 export type AccessSetting =
   | { state: 'off' }
   | { state: 'misconfigured'; reason: string }
-  | { state: 'on'; admin: { username: string; password: string }; trustedProxyHops: 0 | 1 };
+  | { state: 'on'; method: 'password'; admin: { username: string; password: string }; trustedProxyHops: 0 | 1 }
+  | { state: 'on'; method: 'oidc'; admin: { username: string; email: string }; oidc: OidcSetting; trustedProxyHops: 0 | 1 };
 
 export interface AccessInput {
   method: string;
@@ -52,18 +70,113 @@ const DEFAULT_ADMIN_USERNAME = 'admin';
 /** The settings of the shared-password version this replaced. Set alone, they lock the app rather than leave it open. */
 const RETIRED_SETTINGS = ['RAAGENTS_ACCESS_PASSWORD', 'RAAGENTS_SESSION_SECRET'] as const;
 
+/** The path of the company sign-in callback; RAAGENTS_OIDC_REDIRECT_URI must end in exactly this. */
+export const COMPANY_SIGN_IN_CALLBACK_PATH = '/api/auth/callback';
+const DEFAULT_OIDC_SCOPES = 'openid email profile';
+const DEFAULT_OIDC_EMAIL_CLAIM = 'email';
+const DEFAULT_OIDC_LABEL = 'Sign in with your company account';
+const MAX_OIDC_LABEL_CHARS = 60;
+/** Settings that only make sense with company sign-in: set without an issuer, they lock the app rather than leave it open. */
+const COMPANY_ONLY_SETTINGS = [
+  'RAAGENTS_OIDC_CLIENT_ID',
+  'RAAGENTS_OIDC_REDIRECT_URI',
+  'RAAGENTS_OIDC_SCOPES',
+  'RAAGENTS_OIDC_EMAIL_CLAIM',
+  'RAAGENTS_OIDC_LABEL',
+  'RAAGENTS_ADMIN_EMAIL',
+] as const;
+
 const isFilled = (value: string | undefined) => (value ?? '').trim() !== '';
+const misconfigured = (reason: string): AccessSetting => ({ state: 'misconfigured', reason });
+
+function parseUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+/** The admin username and the proxy setting, which both ways of signing in read the same way. */
+function readCommon(env: AccessEnv): { ok: true; username: string; trustedProxyHops: 0 | 1 } | { ok: false; reason: string } {
+  const username = normalizeUsername(env.RAAGENTS_ADMIN_USERNAME ?? '') || DEFAULT_ADMIN_USERNAME;
+  const usernameCheck = checkUsername(username);
+  if (!usernameCheck.ok) return { ok: false, reason: `RAAGENTS_ADMIN_USERNAME is not a valid username. ${usernameCheck.message}` };
+  const hops = (env.RAAGENTS_TRUSTED_PROXY_HOPS ?? '').trim();
+  if (hops !== '' && hops !== '0' && hops !== '1') return { ok: false, reason: 'RAAGENTS_TRUSTED_PROXY_HOPS must be 0 or 1.' };
+  return { ok: true, username, trustedProxyHops: hops === '1' ? 1 : 0 };
+}
+
+/** The provider settings, checked; the first problem found is the reason. */
+function readOidc(env: AccessEnv, issuer: string): { ok: true; oidc: OidcSetting } | { ok: false; reason: string } {
+  if (parseUrl(issuer)?.protocol !== 'https:') return { ok: false, reason: "RAAGENTS_OIDC_ISSUER must be the provider's https web address." };
+  const clientId = (env.RAAGENTS_OIDC_CLIENT_ID ?? '').trim();
+  if (!/^[\x21-\x7e]{1,200}$/.test(clientId)) {
+    return { ok: false, reason: 'RAAGENTS_OIDC_CLIENT_ID is required with company sign-in: the client id the provider gave this app, with no spaces.' };
+  }
+  const redirectUri = (env.RAAGENTS_OIDC_REDIRECT_URI ?? '').trim();
+  const redirect = parseUrl(redirectUri);
+  const local = redirect !== null && redirect.protocol === 'http:' && (redirect.hostname === 'localhost' || redirect.hostname === '127.0.0.1');
+  if (
+    redirect === null ||
+    !(redirect.protocol === 'https:' || local) ||
+    redirect.pathname !== COMPANY_SIGN_IN_CALLBACK_PATH ||
+    redirect.search !== '' ||
+    redirect.hash !== '' ||
+    redirect.username !== '' ||
+    redirect.password !== ''
+  ) {
+    return {
+      ok: false,
+      reason: `RAAGENTS_OIDC_REDIRECT_URI must be https://<this app's address>${COMPANY_SIGN_IN_CALLBACK_PATH}, or http://localhost:<port>${COMPANY_SIGN_IN_CALLBACK_PATH} on one computer, exactly as registered with the provider.`,
+    };
+  }
+  const scopeList = (env.RAAGENTS_OIDC_SCOPES ?? '').trim().split(/\s+/).filter((scope) => scope !== '');
+  const scopes = scopeList.length === 0 ? DEFAULT_OIDC_SCOPES : scopeList.join(' ');
+  if (!scopes.split(' ').includes('openid') || !scopes.split(' ').every((scope) => /^[\x21\x23-\x5b\x5d-\x7e]+$/.test(scope))) {
+    return { ok: false, reason: 'RAAGENTS_OIDC_SCOPES must be scope names separated by spaces, including "openid".' };
+  }
+  const emailClaim = (env.RAAGENTS_OIDC_EMAIL_CLAIM ?? '').trim() || DEFAULT_OIDC_EMAIL_CLAIM;
+  if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(emailClaim)) {
+    return { ok: false, reason: 'RAAGENTS_OIDC_EMAIL_CLAIM must be the plain name of the claim that holds the e-mail address, such as "email".' };
+  }
+  const label = (env.RAAGENTS_OIDC_LABEL ?? '').trim() || DEFAULT_OIDC_LABEL;
+  if ([...label].length > MAX_OIDC_LABEL_CHARS || /[\u0000-\u001f\u007f]/.test(label)) {
+    return { ok: false, reason: `RAAGENTS_OIDC_LABEL must be one line of at most ${MAX_OIDC_LABEL_CHARS} characters.` };
+  }
+  return { ok: true, oidc: { issuer, clientId, redirectUri, scopes, emailClaim, label } };
+}
+
+function readCompanySignIn(env: AccessEnv, issuer: string): AccessSetting {
+  if (isFilled(env.RAAGENTS_ADMIN_PASSWORD)) {
+    return misconfigured(
+      'company sign-in is on (RAAGENTS_OIDC_ISSUER), so there is no password way in: remove RAAGENTS_ADMIN_PASSWORD from the settings.',
+    );
+  }
+  const provider = readOidc(env, issuer);
+  if (!provider.ok) return misconfigured(provider.reason);
+  const email = normalizeEmail(env.RAAGENTS_ADMIN_EMAIL ?? '');
+  if (email === '') return misconfigured('RAAGENTS_ADMIN_EMAIL is required with company sign-in: the company e-mail address of the admin.');
+  const emailCheck = checkEmail(email);
+  if (!emailCheck.ok) return misconfigured(`RAAGENTS_ADMIN_EMAIL is not a valid e-mail address. ${emailCheck.message}`);
+  const common = readCommon(env);
+  if (!common.ok) return misconfigured(common.reason);
+  return { state: 'on', method: 'oidc', admin: { username: common.username, email }, oidc: provider.oidc, trustedProxyHops: common.trustedProxyHops };
+}
 
 export function readAccessSetting(env: AccessEnv): AccessSetting {
   // Trimmed: secret stores often end a value with a newline.
+  const issuer = (env.RAAGENTS_OIDC_ISSUER ?? '').trim();
+  if (issuer !== '') return readCompanySignIn(env, issuer);
+  const leftover = COMPANY_ONLY_SETTINGS.find((name) => isFilled(env[name]));
+  if (leftover !== undefined) {
+    return misconfigured(`${leftover} is set, but RAAGENTS_OIDC_ISSUER is not: company sign-in needs the provider's address.`);
+  }
   const password = (env.RAAGENTS_ADMIN_PASSWORD ?? '').trim();
   if (password === '') {
     const required = (env.RAAGENTS_REQUIRE_SIGN_IN ?? '').trim();
     if (required !== '' && required !== '0') {
-      return {
-        state: 'misconfigured',
-        reason: 'sign-in is required here (RAAGENTS_REQUIRE_SIGN_IN), but RAAGENTS_ADMIN_PASSWORD is not set.',
-      };
+      return misconfigured('sign-in is required here (RAAGENTS_REQUIRE_SIGN_IN), but neither RAAGENTS_ADMIN_PASSWORD nor RAAGENTS_OIDC_ISSUER is set.');
     }
     if (RETIRED_SETTINGS.some((name) => isFilled(env[name]))) {
       return {
@@ -74,18 +187,11 @@ export function readAccessSetting(env: AccessEnv): AccessSetting {
     return { state: 'off' };
   }
   if ([...password].length < MIN_ADMIN_PASSWORD_CHARS) {
-    return { state: 'misconfigured', reason: `RAAGENTS_ADMIN_PASSWORD must have at least ${MIN_ADMIN_PASSWORD_CHARS} characters.` };
+    return misconfigured(`RAAGENTS_ADMIN_PASSWORD must have at least ${MIN_ADMIN_PASSWORD_CHARS} characters.`);
   }
-  const username = normalizeUsername(env.RAAGENTS_ADMIN_USERNAME ?? '') || DEFAULT_ADMIN_USERNAME;
-  const usernameCheck = checkUsername(username);
-  if (!usernameCheck.ok) {
-    return { state: 'misconfigured', reason: `RAAGENTS_ADMIN_USERNAME is not a valid username. ${usernameCheck.message}` };
-  }
-  const hops = (env.RAAGENTS_TRUSTED_PROXY_HOPS ?? '').trim();
-  if (hops !== '' && hops !== '0' && hops !== '1') {
-    return { state: 'misconfigured', reason: 'RAAGENTS_TRUSTED_PROXY_HOPS must be 0 or 1.' };
-  }
-  return { state: 'on', admin: { username, password }, trustedProxyHops: hops === '1' ? 1 : 0 };
+  const common = readCommon(env);
+  if (!common.ok) return misconfigured(common.reason);
+  return { state: 'on', method: 'password', admin: { username: common.username, password }, trustedProxyHops: common.trustedProxyHops };
 }
 
 const isGetOrHead = (method: string) => method === 'GET' || method === 'HEAD';

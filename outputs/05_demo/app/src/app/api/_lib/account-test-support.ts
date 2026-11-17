@@ -37,6 +37,7 @@ export function accountHarness(options: { setting?: AccessSetting; hops?: 0 | 1 
   const passwords = createPasswordHasher({ cost: CHEAP });
   const setting: AccessSetting = options.setting ?? {
     state: 'on',
+    method: 'password',
     admin: { username: 'admin', password: ADMIN_PASSWORD },
     trustedProxyHops: options.hops ?? 0,
   };

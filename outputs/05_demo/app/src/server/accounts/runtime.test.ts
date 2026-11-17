@@ -9,8 +9,9 @@ import { AccountsSetupError, createAccountStore, type AccountStore } from './sto
 
 const CHEAP = { N: 2 ** 10, r: 8, p: 1 };
 const ADMIN_PASSWORD = 'a-long-admin-password-1';
-const ON = (password = ADMIN_PASSWORD, username = 'admin'): Extract<AccessSetting, { state: 'on' }> => ({
+const ON = (password = ADMIN_PASSWORD, username = 'admin'): Extract<AccessSetting, { state: 'on'; method: 'password' }> => ({
   state: 'on',
+  method: 'password',
   admin: { username, password },
   trustedProxyHops: 0,
 });
