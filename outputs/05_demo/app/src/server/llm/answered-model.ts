@@ -1,19 +1,23 @@
-// Whether the model the gateway reported is the model the route asked for.
+// Did the model the gateway names in its reply match the configured model?
 //
-// A model gateway may serve a request from a different model than the configured one (a
-// smaller model standing in for a larger one has been seen). The reply's `model` field is the only record
-// of who answered, so it is compared with the configured id.
-//
-// MEASURED 2026-11-17: the reply names the vendor's model, without a catalogue prefix
-// ("vendor.model-1" answers as "model-1") and, for an undated alias, with the snapshot
-// date ("model-1" answers as "model-1-2026-09-29"). Anything else is another model.
+// A gateway may serve a request from a different model than the configured one, and the reply's
+// `model` field is the only place that shows it. Gateways name models in their own way: the
+// configured id can carry a vendor prefix that the reply leaves out ("vendor.model-1" comes back
+// as "model-1"), and an alias can come back with a release date added ("model-1-2026-01-31",
+// "model-1-20260131", "model-1@20260131"). Those count as the same model; any other difference
+// does not, including a longer or shorter version name.
 
-const SNAPSHOT_SUFFIX = /^(-\d{4}-\d{2}-\d{2}|-\d{8}|@\d{8})$/;
-const withoutCatalogPrefix = (id: string) => id.trim().replace(/^[a-z-]+\./i, '').toLowerCase();
+const RELEASE_DATE_TAG = /^(?:-\d{4}-\d{2}-\d{2}|[-@]\d{8})$/;
 
-export function isSameModel(requested: string, reported: string): boolean {
-  const want = withoutCatalogPrefix(requested);
-  const got = withoutCatalogPrefix(reported);
-  if (got === want) return true;
-  return got.startsWith(want) && SNAPSHOT_SUFFIX.test(got.slice(want.length));
+function bareId(id: string): string {
+  const trimmed = id.trim().toLowerCase();
+  const dot = trimmed.indexOf('.');
+  // A prefix is letters and dashes before the first dot ("vendor-a."); a dot inside a version ("gpt-5.6") is not one.
+  return dot > 0 && /^[a-z-]+$/.test(trimmed.slice(0, dot)) ? trimmed.slice(dot + 1) : trimmed;
+}
+
+export function isSameModel(configured: string, reported: string): boolean {
+  const expected = bareId(configured);
+  const actual = bareId(reported);
+  return actual === expected || (actual.startsWith(expected) && RELEASE_DATE_TAG.test(actual.slice(expected.length)));
 }
