@@ -7,7 +7,7 @@
 // "model-1-20260131", "model-1@20260131"). Those count as the same model; any other difference
 // does not, including a longer or shorter version name.
 
-const RELEASE_DATE_TAG = /^(?:-\d{4}-\d{2}-\d{2}|[-@]\d{8})$/;
+const RELEASE_DATE_TAG = /^(?:-\d\d\d\d-\d\d-\d\d|[-@]\d{8})$/;
 
 function bareId(id: string): string {
   const trimmed = id.trim().toLowerCase();
