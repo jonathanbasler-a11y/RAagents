@@ -81,7 +81,7 @@ describe('stream(): parsing', () => {
     const events = await collect(client.stream({ messages: USER_ONLY }));
 
     expect(deltas(events)).toEqual(['Hel', 'lo']);
-    expect(endOf(events)).toEqual({ text: 'Hello', finishReason: 'stop', truncated: false, partial: false, model: REPORTED_MODEL });
+    expect(endOf(events)).toEqual({ text: 'Hello', finishReason: 'stop', truncated: false, partial: false, model: REPORTED_MODEL, substituted: false });
   });
 
   it('reassembles events, "data:" prefixes and multi-byte characters split across reads', async () => {
@@ -257,14 +257,34 @@ describe('stream(): partial and failed answers', () => {
     expect(calls).toHaveLength(2);
   });
 
-  it('throws before any delta when the stream carries no text at all', async () => {
+  it('throws a declined error before any delta when the stream carries no text at all', async () => {
+    // With a gateway in strict OpenAI-compatible mode, a refusal looks exactly like this.
     const { client } = setup([(call) => sseResponse([chunkEvent('', { role: true }), chunkEvent(null, { finishReason: 'stop' }), DONE_EVENT], { signal: call.signal })]);
     captureLogs();
 
     const { error, seen } = await streamFailure(client.stream({ messages: USER_ONLY }));
 
-    expect(error.kind).toBe('outage');
+    expect(error.kind).toBe('declined');
     expect(seen).toEqual([]);
+  });
+
+  it('throws a declined error before any delta when an empty stream ends with refusal', async () => {
+    const { client } = setup([(call) => sseResponse([chunkEvent('', { role: true }), chunkEvent(null, { finishReason: 'refusal' }), DONE_EVENT], { signal: call.signal })]);
+    captureLogs();
+
+    const { error, seen } = await streamFailure(client.stream({ messages: USER_ONLY }));
+
+    expect(error.kind).toBe('declined');
+    expect(seen).toEqual([]);
+  });
+
+  it('flags a stream from another model than configured', async () => {
+    const { client } = setup([(call) => sseResponse([chunkEvent('Hello', { role: true, model: 'vendor-b.other-2' }), chunkEvent(null, { finishReason: 'stop', model: 'vendor-b.other-2' }), DONE_EVENT], { signal: call.signal })]);
+    captureLogs();
+
+    const events = await collect(client.stream({ messages: USER_ONLY }));
+
+    expect(endOf(events)).toMatchObject({ model: 'vendor-b.other-2', substituted: true });
   });
 
   it('throws before any delta when the text is only whitespace', async () => {

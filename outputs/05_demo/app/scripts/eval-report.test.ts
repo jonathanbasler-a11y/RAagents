@@ -69,7 +69,8 @@ describe('verdictOf (BUILD-LEARNINGS 9.6)', () => {
   });
 
   it('is INVALID when more than one judge model scored the run, or answers are missing', () => {
-    const mixed = makeRecord([...caseResults('a', [4, 4]), makeResult({ caseId: 'a', rep: 3, judgeModel: 'gpt-5.6-other-test' })]);
+    // Two snapshots of the configured judge: the same model by name, still two graders.
+    const mixed = makeRecord([...caseResults('a', [4, 4]), makeResult({ caseId: 'a', rep: 3, judgeModel: 'gpt-5.6-sol-test-judge-2026-10-01' })]);
     expect(verdictOf(mixed).reasons).toEqual([expect.stringMatching(/more than one judge model/)]);
 
     const short = makeRecord(caseResults('a', [4, 4, 4]), { fingerprint: { reps: 3 } });
@@ -88,6 +89,39 @@ describe('verdictOf (BUILD-LEARNINGS 9.6)', () => {
     ]);
     expect(verdictOf(makeRecord(caseResults('a', [4, 4, 4]), { fingerprint: { judgePromptHash: '' } })).reasons).toEqual([
       'fingerprint field "judgePromptHash" is missing',
+    ]);
+  });
+
+  it('is INVALID when either route reported another model than the one configured', () => {
+    const agents = makeRecord(caseResults('a', [4, 4, 4]), {
+      fingerprint: { agentsModel: { configured: 'anthropic.claude-test-agents', family: 'anthropic', resolved: ['claude-test-agents', 'claude-other'] } },
+    });
+    expect(verdictOf(agents)).toEqual({
+      verdict: 'INVALID',
+      reasons: ['the agents route reported another model than configured: claude-other (configured anthropic.claude-test-agents)'],
+    });
+
+    const judge = makeRecord(caseResults('a', [4, 4, 4]), {
+      fingerprint: { judgeModel: { configured: 'gpt-5.6-sol-test-judge', family: 'openai', resolved: ['gpt-5-mini'] } },
+    });
+    expect(verdictOf(judge).reasons).toEqual(['the judge route reported another model than configured: gpt-5-mini (configured gpt-5.6-sol-test-judge)']);
+  });
+
+  it('passes a run whose routes reported the vendor name or a dated snapshot of the configured model', () => {
+    const record = makeRecord(caseResults('a', [4, 4, 4]), {
+      fingerprint: {
+        agentsModel: { configured: 'anthropic.claude-test-agents', family: 'anthropic', resolved: ['claude-test-agents'] },
+        judgeModel: { configured: 'gpt-5.6-sol-test-judge', family: 'openai', resolved: ['gpt-5.6-sol-test-judge-2026-10-01'] },
+      },
+    });
+    expect(verdictOf(record)).toEqual({ verdict: 'PASS', reasons: [] });
+  });
+
+  it('says how many unusable answers the model declined', () => {
+    const declined = makeResult({ caseId: 'a', rep: 3, unusable: 'llm_declined' });
+    declined.answer.errorCode = 'llm_declined';
+    expect(verdictOf(makeRecord([...caseResults('a', [4, 4]), declined])).reasons).toEqual([
+      '1 unusable answer (blank, error or broken off; 1 declined or empty: the model may have declined)',
     ]);
   });
 

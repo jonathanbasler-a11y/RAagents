@@ -221,13 +221,24 @@ describe('runAgent: replies that end badly', () => {
 
     const result = await runAgent('lead', ctx, deps);
 
-    expect(result).toMatchObject({ text: 'The filing route is ', status: 'partial', errorCode: 'llm_request', state: 'failed', truncated: false });
+    // llm_declined, not llm_request: a filtered reply is not a setup problem.
+    expect(result).toMatchObject({ text: 'The filing route is ', status: 'partial', errorCode: 'llm_declined', state: 'failed', truncated: false });
     expect(result.correlationId).toEqual(expect.any(String));
     expect(logs.warnings().join('\n')).toContain(`(correlation ${result.correlationId})`);
     expect(ctx.events.slice(-2)).toEqual([
-      { type: 'error', code: 'llm_request', correlationId: result.correlationId, messageId: 'msg-1' },
+      { type: 'error', code: 'llm_declined', correlationId: result.correlationId, messageId: 'msg-1' },
       { type: 'agent_end', messageId: 'msg-1', status: 'partial', truncated: false },
     ]);
+  });
+
+  it('keeps the text of a reply that ended with refusal, as partial with llm_declined, never as complete', async () => {
+    const { deps } = setup([sseResponse([chunkEvent('Part of the answer ', { role: true }), chunkEvent(null, { finishReason: 'refusal' }), DONE_EVENT])]);
+    const ctx = context();
+    captureLogs();
+
+    const result = await runAgent('lead', ctx, deps);
+
+    expect(result).toMatchObject({ text: 'Part of the answer ', status: 'partial', errorCode: 'llm_declined', state: 'failed' });
   });
 
   it('still marks a reply that ended with "stop" as complete (positive control for the content filter case)', async () => {

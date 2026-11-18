@@ -190,6 +190,15 @@ describe('describeChatError', () => {
     });
   });
 
+  it('says the model stopped a declined reply, without calling it a setup problem or an outage', () => {
+    const info = describeChatError('llm_declined');
+    // The title states only what is known: the reply stopped. The text hedges why.
+    expect(info.title).toBe('Reply stopped');
+    expect(info.text).toMatch(/model may have declined the request/);
+    expect(info.text).toMatch(/content filter/);
+    expect(info.kind).not.toBe('setup');
+  });
+
   it('keeps the other codes as they were (positive control)', () => {
     expect(describeChatError('out_of_time')).toMatchObject({ kind: 'service', text: 'The turn ran out of time.' });
     expect(describeChatError(null)).toMatchObject({ kind: 'app', text: 'Something went wrong.' });

@@ -194,16 +194,16 @@ export async function runAgent(agentId: AgentId, context: RunAgentContext, deps:
     if (end === undefined) throw new Error('the model stream ended without its end event');
     model = end.model;
     truncated = end.truncated;
-    // The gateway's content filter ends a reply early with a normal-looking end of stream: the
-    // text is incomplete, so it is kept as partial (the client calls a filtered empty reply
-    // "request" too), never saved as complete.
-    const filtered = end.finishReason === 'content_filter';
+    // A content filter or a refusal ends a reply early with a normal-looking end of stream: the
+    // text is incomplete, so it is kept as partial (the client calls a declined empty reply
+    // "declined" too), never saved as complete.
+    const filtered = end.finishReason === 'content_filter' || end.finishReason === 'refusal';
     if (end.partial || filtered) {
       status = 'partial';
-      errorCode = context.signal.aborted ? 'out_of_time' : end.partial ? `llm_${end.errorKind ?? 'network'}` : 'llm_request';
+      errorCode = context.signal.aborted ? 'out_of_time' : end.partial ? `llm_${end.errorKind ?? 'network'}` : 'llm_declined';
       // The client logged why the reply broke off under this id; the browser shows the same id.
       correlationId = end.correlationId ?? newId();
-      const why = end.partial ? 'broke off' : 'was cut off by the content filter';
+      const why = end.partial ? 'broke off' : `was stopped by the model (finish reason ${end.finishReason})`;
       log.warn(`[run-agent] ${agent.id} reply ${why} after ${text.length} characters (correlation ${correlationId}): ${errorCode}`);
     }
   } catch (error) {
