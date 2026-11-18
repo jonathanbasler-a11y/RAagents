@@ -10,6 +10,7 @@
 //   standard errors with at least 5 paired cases; otherwise "no measurable effect" or "too
 //   few cases". Different judges, a changed case or an INVALID run give no verdict at all.
 // - formatReport: the lines to print. Counts and scores only, never answer text.
+import { isSameModel } from '@/server/llm/answered-model';
 import type { AgentId } from '@/shared/contracts';
 import { allPassed, hasCritical } from './checks';
 import { JUDGE_DIMENSIONS, type JudgeDimension } from './judge';
@@ -163,11 +164,19 @@ export function verdictOf(record: EvalRunRecord): { verdict: RunVerdict; reasons
     invalid.push(`fewer than ${EVAL_REPETITIONS} repetitions per case (${fingerprint.reps}), so the run does not count`);
   }
   const unusable = results.filter((result) => !isUsable(result)).length;
-  if (unusable > 0) invalid.push(`${plural(unusable, 'unusable answer')} (blank, error or broken off)`);
+  const declined = results.filter((result) => !isUsable(result) && result.answer.errorCode === 'llm_declined').length;
+  if (unusable > 0) {
+    invalid.push(`${plural(unusable, 'unusable answer')} (blank, error or broken off${declined > 0 ? `; ${declined} declined or empty: the model may have declined` : ''})`);
+  }
   const unscored = results.filter((result) => isUsable(result) && !result.judge?.ok).length;
   if (unscored > 0) invalid.push(`${plural(unscored, 'answer')} the judge could not score`);
   const judges = [...new Set(results.flatMap((result) => (result.judge?.model ? [result.judge.model] : [])))].sort();
   if (judges.length > 1) invalid.push(`more than one judge model: ${judges.join(', ')}`);
+  // A run served by a different model than the configured one measured that other model.
+  for (const [route, models] of [['agents', fingerprint.agentsModel], ['judge', fingerprint.judgeModel]] as const) {
+    const others = (models?.resolved ?? []).filter((reported) => !isSameModel(models.configured, reported));
+    if (others.length > 0) invalid.push(`the ${route} route reported another model than configured: ${others.join(', ')} (configured ${models.configured})`);
+  }
   const expectedAnswers = record.cases.length * fingerprint.reps;
   if (results.length !== expectedAnswers) invalid.push(`incomplete: ${results.length} of ${expectedAnswers} answers`);
 

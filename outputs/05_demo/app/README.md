@@ -72,7 +72,7 @@ Then open http://127.0.0.1:3200.
 
 - Keys must start with `fake`.
 - `--no-addition=Dara,Lena`: those agents reply `NO_ADDITION`, which the team chat shows as "Dara had nothing to add." Other options: `--port`, `--host`, `--delay-ms` and `--slow-delay-ms` (or `FAKE_LLM_PORT`, `FAKE_LLM_HOST`, `FAKE_LLM_DELAY_MS`, `FAKE_LLM_SLOW_DELAY_MS`, `FAKE_LLM_NO_ADDITION`).
-- The model name picks a failure mode, to see the error states: `LLM_MODEL=fake-truncate` (a cut-off reply), `fake-break` (a reply that breaks off), `fake-slow`, `fake-empty`, `fake-fail-500`, `fake-fail-429`, `fake-fail-401` or `fake-fail-model`. Restart the app after changing it.
+- The model name picks a failure mode, to see the error states: `LLM_MODEL=fake-truncate` (a cut-off reply), `fake-break` (a reply that breaks off), `fake-slow`, `fake-empty` (an empty reply, shown as "Reply stopped"), `fake-fail-500`, `fake-fail-429`, `fake-fail-401` or `fake-fail-model`. Restart the app after changing it.
 
 **Switch back to your real settings** when you finish: stop both (Ctrl+C in each terminal; a practice demo started with the launcher is stopped with `npm run demo:stop`), then start the live demo again with `npm run demo`, or the app with plain `npm start`. The fake values were set for that one command only, so the app uses your own settings in `.env.local` and the real chat database again. Before you present, send one warm-up question: a reply that starts with "Fake reply from" means the app is still on the rehearsal settings.
 

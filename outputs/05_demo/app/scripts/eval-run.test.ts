@@ -283,6 +283,47 @@ describe('runEval: fail fast (BUILD-LEARNINGS 9.6)', () => {
     expect(judge.requests).toHaveLength(2);
   });
 
+  // A refusal is usually the same on every try, and a case's tries run back to back: counting each
+  // as one more unusable answer stopped a whole suite on one case the model always declines, with
+  // nothing saved (review, 2026-11-17).
+  it('does not abort on one case the model declines on every try; the run completes and says so', async () => {
+    const declined = { status: 'error' as const, text: '', errorCode: 'llm_declined' as const, state: 'failed' as const, model: null };
+    const { deps } = setup({ answers: [declined, declined, declined, {}] });
+
+    const record = await runEval({ cases: [testCase({ id: 'a' }), testCase({ id: 'b' })] }, deps);
+
+    expect(record.results).toHaveLength(6);
+    expect(record.results.slice(0, 3).map((result) => result.answer.unusable)).toEqual(['llm_declined', 'llm_declined', 'llm_declined']);
+  });
+
+  it('still aborts when three different cases in a row are declined: an endpoint that declines everything', async () => {
+    const declined = { status: 'error' as const, text: '', errorCode: 'llm_declined' as const, state: 'failed' as const, model: null };
+    const { deps, agent } = setup({ answers: [declined] });
+
+    const reason = await abortReason(runEval({ cases: [testCase({ id: 'a' }), testCase({ id: 'b' }), testCase({ id: 'c' })] }, deps));
+
+    expect(reason).toMatch(/3 unusable answers in a row/);
+    expect(agent.calls).toHaveLength(7);
+  });
+
+  it('counts another kind of unusable answer after a decline of the same case as a new one', async () => {
+    const declined = { status: 'error' as const, text: '', errorCode: 'llm_declined' as const, state: 'failed' as const, model: null };
+    const outage = { ...declined, errorCode: 'llm_outage' as const };
+    const { deps, agent } = setup({ answers: [declined, declined, outage] });
+
+    expect(await abortReason(runEval({ cases: [testCase({ id: 'a' }), testCase({ id: 'b' })] }, deps))).toMatch(/3 unusable answers in a row/);
+    expect(agent.calls).toHaveLength(4);
+  });
+
+  it('counts a decline after another kind of unusable answer as a new one', async () => {
+    const outage = { status: 'error' as const, text: '', errorCode: 'llm_outage' as const, state: 'failed' as const, model: null };
+    const declined = { ...outage, errorCode: 'llm_declined' as const };
+    const { deps, agent } = setup({ answers: [outage, declined, declined] });
+
+    expect(await abortReason(runEval({ cases: [testCase({ id: 'a' }), testCase({ id: 'b' })] }, deps))).toMatch(/3 unusable answers in a row/);
+    expect(agent.calls).toHaveLength(4);
+  });
+
   it('aborts after 3 answers in a row the judge could not score', async () => {
     const { deps, agent } = setup({ judge: ['no json', '{"task_success": 9}', ''] });
 
@@ -326,6 +367,25 @@ describe('runEval: the judge is a different model family (BUILD-LEARNINGS 9.4)',
     const { deps } = setup({ answers: [{ model: 'mystery-model-7' }] });
 
     expect(await abortReason(runEval({ cases: [testCase()] }, deps))).toMatch(/cannot tell the model family of "mystery-model-7"/);
+  });
+
+  it('aborts at the first answer from another model than the agents route is configured with', async () => {
+    const { deps, judge } = setup({ answers: [{ model: 'anthropic.claude-other' }] });
+
+    expect(await abortReason(runEval({ cases: [testCase()] }, deps))).toMatch(/agents route reported another model than configured: anthropic\.claude-other/);
+    expect(judge.requests).toHaveLength(0);
+  });
+
+  it('aborts at the first score from another model than the judge route is configured with', async () => {
+    const { deps } = setup({ judge: [{ text: judgeReply(), model: 'gpt-5-mini' }] });
+
+    expect(await abortReason(runEval({ cases: [testCase()] }, deps))).toMatch(/judge route reported another model than configured: gpt-5-mini/);
+  });
+
+  it('does not abort on the vendor name or a dated snapshot of the configured models', async () => {
+    const { deps } = setup({ answers: [{ model: 'claude-test-agents' }], judge: [{ text: judgeReply(), model: 'gpt-5.6-sol-test-judge-2026-10-01' }] });
+
+    await expect(runEval({ cases: [testCase()] }, deps)).resolves.toMatchObject({ results: expect.any(Array) });
   });
 
   it('judgeFamilyProblem compares families, not names', () => {

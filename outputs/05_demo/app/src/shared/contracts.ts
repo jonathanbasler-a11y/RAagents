@@ -515,12 +515,15 @@ export const LLM_ERROR_KINDS = [
   'network',
   'tls',
   'dns',
+  'declined',
 ] as const;
 /**
  * - config: env missing or a placeholder (no call was made).
  * - auth: key refused · model: model not allowed or unknown · request: the gateway refused the request shape.
  * - rate_limit: 429 · outage: 5xx · timeout: deadline hit · network: connection failed or reset.
  * - tls, dns: permanent connection errors; never retried.
+ * - declined: no text, and the reply finished with refusal, content_filter or a plain stop (the
+ *   gateway in strict OpenAI-compatible mode maps a refusal to "stop"); never retried.
  * The UI shows config and request problems differently from outages.
  */
 export type LlmErrorKind = (typeof LLM_ERROR_KINDS)[number];
@@ -624,6 +627,8 @@ export interface LlmResult {
   partial: boolean;
   /** Model id the gateway reported (else the configured id). */
   model: string;
+  /** Set when the gateway reported a model: true when it is not the configured one. */
+  substituted?: boolean;
   /** Why a partial result stopped. */
   errorKind?: LlmErrorKind;
   /** Set on a partial result: the server log line that says why it stopped carries this id. */

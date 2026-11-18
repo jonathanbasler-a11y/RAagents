@@ -20,6 +20,7 @@ import {
   type RedactionTargets,
 } from './errors';
 import { SseParser } from './sse';
+import { isSameModel } from './answered-model';
 
 // Retry policy: at most 3 attempts, short jittered backoff, about 4 s of total sleep.
 const MAX_ATTEMPTS = 3;
@@ -148,6 +149,19 @@ export function createLlmClient(options: CreateLlmClientOptions): LlmClient {
     console[level](redact(`[llm] ${config.route} route: ${message}`, targets));
   };
 
+  // Warn once per reported model, not on every reply this client gets.
+  const warnedSubstitutions = new Set<string>();
+  /** The model fields of a result: the reported model when there is one, and whether it is another. */
+  function answeredBy(reported: string | undefined): Pick<LlmResult, 'model' | 'substituted'> {
+    if (reported === undefined) return { model: config.model };
+    const substituted = !isSameModel(config.model, reported);
+    if (substituted && !warnedSubstitutions.has(reported)) {
+      warnedSubstitutions.add(reported);
+      log('warn', `asked for model ${config.model}, but the gateway says ${reported} answered.`);
+    }
+    return { model: reported, substituted };
+  }
+
   function toError(correlationId: string, attempts: number, failure: Failure): LlmError {
     const status = failure.status === undefined ? '' : ` HTTP ${failure.status}`;
     const detail = failure.detail ? ` Detail: ${failure.detail}` : '';
@@ -266,7 +280,10 @@ export function createLlmClient(options: CreateLlmClientOptions): LlmClient {
     if (isTruncated(finishReason)) {
       return { ...base, kind: 'request', reason: 'the output token cap ran out before any text (raise LLM_MAX_TOKENS)' };
     }
-    if (finishReason === 'content_filter') return { ...base, kind: 'request', reason: 'the model endpoint filtered the reply' };
+    if (finishReason === 'refusal') return { ...base, kind: 'declined', reason: 'the model declined the request (finish reason refusal)' };
+    if (finishReason === 'content_filter') return { ...base, kind: 'declined', reason: 'a content filter stopped the reply' };
+    // In strict OpenAI-compatible mode a gateway maps a refusal to "stop", leaving no text.
+    if (finishReason === 'stop') return { ...base, kind: 'declined', reason: 'the model sent no text and finished normally; it may have declined the request' };
     return { ...base, kind: 'outage', reason: 'the model endpoint sent an empty reply' };
   }
 
@@ -333,7 +350,7 @@ export function createLlmClient(options: CreateLlmClientOptions): LlmClient {
     const text = textOf(asObject(choice?.message)?.content);
     if (text.trim() === '') return { failure: emptyReply(finishReason, response.status, raw) };
     return {
-      result: { text, finishReason, truncated: isTruncated(finishReason), partial: false, model: reportedModel(json) ?? config.model },
+      result: { text, finishReason, truncated: isTruncated(finishReason), partial: false, ...answeredBy(reportedModel(json)) },
     };
   }
 
@@ -446,7 +463,7 @@ export function createLlmClient(options: CreateLlmClientOptions): LlmClient {
       finishReason,
       truncated: isTruncated(finishReason),
       partial: false,
-      model: model ?? config.model,
+      ...answeredBy(model),
     };
     if (!started) return { failure: problem ?? emptyReply(finishReason, response.status, '') };
     if (problem === undefined) return { result };
