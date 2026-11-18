@@ -6,6 +6,7 @@ import type { ApiResult, ChatApi } from '@/client/chat-client';
 import { LOCAL_PERSON, type GatesResponse } from '@/shared/contracts';
 import { decision, dissent, gateOf, gatesResponse } from '@/shared/gates-fixtures';
 import { GatesPanel } from './GatesPanel';
+import { SignInProvider } from './SignIn';
 import { GatesProvider } from './GatesProvider';
 
 const ok = <T,>(data: T): ApiResult<T> => ({ ok: true, data });
@@ -18,11 +19,13 @@ function fakeClient(initial: GatesResponse = gatesResponse()) {
   };
 }
 
-const renderPanel = (client: ReturnType<typeof fakeClient>) =>
+const renderPanel = (client: ReturnType<typeof fakeClient>, options: { signedIn?: boolean } = {}) =>
   render(
-    <GatesProvider client={client}>
-      <GatesPanel />
-    </GatesProvider>,
+    <SignInProvider decisionName={options.signedIn ? 'Jane Doe (jane.doe)' : null}>
+      <GatesProvider client={client}>
+        <GatesPanel />
+      </GatesProvider>
+    </SignInProvider>,
   );
 
 const card = async (title: RegExp) => screen.findByRole('article', { name: title });
@@ -71,6 +74,15 @@ describe('GatesPanel: reading', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Gates' })).toBeInTheDocument();
     expect(screen.getByText(/built by code from what is in the app; no model is involved/i)).toBeInTheDocument();
     expect(screen.getByText(new RegExp(`This app has no login: a decision is recorded as “${LOCAL_PERSON.replace(/[()]/g, '\\$&')}”`))).toBeInTheDocument();
+  });
+
+  it('says a decision is recorded under the signed-in person’s name', async () => {
+    renderPanel(fakeClient(), { signedIn: true });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Gates' })).toBeInTheDocument();
+    expect(screen.getByText('A decision is recorded under your name: Jane Doe (jane.doe).')).toBeInTheDocument();
+    expect(screen.queryByText(/not authenticated/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/This app has no login/)).not.toBeInTheDocument();
   });
 
   it('lists the decisions only a person makes, and the disagreement rule', async () => {

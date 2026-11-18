@@ -18,11 +18,12 @@ import { AgentSpecError, loadRegistry } from '@/server/agents';
 import { runAgent } from '@/server/chat/run-agent';
 import { checkEnvFilePermissions, createLlmClient, readLlmConfig } from '@/server/llm';
 import type { AgentRegistry } from '@/shared/contracts';
+import { SHARED_RULES_HOSTED } from '@/server/prompts';
 import { EvalCaseError, formatIssue, loadCases, type EvalCase } from '../evals/lib/cases';
 import { bindPacks, EvalPackError, loadPacks, type CasePack } from '../evals/lib/packs';
 import { PROPOSE_REPETITIONS, formatProposeReport, proposalCases, runProposeEval, type ProposeRunRecord } from '../evals/lib/propose';
 import { EvalAbortedError, EvalSetupError, type GitState } from '../evals/lib/run';
-import { parseEvalArgs, readGitState, redactingLog } from './eval';
+import { hostedWordingCheck, parseEvalArgs, readGitState, redactingLog } from './eval';
 
 export interface ProposeCliOptions {
   /** The options after `npm run eval:propose --`. */
@@ -41,6 +42,8 @@ export interface ProposeCliOptions {
   clock?: () => Date;
   nodeVersion?: string;
   log?: Pick<Console, 'error' | 'warn'>;
+  /** Whether the prompts carry the hosted wording; default: what the prompt module fixed when it loaded. */
+  hostedPrompts?: boolean;
 }
 
 const HELP = [
@@ -53,6 +56,7 @@ const HELP = [
   '  --case <id[,id]>    only these cases (repeat to add more)',
   `  --reps <1-10>       repetitions per case (default ${PROPOSE_REPETITIONS}; fewer makes the run a trial, not a measurement)`,
   '  --check             list the cases it would run and the model setting; no model is called',
+  '  --hosted-wording    measure the hosted copy\'s wording (needs RAAGENTS_HOSTED_NOTICE in the shell); without it, such prompts are refused',
   '  --help              show this text',
   '',
   'Exit codes: 0 valid run · 1 complete but not a valid measurement (saved) · 2 setup problem, nothing run · 3 aborted, nothing saved.',
@@ -109,6 +113,16 @@ export async function runProposeCli(options: ProposeCliOptions): Promise<number>
     print('error: --baseline is not supported here yet; compare two saved runs by reading their reports side by side');
     return 2;
   }
+  const hosted = hostedWordingCheck({
+    asked: args.hostedWording,
+    hostedPrompts: options.hostedPrompts ?? SHARED_RULES_HOSTED,
+    noticeNow: (options.env.RAAGENTS_HOSTED_NOTICE ?? '').trim() !== '',
+  });
+  if (!hosted.ok) {
+    print(`error: ${hosted.message}`);
+    return 2;
+  }
+  for (const line of hosted.lines) print(line);
 
   let registry: AgentRegistry;
   try {

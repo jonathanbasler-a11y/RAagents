@@ -1,73 +1,160 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { NextRequest } from 'next/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { SESSION_COOKIE } from '@/server/access-gate';
+import { closeAccountsDb, tokenHash } from '@/server/accounts/session-lookup';
+import { migrateChatSchema } from '@/server/chat/schema';
+import { openDatabase } from '@/server/db/sqlite';
 import { proxy } from './proxy';
 
-// The handler is thin: the decision table is tested in server/request-gate.test.ts. These
-// tests prove the headers are read from the request and the answers are built right.
+const ADMIN_PASSWORD = 'a-long-admin-password-1';
+const MEMBER_TOKEN = 'M'.repeat(43);
+const WAITING_TOKEN = 'W'.repeat(43);
+const ADMIN_TOKEN = 'A'.repeat(43);
 
-function request(path: string, init: { method?: string; headers?: Record<string, string> } = {}): NextRequest {
-  return new NextRequest(`http://localhost:3200${path}`, init);
-}
+const dirs: string[] = [];
 
 afterEach(() => {
+  closeAccountsDb();
   vi.unstubAllEnvs();
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-describe('proxy', () => {
-  it('lets a loopback Host through on a page, an API route and a static asset', () => {
-    for (const path of ['/', '/api/health', '/_next/static/chunks/app.js', '/avatars/dara.svg']) {
-      const response = proxy(request(path, { headers: { host: '127.0.0.1:3200' } }));
+function request(pathname: string, init: { method?: string; host?: string; token?: string } = {}): NextRequest {
+  const headers = new Headers({ host: init.host ?? 'localhost:3200' });
+  if (init.token !== undefined) headers.set('cookie', `${SESSION_COOKIE}=${init.token}`);
+  return new NextRequest(`http://localhost:3200${pathname}`, { method: init.method ?? 'GET', headers });
+}
 
-      // NextResponse.next() marks "continue" with this header and carries no status of its own.
-      expect(response.headers.get('x-middleware-next')).toBe('1');
-    }
+function passedThrough(response: Response): boolean {
+  return response.headers.get('x-middleware-next') === '1';
+}
+
+function rewrittenTo(response: Response): URL | null {
+  const target = response.headers.get('x-middleware-rewrite');
+  return target === null ? null : new URL(target);
+}
+
+/** Sign-in on, over a database with a member, a member waiting for their own password and the admin, each signed in. */
+function gateOn() {
+  const dir = mkdtempSync(path.join(tmpdir(), 'proxy-'));
+  dirs.push(dir);
+  const file = path.join(dir, 'chat.db');
+  const db = openDatabase(file);
+  migrateChatSchema(db);
+  const account = db.prepare(
+    `INSERT INTO accounts (id, username, role, managed_by, password_hash, must_change_password, one_time_expires_at, disabled_at, created_at, created_by)
+     VALUES (?, ?, ?, ?, 'scrypt$x', ?, ?, NULL, '2026-10-29T08:00:00.000Z', 'server')`,
+  );
+  account.run('acc-member', 'member-one', 'member', 'app', 0, null);
+  account.run('acc-waiting', 'member-two', 'member', 'app', 1, '2999-01-01T00:00:00.000Z');
+  account.run('acc-admin', 'admin', 'admin', 'server', 0, null);
+  const session = db.prepare(`INSERT INTO account_sessions (token_hash, account_id, created_at, expires_at) VALUES (?, ?, '2026-10-29T08:00:00.000Z', '2999-01-01T00:00:00.000Z')`);
+  session.run(tokenHash(MEMBER_TOKEN), 'acc-member');
+  session.run(tokenHash(WAITING_TOKEN), 'acc-waiting');
+  session.run(tokenHash(ADMIN_TOKEN), 'acc-admin');
+  db.close();
+  vi.stubEnv('CHAT_DB_PATH', file);
+  vi.stubEnv('RAAGENTS_ADMIN_PASSWORD', ADMIN_PASSWORD);
+  return file;
+}
+
+describe('proxy without sign-in', () => {
+  it('lets a loopback request through, as before, without reading any cookie or database', async () => {
+    vi.stubEnv('CHAT_DB_PATH', '/nonexistent/folder/chat.db');
+    expect(passedThrough(await proxy(request('/')))).toBe(true);
+    expect(passedThrough(await proxy(request('/api/rooms/team/messages', { token: MEMBER_TOKEN })))).toBe(true);
+  });
+});
+
+describe('proxy with sign-in on', () => {
+  it('shows the login page in place of a page without a session: an internal rewrite, no Location header', async () => {
+    // Next.js parses a Location set by the proxy as a full URL (a relative one crashes the request with a 500, seen on a
+    // real server), and inside a container the request URL names the internal address. A rewrite needs neither and
+    // answers the load balancer's health check of / with 200.
+    gateOn();
+    const response = await proxy(request('/team?thread=t1'));
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('cache-control')).toMatch(/no-store/);
+    const target = rewrittenTo(response);
+    expect(target?.pathname).toBe('/login');
+    expect(target?.searchParams.get('next')).toBe('/team?thread=t1');
   });
 
-  it('answers 421 to a rebinding host on every kind of route', async () => {
-    for (const path of ['/', '/api/health', '/api/rooms/team/turns', '/_next/static/chunks/app.js']) {
-      const response = proxy(request(path, { headers: { host: 'rebind.attacker.example.test:3200' } }));
-
-      expect(response.status).toBe(421);
-      expect(response.headers.get('cache-control')).toBe('no-store');
-      expect(response.headers.get('content-type')).toMatch(/^text\/plain/);
-      expect(await response.text()).toMatch(/Misdirected/);
-    }
+  it('answers 401 in the app error shape to an API request without a session', async () => {
+    gateOn();
+    const response = await proxy(request('/api/rooms/team/turns', { method: 'POST' }));
+    expect(response.status).toBe(401);
+    expect(response.headers.get('content-type')).toMatch(/application\/json/);
+    const body = (await response.json()) as { error: string; message: string; correlationId: string };
+    expect(body.error).toBe('sign_in_required');
+    expect(body.message).toMatch(/sign in/i);
+    expect(body.correlationId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  it('answers 403 to a POST from another origin', () => {
-    const response = proxy(
-      request('/api/rooms/team/turns', {
-        method: 'POST',
-        headers: { host: 'localhost:3200', origin: 'https://evil.example.test' },
-      }),
-    );
-
-    expect(response.status).toBe(403);
+  it('lets a person with a valid session through', async () => {
+    gateOn();
+    expect(passedThrough(await proxy(request('/team', { token: MEMBER_TOKEN })))).toBe(true);
+    expect(passedThrough(await proxy(request('/api/rooms/team/messages', { token: MEMBER_TOKEN })))).toBe(true);
   });
 
-  it('lets a same-origin POST through', () => {
-    const response = proxy(
-      request('/api/rooms/team/turns', {
-        method: 'POST',
-        headers: { host: 'localhost:3200', origin: 'http://localhost:3200' },
-      }),
-    );
-
-    expect(response.headers.get('x-middleware-next')).toBe('1');
+  it('refuses a cookie whose session is unknown', async () => {
+    gateOn();
+    expect(rewrittenTo(await proxy(request('/team', { token: 'X'.repeat(43) })))?.pathname).toBe('/login');
   });
 
-  it('reads ALLOWED_HOSTS at request time', () => {
-    const hostHeader = { host: 'app.example.test' };
-
-    expect(proxy(request('/', { headers: hostHeader })).status).toBe(421);
-
-    vi.stubEnv('ALLOWED_HOSTS', 'app.example.test');
-    expect(proxy(request('/', { headers: hostHeader })).headers.get('x-middleware-next')).toBe('1');
+  it('sees a session ended in the database on the very next request', async () => {
+    const file = gateOn();
+    expect(passedThrough(await proxy(request('/team', { token: MEMBER_TOKEN })))).toBe(true);
+    const db = openDatabase(file);
+    db.prepare(`UPDATE account_sessions SET revoked_at = '2026-10-29T09:00:00.000Z' WHERE token_hash = ?`).run(tokenHash(MEMBER_TOKEN));
+    db.close();
+    expect(rewrittenTo(await proxy(request('/team', { token: MEMBER_TOKEN })))?.pathname).toBe('/login');
   });
 
-  it('reads HOST at request time: bound beyond loopback and unrestricted, any Host passes', () => {
-    vi.stubEnv('HOST', '0.0.0.0');
+  it('sends a person waiting for their own password to the password page, and refuses their API calls', async () => {
+    gateOn();
+    const page = await proxy(request('/team', { token: WAITING_TOKEN }));
+    expect(rewrittenTo(page)?.pathname).toBe('/account/password');
+    expect(rewrittenTo(page)?.searchParams.get('next')).toBe('/team');
+    const api = await proxy(request('/api/selection', { token: WAITING_TOKEN }));
+    expect(api.status).toBe(403);
+    expect(((await api.json()) as { error: string }).error).toBe('password_change_required');
+    expect(passedThrough(await proxy(request('/account/password', { token: WAITING_TOKEN })))).toBe(true);
+  });
 
-    expect(proxy(request('/', { headers: { host: '3200-workspace.example.test' } })).headers.get('x-middleware-next')).toBe('1');
+  it('keeps the admin paths for the admin: a member gets 403', async () => {
+    gateOn();
+    const page = await proxy(request('/admin', { token: MEMBER_TOKEN }));
+    expect(page.status).toBe(403);
+    expect(page.headers.get('content-type')).toMatch(/text\/plain/);
+    const api = await proxy(request('/api/admin/people', { token: MEMBER_TOKEN }));
+    expect(api.status).toBe(403);
+    expect(((await api.json()) as { error: string }).error).toBe('admin_only');
+    expect(passedThrough(await proxy(request('/admin', { token: ADMIN_TOKEN })))).toBe(true);
+  });
+
+  it('keeps the health check open for the load balancer', async () => {
+    gateOn();
+    expect(passedThrough(await proxy(request('/api/health')))).toBe(true);
+  });
+
+  it('still applies the host check first: a wrong Host is refused before anything else', async () => {
+    gateOn();
+    vi.stubEnv('HOST', '127.0.0.1');
+    const response = await proxy(request('/team', { host: 'attacker.example', token: MEMBER_TOKEN }));
+    expect(response.status).toBe(421);
+  });
+
+  it('refuses everyone, without a crash, when the account tables are missing', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'proxy-empty-'));
+    dirs.push(dir);
+    vi.stubEnv('CHAT_DB_PATH', path.join(dir, 'chat.db'));
+    vi.stubEnv('RAAGENTS_ADMIN_PASSWORD', ADMIN_PASSWORD);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(rewrittenTo(await proxy(request('/team', { token: MEMBER_TOKEN })))?.pathname).toBe('/login');
+    expect((await proxy(request('/api/selection', { token: MEMBER_TOKEN }))).status).toBe(401);
   });
 });

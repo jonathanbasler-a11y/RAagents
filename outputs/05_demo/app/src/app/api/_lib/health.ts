@@ -54,6 +54,12 @@ function processStartedAt(): string {
   return new Date(Math.round(Date.now() - process.uptime() * 1000)).toISOString();
 }
 
+/** The report cut down to its overall status, with the same HTTP status. */
+export async function statusOnly(report: Response): Promise<Response> {
+  const body = (await report.json()) as { status?: unknown };
+  return json({ status: body.status }, report.status);
+}
+
 export function getHealth(deps: ApiDeps): Response {
   let database: HealthCheckState = 'ok';
   let startedAt = processStartedAt();

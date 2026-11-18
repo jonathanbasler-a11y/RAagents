@@ -1291,8 +1291,9 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       });
     },
 
-    decideFinding(workspaceId, findingId, decision, note, tag) {
+    decideFinding(workspaceId, findingId, decision, note, tag, actor = LOCAL_PERSON) {
       requireNonEmpty('workspaceId', workspaceId);
+      requireNonEmpty('actor', actor);
       if (decision !== 'accepted' && decision !== 'rejected') throw new RangeError('a decision is accepted or rejected');
       const trimmed = typeof note === 'string' ? note.trim() : '';
       if (trimmed.length > MAX_DECISION_NOTE_CHARS) throw new RangeError(`the note is longer than ${MAX_DECISION_NOTE_CHARS} characters`);
@@ -1311,15 +1312,16 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
         if (decision === 'accepted' && readDocument(workspaceId, finding.documentId)?.withdrawnAt) {
           throw new FindingSourceWithdrawnError(findingId, finding.documentId);
         }
-        sql.updateFindingDecision.run({ workspace_id: workspaceId, id: findingId, status: decision, at, by: LOCAL_PERSON, note: trimmed === '' ? null : trimmed });
-        sql.insertFindingEvent.run(workspaceId, findingId, decision, at, LOCAL_PERSON, trimmed === '' ? null : trimmed);
-        if (checkedTag !== null) sql.insertFindingTag.run(workspaceId, findingId, checkedTag.checklistItem, checkedTag.category, at, LOCAL_PERSON);
+        sql.updateFindingDecision.run({ workspace_id: workspaceId, id: findingId, status: decision, at, by: actor, note: trimmed === '' ? null : trimmed });
+        sql.insertFindingEvent.run(workspaceId, findingId, decision, at, actor, trimmed === '' ? null : trimmed);
+        if (checkedTag !== null) sql.insertFindingTag.run(workspaceId, findingId, checkedTag.checklistItem, checkedTag.category, at, actor);
         return mustExist(readFinding(workspaceId, findingId) ?? undefined, `finding ${findingId}`);
       });
     },
 
-    tagFinding(workspaceId, findingId, tag) {
+    tagFinding(workspaceId, findingId, tag, actor = LOCAL_PERSON) {
       requireNonEmpty('workspaceId', workspaceId);
+      requireNonEmpty('actor', actor);
       const result = checkTagInput(tag?.checklistItem, tag?.category);
       if (!result.ok) throw new RangeError(result.message);
       const at = timestamp();
@@ -1328,8 +1330,8 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
         if (finding === null) throw new FindingNotFoundError(findingId);
         if (finding.status !== 'accepted') throw new FindingNotAcceptedError(findingId, finding.status);
         if (sql.findingTagOf.get(workspaceId, findingId)) throw new FindingAlreadyTaggedError(findingId);
-        sql.insertFindingTag.run(workspaceId, findingId, result.tag.checklistItem, result.tag.category, at, LOCAL_PERSON);
-        return { findingId, ...result.tag, taggedAt: at, taggedBy: LOCAL_PERSON } satisfies FindingTag;
+        sql.insertFindingTag.run(workspaceId, findingId, result.tag.checklistItem, result.tag.category, at, actor);
+        return { findingId, ...result.tag, taggedAt: at, taggedBy: actor } satisfies FindingTag;
       });
     },
 
@@ -1346,8 +1348,9 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       );
     },
 
-    setChecklistState(workspaceId, item, state, reason) {
+    setChecklistState(workspaceId, item, state, reason, actor = LOCAL_PERSON) {
       requireNonEmpty('workspaceId', workspaceId);
+      requireNonEmpty('actor', actor);
       if (!isChecklistItemId(item)) throw new RangeError(`${String(item)} is not a checklist item`);
       const at = timestamp();
       return immediateTransaction(db, () => {
@@ -1357,9 +1360,9 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
           if (checked.code === 'needs_finding') throw new ChecklistNeedsFindingError(item);
           throw new RangeError(checked.message);
         }
-        sql.upsertChecklistState.run(workspaceId, item, state, checked.reason, at, LOCAL_PERSON);
-        sql.insertChecklistEvent.run(workspaceId, item, state, checked.reason, at, LOCAL_PERSON);
-        return { item, state, reason: checked.reason, changedAt: at, changedBy: LOCAL_PERSON } satisfies ChecklistEntry;
+        sql.upsertChecklistState.run(workspaceId, item, state, checked.reason, at, actor);
+        sql.insertChecklistEvent.run(workspaceId, item, state, checked.reason, at, actor);
+        return { item, state, reason: checked.reason, changedAt: at, changedBy: actor } satisfies ChecklistEntry;
       });
     },
 
@@ -1398,8 +1401,9 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
       return readGates(workspaceId, team);
     },
 
-    decideGate(workspaceId, gate, request, team) {
+    decideGate(workspaceId, gate, request, team, actor = LOCAL_PERSON) {
       requireNonEmpty('workspaceId', workspaceId);
+      requireNonEmpty('actor', actor);
       if (!isGateId(gate)) throw new RangeError(`${String(gate)} is not a gate`);
       const at = timestamp();
       return immediateTransaction(db, () => {
@@ -1412,7 +1416,7 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
           throw new RangeError(checked.message);
         }
         const id = `GD-${Number((sql.nextGateDecisionNumber.get(workspaceId) as { next: number }).next)}`;
-        sql.insertGateDecision.run(workspaceId, id, gate, checked.option, view.recommended, checked.reason, JSON.stringify(view.facts), view.factsHash, LOCAL_PERSON, at);
+        sql.insertGateDecision.run(workspaceId, id, gate, checked.option, view.recommended, checked.reason, JSON.stringify(view.facts), view.factsHash, actor, at);
         return {
           id,
           workspaceId,
@@ -1422,14 +1426,15 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
           recommended: view.recommended,
           facts: view.facts,
           factsHash: view.factsHash,
-          actor: LOCAL_PERSON,
+          actor: actor,
           createdAt: at,
         } satisfies GateDecision;
       });
     },
 
-    recordGateDissent(workspaceId, gate, request) {
+    recordGateDissent(workspaceId, gate, request, actor = LOCAL_PERSON) {
       requireNonEmpty('workspaceId', workspaceId);
+      requireNonEmpty('actor', actor);
       if (!isGateId(gate)) throw new RangeError(`${String(gate)} is not a gate`);
       const checked = checkGateDissent(request);
       if (!checked.ok) throw new RangeError(checked.message);
@@ -1438,8 +1443,8 @@ export function createStore(dbPath: string, options: StoreOptions = {}): Store {
         const decision = sql.gateDecisionOf.get(workspaceId, checked.decisionId) as { gate: string } | undefined;
         if (decision === undefined || decision.gate !== gate) throw new GateDecisionNotFoundError(checked.decisionId);
         const id = `GX-${Number((sql.nextGateDissentNumber.get(workspaceId) as { next: number }).next)}`;
-        sql.insertGateDissent.run(workspaceId, id, checked.decisionId, gate, checked.role, checked.reason, LOCAL_PERSON, at);
-        return { id, decisionId: checked.decisionId, workspaceId, gate, role: checked.role, reason: checked.reason, actor: LOCAL_PERSON, createdAt: at } satisfies GateDissent;
+        sql.insertGateDissent.run(workspaceId, id, checked.decisionId, gate, checked.role, checked.reason, actor, at);
+        return { id, decisionId: checked.decisionId, workspaceId, gate, role: checked.role, reason: checked.reason, actor: actor, createdAt: at } satisfies GateDissent;
       });
     },
 

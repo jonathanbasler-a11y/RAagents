@@ -19,6 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { format } from 'node:util';
 import { AgentSpecError, loadRegistry } from '@/server/agents';
 import { runAgent } from '@/server/chat/run-agent';
+import { SHARED_RULES_HOSTED } from '@/server/prompts';
 import { checkEnvFilePermissions, createLlmClient, modelFamily, readLlmConfig } from '@/server/llm';
 import type { AgentRegistry, LlmConfigResult, LlmRouteName } from '@/shared/contracts';
 import { EvalCaseError, formatIssue, loadCases, type EvalCase } from '../evals/lib/cases';
@@ -51,17 +52,19 @@ export interface EvalArgs {
   /** Validate the cases and show the settings; no model call. */
   check: boolean;
   help: boolean;
+  /** Measure the hosted copy's wording (RAAGENTS_HOSTED_NOTICE must be set); without it, a set notice is refused. */
+  hostedWording: boolean;
 }
 
 export type ParsedEvalArgs = { ok: true; args: EvalArgs } | { ok: false; message: string };
 
 const LIST_OPTIONS = new Set(['--agent', '--case']);
 const VALUE_OPTIONS = new Set(['--reps', '--baseline']);
-const FLAG_OPTIONS = new Set(['--check', '--help', '-h']);
+const FLAG_OPTIONS = new Set(['--check', '--help', '-h', '--hosted-wording']);
 
 /** Parses the options after `npm run eval --`. Never throws: a problem comes back as a message. */
 export function parseEvalArgs(argv: readonly string[]): ParsedEvalArgs {
-  const args: EvalArgs = { agents: [], cases: [], reps: EVAL_REPETITIONS, baseline: null, check: false, help: false };
+  const args: EvalArgs = { agents: [], cases: [], reps: EVAL_REPETITIONS, baseline: null, check: false, help: false, hostedWording: false };
   for (let index = 0, count = argv.length; index < count; index += 1) {
     const token = argv[index];
     if (!token.startsWith('-')) return { ok: false, message: `unexpected argument "${token}"` };
@@ -71,6 +74,7 @@ export function parseEvalArgs(argv: readonly string[]): ParsedEvalArgs {
     if (FLAG_OPTIONS.has(name)) {
       if (equals !== -1) return { ok: false, message: `${name} does not take a value` };
       if (name === '--check') args.check = true;
+      else if (name === '--hosted-wording') args.hostedWording = true;
       else args.help = true;
       continue;
     }
@@ -101,6 +105,35 @@ export function parseEvalArgs(argv: readonly string[]): ParsedEvalArgs {
     }
   }
   return { ok: true, args };
+}
+
+export type HostedWordingCheck = { ok: true; lines: string[] } | { ok: false; message: string };
+
+/**
+ * Whether a run may go ahead with the wording its prompts carry. The shared rules were fixed when the prompt module
+ * loaded, before the env files were read, so this judges what the prompts really got (`hostedPrompts`), not the
+ * environment now: a notice only in .env.local never reached them. Measuring the hosted wording is a deliberate choice.
+ */
+export function hostedWordingCheck(input: { asked: boolean; hostedPrompts: boolean; noticeNow: boolean }): HostedWordingCheck {
+  if (input.hostedPrompts && !input.asked) {
+    return {
+      ok: false,
+      message:
+        "the agents' prompts carry the hosted copy's wording (RAAGENTS_HOSTED_NOTICE was set when they were built). Unset it, or pass --hosted-wording to measure that wording on purpose.",
+    };
+  }
+  if (input.asked && !input.hostedPrompts) {
+    return {
+      ok: false,
+      message:
+        '--hosted-wording needs RAAGENTS_HOSTED_NOTICE set in the shell that starts the run: a value in .env.local is read after the prompts are built.',
+    };
+  }
+  if (input.asked) return { ok: true, lines: ["Hosted wording: on (the agents get the hosted copy's shared rule; compare only with runs that had it too)."] };
+  if (input.noticeNow) {
+    return { ok: true, lines: ['note: RAAGENTS_HOSTED_NOTICE reached only the env files, after the prompts were built: this run measures the default wording.'] };
+  }
+  return { ok: true, lines: [] };
 }
 
 /** One git command's output; throws when git fails. */
@@ -194,6 +227,8 @@ export interface EvalCliOptions {
   nodeVersion?: string;
   /** Passed to runAgent; default: console with keys and hosts removed. */
   log?: Pick<Console, 'error' | 'warn'>;
+  /** Whether the prompts carry the hosted wording; default: what the prompt module fixed when it loaded. */
+  hostedPrompts?: boolean;
 }
 
 const HELP = [
@@ -207,6 +242,7 @@ const HELP = [
   `  --reps <1-${MAX_REPS}>       repetitions per case (default ${EVAL_REPETITIONS}; fewer than ${EVAL_REPETITIONS} makes the run INVALID)`,
   '  --baseline <file>   compare the run with a saved run, case by case',
   '  --check             validate the cases against the roster and show the settings; no model is called',
+  '  --hosted-wording    measure the hosted copy\'s wording (needs RAAGENTS_HOSTED_NOTICE); without it a set notice is refused',
   '  --help              show this text',
   '',
   'Exit codes: 0 valid run (PASS) · 1 complete but INVALID or UNVERIFIABLE (saved) · 2 setup problem, nothing run · 3 aborted, nothing saved.',
@@ -329,6 +365,16 @@ export async function runEvalCli(options: EvalCliOptions): Promise<number> {
     for (const line of HELP) print(line);
     return 0;
   }
+  const hosted = hostedWordingCheck({
+    asked: args.hostedWording,
+    hostedPrompts: options.hostedPrompts ?? SHARED_RULES_HOSTED,
+    noticeNow: (options.env.RAAGENTS_HOSTED_NOTICE ?? '').trim() !== '',
+  });
+  if (!hosted.ok) {
+    print(`error: ${hosted.message}`);
+    return 2;
+  }
+  for (const line of hosted.lines) print(line);
 
   let registry: AgentRegistry;
   try {

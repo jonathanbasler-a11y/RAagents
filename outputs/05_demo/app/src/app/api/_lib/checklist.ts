@@ -3,12 +3,13 @@ import { ChecklistNeedsFindingError } from '@/server/chat/store';
 import { isChecklistItemId } from '@/shared/checklist';
 import type { ChecklistResponse, Store, WorkspaceId } from '@/shared/contracts';
 import type { ApiDeps } from './deps';
+import { actorOf } from './decision-actor';
 import { apiError, json, logFailure } from './http';
 import { checkSameOriginJson, readJsonBody } from './request-guard';
 
 // The regulatory checklist over HTTP. Reading is open to anyone who can reach the app. Moving an item between the four
-// states is the person's: a same-origin JSON post with a strictly validated body. The app has no login, so the change is
-// stamped "person (local, not authenticated)". There is no route for an agent to write here.
+// states is the person's: a same-origin JSON post with a strictly validated body. The change is stamped with
+// the person the server's session names (decision-actor.ts), or "person (local, not authenticated)" on a copy without sign-in. There is no route for an agent to write here.
 
 function checklistBody(store: Store, workspaceId: WorkspaceId): ChecklistResponse {
   const accepted = new Set(store.listFindings(workspaceId).filter((finding) => finding.status === 'accepted').map((finding) => finding.id));
@@ -40,6 +41,8 @@ export async function postChecklistState(request: Request, deps: ApiDeps, item: 
     deps.log.warn(`[api] refused ${where} (correlation ${correlationId}): ${guard.reason}`);
     return apiError('forbidden', correlationId);
   }
+  const actor = actorOf(deps.decider(request));
+  if (actor === null) return apiError('sign_in_required', correlationId);
   try {
     const body = await readJsonBody(request);
     if (!body.ok) return apiError('invalid_request', correlationId, { message: body.message });
@@ -53,7 +56,7 @@ export async function postChecklistState(request: Request, deps: ApiDeps, item: 
     const { store, workspaceId } = deps.runtime();
     try {
       // The store checks the state and the reason with the same rules as the page, and the database checks them again.
-      store.setChecklistState(workspaceId, item, state as never, reason as never);
+      store.setChecklistState(workspaceId, item, state as never, reason as never, actor);
     } catch (error) {
       if (error instanceof RangeError) return apiError('invalid_request', correlationId, { message: error.message });
       throw error;

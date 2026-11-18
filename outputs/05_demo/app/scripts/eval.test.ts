@@ -95,7 +95,7 @@ function harness(files: Record<string, unknown> = { 'lead.yaml': { cases: [evalC
 async function cli(
   target: Harness,
   argv: string[] = [],
-  options: { env?: Record<string, string>; answer?: Answer; git?: GitState } = {},
+  options: { env?: Record<string, string>; answer?: Answer; git?: GitState; hostedPrompts?: boolean } = {},
 ) {
   const { fetch, calls } = createFakeFetch(Array.from({ length: 60 }, () => options.answer ?? healthy));
   const lines: string[] = [];
@@ -115,6 +115,7 @@ async function cli(
     clock: () => new Date(Date.UTC(2026, 9, 8, 9, 0, tick++)),
     nodeVersion: 'v24.0.0-test',
     log: { error: () => {}, warn: () => {} },
+    ...(options.hostedPrompts === undefined ? {} : { hostedPrompts: options.hostedPrompts }),
   });
   return { code, calls, output: lines.join('\n') };
 }
@@ -200,12 +201,39 @@ describe('npm run eval: filters and options', () => {
   it('parses its options and refuses anything else', () => {
     expect(parseEvalArgs(['--agent', 'a,b', '--agent=c', '--case', 'x', '--reps=2', '--baseline', 'old.json'])).toEqual({
       ok: true,
-      args: { agents: ['a', 'b', 'c'], cases: ['x'], reps: 2, baseline: 'old.json', check: false, help: false },
+      args: { agents: ['a', 'b', 'c'], cases: ['x'], reps: 2, baseline: 'old.json', check: false, help: false, hostedWording: false },
     });
     expect(parseEvalArgs(['--check'])).toMatchObject({ ok: true, args: { check: true } });
+    expect(parseEvalArgs(['--hosted-wording'])).toMatchObject({ ok: true, args: { hostedWording: true } });
     expect(parseEvalArgs(['--fast'])).toEqual({ ok: false, message: 'unknown option "--fast"' });
     expect(parseEvalArgs(['--reps', 'three'])).toEqual({ ok: false, message: '--reps needs a whole number from 1 to 10' });
     expect(parseEvalArgs(['--agent'])).toEqual({ ok: false, message: '--agent needs a value' });
+  });
+
+  it('refuses prompts built with the hosted wording unless asked to measure it, before calling anything', async () => {
+    const unasked = await cli(harness(), [], { hostedPrompts: true });
+    expect(unasked.code).toBe(2);
+    expect(unasked.output).toMatch(/prompts carry the hosted copy's wording/);
+    expect(unasked.calls).toHaveLength(0);
+  });
+
+  it('refuses --hosted-wording when the prompts were built without it, as with a notice only in .env.local', async () => {
+    const late = await cli(harness(), ['--hosted-wording'], { env: { ...settings(), RAAGENTS_HOSTED_NOTICE: 'Hosted practice copy' }, hostedPrompts: false });
+    expect(late.code).toBe(2);
+    expect(late.output).toMatch(/--hosted-wording needs RAAGENTS_HOSTED_NOTICE set in the shell/);
+    expect(late.calls).toHaveLength(0);
+  });
+
+  it('measures the default wording, and says why, when a notice reaches only the env files', async () => {
+    const { code, output } = await cli(harness(), ['--check'], { env: { ...settings(), RAAGENTS_HOSTED_NOTICE: 'Hosted practice copy' }, hostedPrompts: false });
+    expect(code).toBe(0);
+    expect(output).toMatch(/this run measures the default wording/);
+  });
+
+  it('says so in the output when it measures the hosted wording', async () => {
+    const { code, output } = await cli(harness(), ['--hosted-wording', '--check'], { hostedPrompts: true });
+    expect(code).toBe(0);
+    expect(output).toMatch(/Hosted wording: on/);
   });
 
   it('prints help and exits 0 for --help, without calling anything', async () => {

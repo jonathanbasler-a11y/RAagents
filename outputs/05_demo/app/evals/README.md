@@ -14,6 +14,7 @@ npm run eval -- --agent reglead --reps 1     # a trial: one agent, one repetitio
 npm run eval                                 # the full run: 59 cases x 3 repetitions (about 40 minutes, about 350 model calls)
 npm run eval -- --baseline <saved run file>  # compare with an earlier run, case by case
 npm run eval:regrade -- <saved run file>     # offline: re-run today's checks on a saved run's stored answers
+RAAGENTS_HOSTED_NOTICE="..." npm run eval -- --hosted-wording   # the hosted copy's wording, on purpose (set in the shell, not .env.local)
 ```
 
 Runs are saved under `.eval-runs/` (git-ignored, local). The verdict says whether the run is a valid measurement; it is not a quality grade.

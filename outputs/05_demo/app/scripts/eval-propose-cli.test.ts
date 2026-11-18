@@ -106,7 +106,7 @@ function harness(cases = [packCase('lead-claims', 'lead')]): Harness {
   return created;
 }
 
-async function cli(target: Harness, argv: string[] = [], options: { env?: Record<string, string>; answer?: Answer; git?: GitState } = {}) {
+async function cli(target: Harness, argv: string[] = [], options: { env?: Record<string, string>; answer?: Answer; git?: GitState; hostedPrompts?: boolean } = {}) {
   const { fetch, calls } = createFakeFetch(Array.from({ length: 60 }, () => options.answer ?? healthy));
   const lines: string[] = [];
   let tick = 0;
@@ -125,6 +125,7 @@ async function cli(target: Harness, argv: string[] = [], options: { env?: Record
     clock: () => new Date(Date.UTC(2026, 9, 8, 9, 0, tick++)),
     nodeVersion: 'v24.0.0-test',
     log: { error: () => {}, warn: () => {} },
+    ...(options.hostedPrompts === undefined ? {} : { hostedPrompts: options.hostedPrompts }),
   });
   return { code, calls, output: lines.join('\n') };
 }
@@ -252,5 +253,21 @@ describe('trialReason', () => {
     expect(trialReason(record({ commit: null }))).toMatch(/could not be read/);
     expect(trialReason(record({ dirty: null }))).toMatch(/could not be read/);
     expect(trialReason(record({ dirty: true }))).toMatch(/uncommitted/);
+  });
+});
+
+describe('eval:propose and the hosted wording', () => {
+  it('refuses prompts built with the hosted wording unless asked, and --hosted-wording without them, before calling anything', async () => {
+    const unasked = await cli(harness(), [], { hostedPrompts: true });
+    expect(unasked.code).toBe(2);
+    expect(unasked.output).toMatch(/prompts carry the hosted copy's wording/);
+    expect(unasked.calls).toHaveLength(0);
+    const late = await cli(harness(), ['--hosted-wording'], { hostedPrompts: false });
+    expect(late.code).toBe(2);
+    expect(late.calls).toHaveLength(0);
+  });
+
+  it('says so when it measures the hosted wording', async () => {
+    expect((await cli(harness(), ['--hosted-wording', '--check'], { hostedPrompts: true })).output).toMatch(/Hosted wording: on/);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blockNetwork, NETWORK_BLOCKED_MESSAGE, stripModelCredentials } from './offline';
+import { blockNetwork, NETWORK_BLOCKED_MESSAGE, stripHostedSettings, stripModelCredentials } from './offline';
 
 const CREDENTIAL_NAME = /^(LLM_|ANTHROPIC_|OPENAI_)/;
 
@@ -21,6 +21,22 @@ describe('stripModelCredentials', () => {
   });
 });
 
+describe('stripHostedSettings', () => {
+  it('removes the hosted-copy settings (sign-in, banner, backup) and keeps everything else', () => {
+    const env: Record<string, string | undefined> = {
+      RAAGENTS_ADMIN_PASSWORD: 'a-long-admin-password-1',
+      RAAGENTS_HOSTED_NOTICE: 'Hosted copy',
+      RAAGENTS_REQUIRE_SIGN_IN: '1',
+      LITESTREAM_REPLICA_URL: 's3://bucket/chat.db',
+      CHAT_DB_PATH: '/tmp/chat.db',
+      PATH: '/usr/bin',
+    };
+
+    expect(stripHostedSettings(env)).toEqual(['LITESTREAM_REPLICA_URL', 'RAAGENTS_ADMIN_PASSWORD', 'RAAGENTS_HOSTED_NOTICE', 'RAAGENTS_REQUIRE_SIGN_IN']);
+    expect(env).toEqual({ CHAT_DB_PATH: '/tmp/chat.db', PATH: '/usr/bin' });
+  });
+});
+
 describe('blockNetwork', () => {
   it('replaces fetch with a function that throws', () => {
     const target = { fetch: (async () => new Response('ok')) as typeof fetch };
@@ -32,6 +48,10 @@ describe('blockNetwork', () => {
 });
 
 describe('the shared setup file', () => {
+  it('leaves no hosted-copy settings in process.env, so a shell that has them set changes no test', () => {
+    expect(Object.keys(process.env).filter((name) => /^(RAAGENTS_|LITESTREAM_)/.test(name))).toEqual([]);
+  });
+
   it('leaves no model credential variables in process.env', () => {
     expect(Object.keys(process.env).filter((name) => CREDENTIAL_NAME.test(name))).toEqual([]);
   });
