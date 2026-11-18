@@ -523,7 +523,7 @@ export const LLM_ERROR_KINDS = [
  * - rate_limit: 429 · outage: 5xx · timeout: deadline hit · network: connection failed or reset.
  * - tls, dns: permanent connection errors; never retried.
  * - declined: no text, and the reply finished with refusal, content_filter or a plain stop (the
- *   gateway's strict OpenAI mode turns a refusal into "stop"); never retried.
+ *   gateway in strict OpenAI-compatible mode maps a refusal to "stop"); never retried.
  * The UI shows config and request problems differently from outages.
  */
 export type LlmErrorKind = (typeof LLM_ERROR_KINDS)[number];

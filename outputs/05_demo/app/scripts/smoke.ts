@@ -55,7 +55,7 @@ function answered(head: string, status: number | undefined, result: LlmResult, t
   if (result.truncated) {
     return { ok: false, line: `${head} FAIL cut off at the output cap (raise LLM_MAX_TOKENS): ${facts}`, model: result.model };
   }
-  // The gateway can answer with another model than the one asked for: that is not a working setup.
+  // A reply from a different model than the configured one means the setup is not what it claims.
   if (result.substituted) {
     return { ok: false, line: `${head} FAIL another model answered than the one configured: ${facts}`, model: result.model };
   }

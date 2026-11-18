@@ -259,7 +259,7 @@ const CHAT_ERRORS: Record<ChatErrorCode, { kind: ErrorKind; text: string }> = {
   llm_request: { kind: 'setup', text: 'The model gateway refused the request.' },
   llm_tls: { kind: 'setup', text: 'A secure connection to the model gateway could not be made.' },
   llm_dns: { kind: 'setup', text: 'The model gateway address could not be found.' },
-  // A refusal under the gateway's strict OpenAI mode arrives as an empty, normal-looking
+  // With strict OpenAI compatibility a gateway turns a refusal into an empty, normal-looking
   // reply, so the wording says "may have": the cause is likely, not known.
   llm_declined: {
     kind: 'model',

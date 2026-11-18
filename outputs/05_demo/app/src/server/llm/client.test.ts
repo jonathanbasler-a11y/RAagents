@@ -172,7 +172,7 @@ describe('complete(): the reply', () => {
   });
 
   it('throws a declined error, without retrying, when the reply has no text and finished normally', async () => {
-    // The gateway's strict OpenAI mode turns a Claude refusal into finish "stop" with no
+    // A gateway in strict OpenAI-compatible mode maps a refusal to a plain "stop" with no
     // text, so this is most likely a refusal, not an outage.
     const { client, calls } = setup([completionResponse('   ')]);
 

@@ -258,7 +258,7 @@ describe('stream(): partial and failed answers', () => {
   });
 
   it('throws a declined error before any delta when the stream carries no text at all', async () => {
-    // Under the gateway's strict OpenAI mode a Claude refusal arrives exactly like this.
+    // With a gateway in strict OpenAI-compatible mode, a refusal looks exactly like this.
     const { client } = setup([(call) => sseResponse([chunkEvent('', { role: true }), chunkEvent(null, { finishReason: 'stop' }), DONE_EVENT], { signal: call.signal })]);
     captureLogs();
 

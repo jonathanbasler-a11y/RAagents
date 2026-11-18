@@ -1,7 +1,7 @@
 // Whether the model the gateway reported is the model the route asked for.
 //
-// A gateway can answer with another model than the one requested (seen in June 2026: a
-// request for gpt-4o answered by gpt-5-mini). The reply's `model` field is the only record
+// A model gateway may serve a request from a different model than the configured one (a
+// smaller model standing in for a larger one has been seen). The reply's `model` field is the only record
 // of who answered, so it is compared with the configured id.
 //
 // MEASURED 2026-11-17: the reply names the vendor's model, without a catalogue prefix

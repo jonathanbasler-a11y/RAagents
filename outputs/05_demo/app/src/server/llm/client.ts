@@ -149,7 +149,7 @@ export function createLlmClient(options: CreateLlmClientOptions): LlmClient {
     console[level](redact(`[llm] ${config.route} route: ${message}`, targets));
   };
 
-  // One warning per reported model for this client: an eval run would otherwise log it per case.
+  // Warn once per reported model, not on every reply this client gets.
   const warnedSubstitutions = new Set<string>();
   /** The model fields of a result: the reported model when there is one, and whether it is another. */
   function answeredBy(reported: string | undefined): Pick<LlmResult, 'model' | 'substituted'> {
@@ -282,7 +282,7 @@ export function createLlmClient(options: CreateLlmClientOptions): LlmClient {
     }
     if (finishReason === 'refusal') return { ...base, kind: 'declined', reason: 'the model declined the request (finish reason refusal)' };
     if (finishReason === 'content_filter') return { ...base, kind: 'declined', reason: 'a content filter stopped the reply' };
-    // The gateway's strict OpenAI mode reports a Claude refusal as "stop" with no text.
+    // In strict OpenAI-compatible mode a gateway maps a refusal to "stop", leaving no text.
     if (finishReason === 'stop') return { ...base, kind: 'declined', reason: 'the model sent no text and finished normally; it may have declined the request' };
     return { ...base, kind: 'outage', reason: 'the model endpoint sent an empty reply' };
   }

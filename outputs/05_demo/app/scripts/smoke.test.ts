@@ -86,7 +86,7 @@ describe('npm run smoke', () => {
     expect(output).toMatch(/judge family \(openai\) differs from the agents' family \(anthropic\)/);
   });
 
-  // A gateway can answer with another model than the one asked for; the smoke check used to print OK.
+  // A reply from a different model than configured used to print OK here.
   it('exits 1 and says so when a route answers as another model than configured', async () => {
     const swapped: Answer = (call) =>
       String(call.body.model).startsWith('anthropic.')

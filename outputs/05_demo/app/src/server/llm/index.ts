@@ -7,7 +7,7 @@ import 'server-only';
 // - rememberedRefusal(config): the auth or model refusal remembered for these settings, if any.
 // - checkEnvFilePermissions(): warns once if .env.local is readable by group or others.
 // - modelFamily(model): the vendor family, to check that the judge differs from the agents.
-// - isSameModel(requested, reported): whether the model that answered is the one asked for.
+// - isSameModel(configured, reported): whether the reported model matches the configured id.
 
 export { readLlmConfig } from './config';
 export { createLlmClient, rememberedRefusal, type RememberedRefusal } from './client';
