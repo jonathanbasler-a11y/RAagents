@@ -164,6 +164,23 @@ export interface AgentSpec {
   plannedRemit: string;
   /** The body sections. */
   sections: AgentSections;
+  /** Background reading from the local background folder (never the repository), when the agent has a file there. */
+  background?: AgentBackground;
+}
+
+/**
+ * Background reading the workspace owner keeps beside the app: `<background folder>/<id>.md`
+ * (default `.data/background`, env AGENT_BACKGROUND_DIR). The title and text go into the agent's
+ * prompt and are never sent to the browser directly (the agent's answers may quote them); the demo
+ * questions are the only part sent as they are.
+ */
+export interface AgentBackground {
+  /** The file's `# Title` line. */
+  title: string;
+  /** The rest of the file, without its `## Demo questions` section. */
+  text: string;
+  /** The `## Demo questions` list: starter prompts in the agent's 1:1 room. */
+  demoQuestions: string[];
 }
 
 /** Every front-matter key a spec may use. The registry refuses any other key. */
@@ -269,6 +286,12 @@ export interface LoadRegistryOptions {
   specsDir?: string;
   /** Folder that holds `avatars/<id>.svg`. Default: `<process.cwd()>/public`. */
   publicDir?: string;
+  /**
+   * Folder with optional background reading, `<id>.md`. Default: env AGENT_BACKGROUND_DIR, else
+   * `<process.cwd()>/.data/background`. `false`: no background at all (the eval scripts, so a run
+   * measures the briefs alone and no local document reaches the judge).
+   */
+  backgroundDir?: string | false;
 }
 
 /** The loaded, validated roster. Inactive agents are not in it. */

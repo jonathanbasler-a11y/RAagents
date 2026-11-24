@@ -2,6 +2,7 @@ import 'server-only';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import type { AgentId, AgentRegistry, AgentSpec, LoadRegistryOptions, PublicAgent, SpecIssue } from '@/shared/contracts';
+import { readBackground, resolveBackgroundDir } from './background';
 import { AgentSpecError } from './errors';
 import { parseAgentSpec } from './parse';
 import { toPublicAgent } from './public';
@@ -33,6 +34,15 @@ function listSpecFiles(specsDir: string): string[] {
     throw new Error(folderProblem(specsDir, error), { cause: error });
   }
   return names.filter((name) => name.endsWith('.md') && !name.startsWith('.') && !SKIPPED_FILE_NAMES.has(name)).sort();
+}
+
+/** The background folder's `*.md` files, sorted; none when the folder is missing or unreadable. */
+function listBackgroundFiles(backgroundDir: string): string[] {
+  try {
+    return readdirSync(backgroundDir).filter((name) => name.endsWith('.md') && !name.startsWith('.')).sort();
+  } catch {
+    return [];
+  }
 }
 
 function folderProblem(specsDir: string, error: unknown): string {
@@ -98,7 +108,21 @@ export function loadRegistry(options: LoadRegistryOptions = {}): AgentRegistry {
   specs.sort((a, b) => a.order - b.order);
   issues.push(...checkRoster(specs, { avatarExists: avatarExistsUnder(publicDir), unparsedIds }).issues);
   if (issues.length > 0) throw new AgentSpecError(issues);
-  return buildRegistry(specsDir, specs);
+  const withReading = options.backgroundDir === false ? specs : withBackground(specs, resolveBackgroundDir(options.backgroundDir));
+  return buildRegistry(specsDir, withReading);
+}
+
+/**
+ * Attaches each agent's background reading, when its file exists. A file that cannot be read or
+ * parsed never stops the roster from loading: that agent goes without it, and the log says why.
+ */
+function withBackground(specs: readonly AgentSpec[], backgroundDir: string): AgentSpec[] {
+  return specs.map((spec) => {
+    const read = readBackground(backgroundDir, spec.id);
+    if (read.kind === 'ok') return { ...spec, background: read.background };
+    if (read.kind === 'skipped') console.warn(`[agents] background reading for ${spec.id} skipped: ${read.reason} (${backgroundDir})`);
+    return spec;
+  });
 }
 
 function buildRegistry(specsDir: string, specs: readonly AgentSpec[]): AgentRegistry {
@@ -135,9 +159,17 @@ function deepFreeze<T>(value: T): T {
 
 let cached: { key: string; registry: AgentRegistry } | undefined;
 
-/** Changes whenever the folder, a spec file's mtime or size, or the list of spec files changes. */
-function fingerprint(specsDir: string, publicDir: string): string {
-  const parts = [specsDir, publicDir];
+/** Changes whenever the folder, a spec or background file's mtime or size, or the list of either changes. */
+function fingerprint(specsDir: string, publicDir: string, backgroundDir: string): string {
+  const parts = [specsDir, publicDir, backgroundDir];
+  for (const fileName of listBackgroundFiles(backgroundDir)) {
+    try {
+      const stats = statSync(join(backgroundDir, fileName));
+      parts.push(`background/${fileName}\t${stats.mtimeMs}\t${stats.size}`);
+    } catch {
+      parts.push(`background/${fileName}\tunreadable`);
+    }
+  }
   for (const fileName of listSpecFiles(specsDir)) {
     try {
       const stats = statSync(join(specsDir, fileName));
@@ -157,8 +189,9 @@ function fingerprint(specsDir: string, publicDir: string): string {
 function currentRegistry(): AgentRegistry {
   const specsDir = resolveSpecsDir({});
   const publicDir = resolvePublicDir({});
-  const key = fingerprint(specsDir, publicDir);
-  if (cached?.key !== key) cached = { key, registry: loadRegistry({ specsDir, publicDir }) };
+  const backgroundDir = resolveBackgroundDir();
+  const key = fingerprint(specsDir, publicDir, backgroundDir);
+  if (cached?.key !== key) cached = { key, registry: loadRegistry({ specsDir, publicDir, backgroundDir }) };
   return cached.registry;
 }
 

@@ -65,7 +65,8 @@ describe('spec template and contracts', () => {
     // Compile-time checks: `npm run typecheck` fails if these maps drift from the types.
     expectTypeOf<AgentSectionKeyByHeading[AgentSectionHeading]>().toEqualTypeOf<keyof AgentSections>();
     expectTypeOf<keyof AgentSpecFieldByYamlKey>().toEqualTypeOf<AgentSpecYamlKey>();
-    expectTypeOf<AgentSpecFieldByYamlKey[AgentSpecYamlKey]>().toEqualTypeOf<Exclude<keyof AgentSpec, 'sections'>>();
+    // `background` is the one field not read from the spec file: it comes from the local background folder.
+    expectTypeOf<AgentSpecFieldByYamlKey[AgentSpecYamlKey]>().toEqualTypeOf<Exclude<keyof AgentSpec, 'sections' | 'background'>>();
 
     expect(new Set(AGENT_SECTION_HEADINGS).size).toBe(10);
     expect(new Set(AGENT_SPEC_YAML_KEYS).size).toBe(AGENT_SPEC_YAML_KEYS.length);

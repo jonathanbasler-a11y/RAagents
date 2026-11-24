@@ -37,6 +37,7 @@ export function toPublicAgent(spec: AgentSpec): PublicAgent {
       humanOwner: sections.humanOwner,
       autonomyLevel: sections.autonomyLevel,
     },
-    examplePrompts: [...sections.examplePrompts],
+    // Background demo questions first; the background's title and text stay on the server.
+    examplePrompts: [...(spec.background?.demoQuestions ?? []), ...sections.examplePrompts],
   };
 }
