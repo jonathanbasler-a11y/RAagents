@@ -79,6 +79,25 @@ Options:
 - The live and practice demos each keep their own chat database in `.data/`, apart from `.data/chat.db`. The server's output is in `.data/demo.log`.
 - One demo runs at a time on a port. To switch between live and practice, run `npm run demo:stop` first.
 
+## Background reading for an agent (local only)
+
+An agent can be given a document to know, kept on this computer and never in the repository: put it in `.data/background/<agent id>.md` (for Lena, `label.md`), or in the folder named by `AGENT_BACKGROUND_DIR`. Git ignores `.data/`, so material that must not be published can go there. The file:
+
+```markdown
+# Title of the document
+
+The text the agent should know (at most 60,000 characters).
+
+## Demo questions
+
+- A question offered as a starter prompt in the agent's 1:1 room (at most three, 300 characters each).
+```
+
+- The text goes into that agent's prompt, fenced as reference material, with a note to use it only when a question touches it and to keep what the document says apart from what the model knows and from its own judgement. It is not a data room document and changes nothing in the agent's brief.
+- Only the demo questions reach the browser. The answer to a demo question is the model's, written live.
+- The app picks up a new or changed file without a restart. A file it cannot read or parse is skipped, with the reason in the server log, and the agent works without it.
+- Colleagues' copies and the hosted copy have no such folder, so their agents are unchanged.
+
 ## Scripts
 
 | Script | What it does |
