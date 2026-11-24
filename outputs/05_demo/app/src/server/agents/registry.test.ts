@@ -227,6 +227,16 @@ describe('toPublicAgent', () => {
     expect(toPublicAgent(fixtureSpec('labels'))).toStrictEqual(expected);
   });
 
+  it('puts the background demo questions first and never shows the background title or text', () => {
+    const labels = fixtureSpec('labels');
+    const spec: AgentSpec = { ...labels, background: { title: 'Secret paper title', text: 'secret-body-text', demoQuestions: ['How visionary was it?'] } };
+
+    const publicAgent = toPublicAgent(spec);
+
+    expect(publicAgent.examplePrompts).toEqual(['How visionary was it?', ...labels.sections.examplePrompts]);
+    expect(JSON.stringify(publicAgent)).not.toMatch(/Secret paper title|secret-body-text|"background"/);
+  });
+
   it('includes team_role and trigger when the agent has them', () => {
     expect(toPublicAgent(fixtureSpec('critic')).teamRole).toBe('red-team');
     expect(toPublicAgent(fixtureSpec('cmc')).trigger).toBe('late');
@@ -382,5 +392,68 @@ describe('process-wide helpers', () => {
     rmSync(layout.specsDir, { recursive: true });
 
     expect(() => listAgents()).toThrow(layout.specsDir);
+  });
+});
+
+
+describe('background reading', () => {
+  const bgDir = () => path.join(layout.root, 'background');
+  const writeBackground = (dir: string, id: string, text: string) => {
+    mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, `${id}.md`);
+    writeFileSync(file, text);
+    return file;
+  };
+
+  it('attaches <id>.md from the background folder to that agent only', () => {
+    writeSpecs(layout, fixtureSpecs());
+    writeBackground(bgDir(), 'labels', '# Paper\nBody.\n## Demo questions\n- How visionary?\n');
+
+    const registry = loadRegistry({ specsDir: layout.specsDir, publicDir: layout.publicDir, backgroundDir: bgDir() });
+
+    expect(registry.get('labels')?.background).toEqual({ title: 'Paper', text: 'Body.', demoQuestions: ['How visionary?'] });
+    expect(registry.get('lead')?.background).toBeUndefined();
+    expect(Object.isFrozen(registry.get('labels')?.background?.demoQuestions)).toBe(true);
+  });
+
+  it('skips a broken file with a warning naming the agent, and still loads the roster', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    writeSpecs(layout, fixtureSpecs());
+    writeBackground(bgDir(), 'labels', 'no title line\n');
+
+    const registry = loadRegistry({ specsDir: layout.specsDir, publicDir: layout.publicDir, backgroundDir: bgDir() });
+
+    expect(registry.agents.map((agent) => agent.id)).toEqual(BY_ORDER);
+    expect(registry.get('labels')?.background).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/labels.*skipped.*# Title/));
+  });
+
+  it('the process-wide helpers read .data/background in the working directory and follow changes to the file', () => {
+    writeSpecs(layout, fixtureSpecs());
+    useLayoutAsApp();
+    vi.stubEnv('AGENT_BACKGROUND_DIR', undefined);
+    const dir = path.join(layout.appDir, '.data', 'background');
+    expect(getAgent('labels')?.background).toBeUndefined();
+
+    const file = writeBackground(dir, 'labels', '# One\nBody.\n');
+    expect(getAgent('labels')?.background?.title).toBe('One');
+
+    writeFileSync(file, '# Two\nBody.\n');
+    touch(file, 5);
+    expect(getAgent('labels')?.background?.title).toBe('Two');
+    expect(listPublicAgents().find((agent) => agent.id === 'labels')?.examplePrompts).toEqual(fixtureSpec('labels').sections.examplePrompts);
+
+    rmSync(file);
+    expect(getAgent('labels')?.background).toBeUndefined();
+  });
+
+  it('AGENT_BACKGROUND_DIR points the process-wide helpers at another folder', () => {
+    writeSpecs(layout, fixtureSpecs());
+    useLayoutAsApp();
+    vi.stubEnv('AGENT_BACKGROUND_DIR', bgDir());
+    writeBackground(bgDir(), 'labels', '# Elsewhere\nBody.\n## Demo questions\n- Asked from elsewhere?\n');
+
+    expect(getAgent('labels')?.background?.title).toBe('Elsewhere');
+    expect(listPublicAgents().find((agent) => agent.id === 'labels')?.examplePrompts[0]).toBe('Asked from elsewhere?');
   });
 });
