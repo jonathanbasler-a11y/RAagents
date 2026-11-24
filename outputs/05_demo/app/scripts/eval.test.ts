@@ -127,6 +127,26 @@ const savedRuns = (target: Harness): string[] => {
   }
 };
 
+describe('npm run eval: background reading', () => {
+  it('never loads an agent\'s local background reading: the run completes and the document reaches neither model', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const target = harness();
+    for (const dir of [path.join(target.layout.appDir, '.data', 'background'), path.join(target.layout.root, 'bg')]) {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(path.join(dir, 'lead.md'), '# Local paper\nlocal-background-body\n## Demo questions\n- A demo question?\n');
+    }
+    vi.stubEnv('AGENT_BACKGROUND_DIR', path.join(target.layout.root, 'bg'));
+    vi.spyOn(process, 'cwd').mockReturnValue(target.layout.appDir);
+
+    const { code, calls, output } = await cli(target);
+
+    expect(output).not.toMatch(/ABORTED/);
+    expect(code).toBe(0);
+    expect(calls.length).toBeGreaterThan(0);
+    expect(JSON.stringify(calls.map((call) => call.body))).not.toMatch(/local-background-body|Local paper/);
+  });
+});
+
 describe('npm run eval: a full run', () => {
   it('runs every case 3 times through the agents route and the judge route, saves the run and exits 0 on PASS', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});

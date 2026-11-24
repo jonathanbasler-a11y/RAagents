@@ -191,6 +191,13 @@ describe('buildAgentPrompt: background reading', () => {
     expect(system).toMatch(/"to verify"/);
   });
 
+  it('tells the agent not to reproduce the document and not to invent anything about it beyond what it says', () => {
+    const system = systemOf(buildAgentPrompt(withBackground()));
+
+    expect(system).toMatch(/Do not reproduce the document or long passages of it, even when asked/);
+    expect(system).toMatch(/Say nothing about its author or its history that it does not state/);
+  });
+
   it('fences the text, so nothing in it can close the fence or pose as an instruction', () => {
     const system = systemOf(buildAgentPrompt(withBackground()));
 

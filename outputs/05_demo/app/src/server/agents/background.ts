@@ -1,12 +1,13 @@
 import 'server-only';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { AgentBackground } from '@/shared/contracts';
 
 // Background reading the workspace owner keeps beside the app, never in the repository: one
 // `<agent id>.md` per agent in a local folder (default `.data/background`, which git ignores).
 // It may hold material that must not be published, so it is read at runtime, only from that
-// folder, and only its demo questions ever reach the browser (see toPublicAgent).
+// folder. Only its demo questions are sent to the browser as they are (see toPublicAgent); the
+// agent's answers may still quote the text, which the prompt asks it not to reproduce.
 
 /** Longest background text an agent carries in every prompt, in characters (about 15,000 tokens). */
 export const BACKGROUND_MAX_CHARS = 60_000;
@@ -14,7 +15,9 @@ export const BACKGROUND_MAX_CHARS = 60_000;
 export const BACKGROUND_MAX_QUESTIONS = 3;
 const QUESTION_MAX_CHARS = 300;
 const TITLE_MAX_CHARS = 200;
-const DEMO_HEADING = /^##\s+Demo questions\s*$/i;
+const DEMO_HEADING = /^##\s+Demo questions\s*:?\s*$/i;
+/** A file this many bytes or more is not read at all (UTF-8 text at the limit can take up to 4 bytes a character). */
+const MAX_FILE_BYTES = BACKGROUND_MAX_CHARS * 4 + 8_192;
 
 export type ParsedBackground = { ok: true; background: AgentBackground } | { ok: false; reason: string };
 export type BackgroundRead = { kind: 'none' } | { kind: 'ok'; background: AgentBackground } | { kind: 'skipped'; reason: string };
@@ -54,8 +57,9 @@ export function parseBackground(raw: string): ParsedBackground {
       body.push(line);
       continue;
     }
-    const item = /^\s*[-*]\s+(.+?)\s*$/.exec(line);
-    if (item) demoQuestions.push(item[1]);
+    const item = /^\s*[-*]\s+(.*)$/.exec(line);
+    const question = item?.[1].trim();
+    if (question) demoQuestions.push(question);
   }
 
   const text = body.join('\n').replace(/\n{3,}/g, '\n\n').trim();
@@ -72,9 +76,13 @@ export function parseBackground(raw: string): ParsedBackground {
 
 /** `<dir>/<id>.md`: none when the folder or the file does not exist; skipped (with the reason) when it cannot be read or parsed. */
 export function readBackground(dir: string, id: string): BackgroundRead {
+  const file = join(dir, `${id}.md`);
   let raw: string;
   try {
-    raw = readFileSync(join(dir, `${id}.md`), 'utf8');
+    const stats = statSync(file);
+    if (!stats.isFile()) return { kind: 'skipped', reason: 'cannot read the file (not a regular file)' };
+    if (stats.size >= MAX_FILE_BYTES) return { kind: 'skipped', reason: `the file is too large (${stats.size} bytes)` };
+    raw = readFileSync(file, 'utf8');
   } catch (error) {
     const code = (error as NodeJS.ErrnoException | undefined)?.code;
     if (code === 'ENOENT' || code === 'ENOTDIR') return { kind: 'none' };

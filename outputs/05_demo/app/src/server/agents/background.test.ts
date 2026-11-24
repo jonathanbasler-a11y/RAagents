@@ -50,6 +50,12 @@ describe('parseBackground', () => {
     });
   });
 
+  it('accepts "Demo questions:" with a colon and drops empty items', () => {
+    const result = parseBackground(['# Paper', 'Body.', '## Demo questions:', '- First?', '-   ', '* Second?'].join('\n'));
+
+    expect(result).toEqual({ ok: true, background: { title: 'Paper', text: 'Body.', demoQuestions: ['First?', 'Second?'] } });
+  });
+
   it('reads a file saved with a byte order mark and Windows line ends', () => {
     const result = parseBackground(`\uFEFF# Paper\r\nBody.\r\n## Demo questions\r\n- Q one?\r\n`);
 
@@ -114,6 +120,14 @@ describe('readBackground', () => {
     } finally {
       chmodSync(path.join(dir, 'ev.md'), 0o600);
     }
+  });
+});
+
+describe('readBackground: size', () => {
+  it('skips, without reading it, a file far larger than the text limit', () => {
+    writeFileSync(path.join(dir, 'label.md'), `# T\n${'x'.repeat(BACKGROUND_MAX_CHARS * 5)}`);
+
+    expect(readBackground(dir, 'label')).toEqual({ kind: 'skipped', reason: expect.stringMatching(/too large/) });
   });
 });
 

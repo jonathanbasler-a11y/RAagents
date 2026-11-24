@@ -428,6 +428,16 @@ describe('background reading', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/labels.*skipped.*# Title/));
   });
 
+  it('backgroundDir false loads no background at all, whatever AGENT_BACKGROUND_DIR says', () => {
+    writeSpecs(layout, fixtureSpecs());
+    writeBackground(bgDir(), 'labels', '# Paper\nBody.\n');
+    vi.stubEnv('AGENT_BACKGROUND_DIR', bgDir());
+
+    const registry = loadRegistry({ specsDir: layout.specsDir, publicDir: layout.publicDir, backgroundDir: false });
+
+    expect(registry.get('labels')?.background).toBeUndefined();
+  });
+
   it('the process-wide helpers read .data/background in the working directory and follow changes to the file', () => {
     writeSpecs(layout, fixtureSpecs());
     useLayoutAsApp();

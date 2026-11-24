@@ -112,7 +112,7 @@ export async function runProposeCli(options: ProposeCliOptions): Promise<number>
 
   let registry: AgentRegistry;
   try {
-    registry = loadRegistry({ specsDir: options.specsDir, publicDir: options.publicDir });
+    registry = loadRegistry({ specsDir: options.specsDir, publicDir: options.publicDir, backgroundDir: false });
   } catch (error) {
     print('The agent specs cannot be used:');
     for (const issue of error instanceof AgentSpecError ? error.issues.map((entry) => `${entry.source}: ${entry.message}`) : [describe(error)]) print(`- ${issue}`);

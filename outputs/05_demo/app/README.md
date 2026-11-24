@@ -94,7 +94,8 @@ The text the agent should know (at most 60,000 characters).
 ```
 
 - The text goes into that agent's prompt, fenced as reference material, with a note to use it only when a question touches it and to keep what the document says apart from what the model knows and from its own judgement. It is not a data room document and changes nothing in the agent's brief.
-- Only the demo questions reach the browser. The answer to a demo question is the model's, written live.
+- The title and text are never sent to the browser as they are; only the demo questions are. The agent's answers can still draw on the document and quote short phrases, so treat the chat history as holding what it says; the prompt tells the agent not to reproduce the document or long passages of it. The answer to a demo question is the model's, written live.
+- `npm run eval` and `npm run eval:propose` never load background reading: a run measures the briefs alone, and no local document is sent to the judge.
 - The app picks up a new or changed file without a restart. A file it cannot read or parse is skipped, with the reason in the server log, and the agent works without it.
 - Colleagues' copies and the hosted copy have no such folder, so their agents are unchanged.
 

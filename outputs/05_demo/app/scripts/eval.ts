@@ -332,7 +332,7 @@ export async function runEvalCli(options: EvalCliOptions): Promise<number> {
 
   let registry: AgentRegistry;
   try {
-    registry = loadRegistry({ specsDir: options.specsDir, publicDir: options.publicDir });
+    registry = loadRegistry({ specsDir: options.specsDir, publicDir: options.publicDir, backgroundDir: false });
   } catch (error) {
     printProblems('The agent specs cannot be used', registryProblems(error));
     return 2;

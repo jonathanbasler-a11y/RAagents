@@ -108,7 +108,8 @@ export function loadRegistry(options: LoadRegistryOptions = {}): AgentRegistry {
   specs.sort((a, b) => a.order - b.order);
   issues.push(...checkRoster(specs, { avatarExists: avatarExistsUnder(publicDir), unparsedIds }).issues);
   if (issues.length > 0) throw new AgentSpecError(issues);
-  return buildRegistry(specsDir, withBackground(specs, resolveBackgroundDir(options.backgroundDir)));
+  const withReading = options.backgroundDir === false ? specs : withBackground(specs, resolveBackgroundDir(options.backgroundDir));
+  return buildRegistry(specsDir, withReading);
 }
 
 /**
